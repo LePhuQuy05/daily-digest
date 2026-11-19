@@ -128,7 +128,27 @@ def test_refresh_spawns_new_only_and_guards_double_click(tmp_path):
 
     assert first == {"ok": True, "spawned": True}
     assert second["ok"] is False and "already" in second["error"]
-    assert calls == [["-m", "daily_digest", "run", "--force", "--new-only"]]
+    assert calls == [["run", "--force", "--new-only"]]
+
+
+def test_refresh_real_spawn_path_has_exactly_one_module_flag(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    calls: list[list[str]] = []
+
+    class FakePopen:
+        def __init__(self, argv, **kwargs):
+            calls.append(list(argv))
+
+    monkeypatch.setattr("daily_digest.popup.subprocess.Popen", FakePopen)
+    bridge = _bridge(config)  # spawn_fn=None -> real spawn_cli path
+
+    result = bridge.refresh()
+
+    assert result == {"ok": True, "spawned": True}
+    assert len(calls) == 1
+    assert calls[0][0].endswith("pythonw.exe")
+    assert calls[0][1:] == ["-m", "daily_digest", "run", "--force", "--new-only"]
+    assert calls[0].count("-m") == 1  # no duplicated module flag
 
 
 def test_refresh_never_raises_on_spawn_failure(tmp_path):

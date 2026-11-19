@@ -135,7 +135,8 @@ class DigestBridge:
                     from daily_digest.popup import spawn_cli
 
                     spawn = spawn_cli
-                spawned = spawn(["-m", "daily_digest", "run", "--force", "--new-only"])
+                # spawn_cli prepends the interpreter and `-m daily_digest`.
+                spawned = spawn(["run", "--force", "--new-only"])
                 if not spawned:
                     return {"ok": False, "error": "spawn failed"}
                 self._last_refresh = now
