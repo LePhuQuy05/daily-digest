@@ -38,22 +38,34 @@ def show_popup(html_path: Path, title: str | None = None, bridge=None) -> None:
     LOG.info("popup window closed: %s", html_path)
 
 
-def spawn_popup_detached(html_path: Path) -> bool:
-    """Launch a detached process that shows the popup window. Returns True if spawned."""
+def _spawn_pythonw(args: list[str]) -> bool:
+    """Launch a detached pythonw child. Returns True if spawned."""
     pythonw = PROJECT_ROOT / ".venv" / "Scripts" / "pythonw.exe"
     if not pythonw.exists():
-        LOG.warning("popup skipped: %s not found (run 'uv sync')", pythonw)
+        LOG.warning("spawn skipped: %s not found (run 'uv sync')", pythonw)
         return False
     try:
         subprocess.Popen(  # noqa: S603
-            [str(pythonw), "-m", "daily_digest", "open", str(html_path)],
+            [str(pythonw), *args],
             cwd=str(PROJECT_ROOT),
             creationflags=subprocess.DETACHED_PROCESS
             | subprocess.CREATE_NEW_PROCESS_GROUP,
             close_fds=True,
         )
     except OSError as exc:
-        LOG.warning("popup spawn failed: %s", exc)
+        LOG.warning("spawn failed: %s", exc)
+        return False
+    return True
+
+
+def spawn_popup_detached(html_path: Path) -> bool:
+    """Launch a detached process that shows the popup window. Returns True if spawned."""
+    if not _spawn_pythonw(["-m", "daily_digest", "open", str(html_path)]):
         return False
     LOG.info("popup window launched for %s", html_path)
     return True
+
+
+def spawn_cli(args: list[str]) -> bool:
+    """Launch a detached `pythonw -m daily_digest ...` command (e.g. a refresh)."""
+    return _spawn_pythonw(["-m", "daily_digest", *args])

@@ -15,10 +15,19 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 
 from daily_digest.config import Config
-from daily_digest.feedback import ACTIONS, append_feedback
+from daily_digest.feedback import (
+    ACTIONS,
+    aggregate,
+    append_feedback,
+    read_feedback,
+)
+from daily_digest.normalize import safe_href
 from daily_digest.util import LOG
+
+REFRESH_COOLDOWN_SECONDS = 60.0
 
 _BLOB_RE = re.compile(
     r'<script[^>]*\bid="digest-data"[^>]*>(.*?)</script>',
@@ -44,7 +53,13 @@ class DigestBridge:
     Python exception rejects the JS Promise (pywebview 6.x), so failures come
     back as {"ok": False} / polite strings instead."""
 
-    def __init__(self, config: Config, digest_data: dict, chat_factory=None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        digest_data: dict,
+        chat_factory=None,
+        spawn_fn=None,
+    ) -> None:
         self.config = config
         self.date = str(digest_data.get("date", ""))
         self.items: dict[str, dict] = dict(digest_data.get("items", {}))
@@ -58,10 +73,72 @@ class DigestBridge:
         self._ask_chat = None
         self._ask_ready = False
         self._ask_profile: str | None = None
+        self._spawn_fn = spawn_fn  # test seam: callable(args) -> bool
+        self._last_refresh = 0.0
 
     def _snapshot_for(self, uid: str) -> dict | None:
         entry = self.items.get(uid) or self.pinned.get(uid)
-        return dict(entry) if isinstance(entry, dict) else None
+        if isinstance(entry, dict):
+            return dict(entry)
+        return self._live_saved_snapshot(uid)
+
+    def _live_saved_snapshot(self, uid: str) -> dict | None:
+        """Resolve a save that is no longer in today's blob (older than the
+        rail cap), so unsave/ask still work for it."""
+        try:
+            aggregate_now = aggregate(
+                read_feedback(self.config.feedback_path),
+                self.date or "",
+                self.config.feedback.window_days,
+            )
+            entry = aggregate_now.saved.get(uid)
+            return dict(entry) if isinstance(entry, dict) else None
+        except Exception:  # noqa: BLE001 — bridge must never raise
+            return None
+
+    def saved_items(self) -> dict:
+        """Every currently-saved article, read live from feedback.jsonl.
+
+        Returns hrefs sanitized in Python (never raw URLs) so the modal JS can
+        safely assign them to an anchor. Newest save first. Never raises.
+        """
+        try:
+            aggregate_now = aggregate(
+                read_feedback(self.config.feedback_path),
+                self.date or "",
+                self.config.feedback.window_days,
+            )
+            items: list[dict] = []
+            for entry in aggregate_now.saved.values():
+                snapshot = dict(entry)
+                snapshot["href"] = safe_href(str(snapshot.get("url", "")))
+                items.append(snapshot)
+            items.reverse()
+            return {"ok": True, "items": items}
+        except Exception as exc:  # noqa: BLE001 — Promise must never reject
+            LOG.error("saved_items failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "items": [], "error": str(exc)}
+
+    def refresh(self) -> dict:
+        """Spawn a detached `run --force --new-only`; 60s single-flight guard."""
+        try:
+            with self._lock:
+                now = time.monotonic()
+                if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
+                    return {"ok": False, "error": "already refreshing"}
+                spawn = self._spawn_fn
+                if spawn is None:
+                    from daily_digest.popup import spawn_cli
+
+                    spawn = spawn_cli
+                spawned = spawn(["-m", "daily_digest", "run", "--force", "--new-only"])
+                if not spawned:
+                    return {"ok": False, "error": "spawn failed"}
+                self._last_refresh = now
+                return {"ok": True, "spawned": True}
+        except Exception as exc:  # noqa: BLE001 — Promise must never reject
+            LOG.error("refresh failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc)}
 
     def _get_ask_chat(self):
         """Lazily build the ask LLM client on the FIRST question — the daily run
