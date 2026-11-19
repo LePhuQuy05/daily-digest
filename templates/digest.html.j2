@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily AI Digest — {{ date }}</title>
+<style>
+  /* ===================== Design tokens — "Editorial Dark Reading Room" =====================
+     Three layers (primitive -> semantic -> component). Dark is the default;
+     light overrides via [data-theme="light"] or system preference. No CDN, no
+     external assets: offline-first by construction. */
+
+  :root {
+    /* --- primitives --- */
+    --slate-950: #070B14;
+    --slate-900: #0B1220;
+    --slate-850: #0E1526;
+    --slate-800: #141E33;
+    --slate-700: #1D2A45;
+    --slate-400: #64748B;
+    --slate-300: #9AA7BC;
+    --slate-200: #CBD5E4;
+    --violet-600: #7C3AED;
+    --violet-500: #8B5CF6;
+    --violet-400: #A78BFA;
+    --cyan-400: #22D3EE;
+    --teal-400: #2DD4BF;
+    --amber-400: #FBBF24;
+    --emerald-400: #34D399;
+    --red-400: #F87171;
+
+    /* --- semantic (dark default) --- */
+    --bg: var(--slate-900);
+    --bg-raised: var(--slate-850);
+    --bg-overlay: var(--slate-800);
+    --text-1: #E8EDF6;
+    --text-2: #ABB6C9;
+    --text-3: #74829B;
+    --accent: var(--violet-500);
+    --accent-strong: var(--violet-400);
+    --accent-soft: rgba(139, 92, 246, 0.14);
+    --link: var(--cyan-400);
+    --border: rgba(154, 167, 188, 0.15);
+    --border-strong: rgba(154, 167, 188, 0.30);
+    --section-papers: var(--teal-400);
+    --section-news: var(--amber-400);
+    --section-tools: var(--emerald-400);
+    --danger: var(--red-400);
+    --ring: var(--violet-400);
+
+    /* --- component --- */
+    --card-radius: 14px;
+    --card-gap: 14px;
+    --shadow-1: 0 1px 2px rgba(3, 7, 18, 0.35);
+    --shadow-2: 0 8px 24px rgba(3, 7, 18, 0.45);
+    --font-serif: "Segoe UI Variable Serif", Georgia, "Times New Roman", serif;
+    --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+
+  [data-theme="light"] {
+    --bg: #F6F7FB;
+    --bg-raised: #FFFFFF;
+    --bg-overlay: #EEF0F7;
+    --text-1: #1B2437;
+    --text-2: #46536B;
+    --text-3: #5D6878;
+    --accent: var(--violet-600);
+    --accent-strong: #6D28D9;
+    --accent-soft: rgba(124, 58, 237, 0.10);
+    --link: #0E7490;
+    --border: rgba(27, 36, 55, 0.12);
+    --border-strong: rgba(27, 36, 55, 0.25);
+    --section-papers: #0F766E;
+    --section-news: #B45309;
+    --section-tools: #047857;
+    --danger: #DC2626;
+    --ring: var(--violet-600);
+    --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
+    --shadow-2: 0 8px 24px rgba(15, 23, 42, 0.14);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F6F7FB;
+      --bg-raised: #FFFFFF;
+      --bg-overlay: #EEF0F7;
+      --text-1: #1B2437;
+      --text-2: #46536B;
+      --text-3: #5D6878;
+      --accent: var(--violet-600);
+      --accent-strong: #6D28D9;
+      --accent-soft: rgba(124, 58, 237, 0.10);
+      --link: #0E7490;
+      --border: rgba(27, 36, 55, 0.12);
+      --border-strong: rgba(27, 36, 55, 0.25);
+      --section-papers: #0F766E;
+      --section-news: #B45309;
+      --section-tools: #047857;
+      --danger: #DC2626;
+      --ring: var(--violet-600);
+      --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
+      --shadow-2: 0 8px 24px rgba(15, 23, 42, 0.14);
+    }
+  }
+
+  /* ===================== base ===================== */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text-1);
+         font: 15px/1.55 var(--font-sans); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+
+  /* ===================== header (sticky, blurred) ===================== */
+  header { position: sticky; top: 0; z-index: 10; margin: 0 -20px 8px; padding: 20px 20px 14px;
+           background: color-mix(in srgb, var(--bg) 80%, transparent);
+           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+           border-bottom: 1px solid var(--border); }
+  h1 { margin: 0 0 6px; font-family: var(--font-serif); font-size: 28px; font-weight: 650;
+       letter-spacing: -0.01em; }
+  .date { color: var(--text-3); font-size: 12.5px; font-family: var(--font-mono); letter-spacing: 0.02em; }
+  .badges { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { background: var(--accent-soft); color: var(--accent-strong); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+           border-radius: 999px; padding: 3px 12px; font-size: 12.5px; font-weight: 600; }
+  .badge.warn { background: rgba(251, 191, 36, 0.14); color: var(--section-news); }
+
+  .theme-toggle { position: absolute; top: 24px; right: 22px; width: 34px; height: 34px;
+                  display: inline-flex; align-items: center; justify-content: center;
+                  border: 1px solid var(--border); background: var(--bg-raised); color: var(--text-2);
+                  border-radius: 10px; cursor: pointer; transition: all 0.18s ease; }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent-strong); }
+  .icon-sun { display: none; }
+  [data-theme="light"] .icon-sun { display: inline; }
+  [data-theme="light"] .icon-moon { display: none; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) .icon-sun { display: inline; }
+    :root:not([data-theme="dark"]) .icon-moon { display: none; }
+  }
+
+  .degraded { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+              background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.30);
+              color: var(--danger); border-radius: 999px; padding: 3px 12px; margin: 10px 0 0;
+              font-size: 12.5px; }
+  .notice { background: rgba(248, 113, 113, 0.10); border: 1px solid rgba(248, 113, 113, 0.35);
+            color: var(--danger); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: 13.5px; }
+
+  /* ===== TL;DR card: an AI briefing, not a newspaper column =====
+     Gradient surface + shimmering top line + one scannable bullet per sentence;
+     the last (takeaway) sentence gets a spotlight sub-box. No drop-cap. */
+  .overview { position: relative; overflow: hidden; margin: 18px 0 0;
+              background: linear-gradient(140deg, var(--accent-soft), transparent 55%), var(--bg-raised);
+              border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+              border-left: 4px solid var(--accent); border-radius: var(--card-radius);
+              padding: 18px 20px 16px; box-shadow: var(--shadow-1); }
+  .overview::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
+                      background: linear-gradient(90deg, transparent, var(--accent), var(--link), transparent);
+                      background-size: 200% 100%; opacity: 0.7;
+                      animation: shimmer 8s linear infinite; }
+  @keyframes shimmer { to { background-position: 200% 0; } }
+  @media (prefers-reduced-motion: reduce) { .overview::before { animation: none; } }
+  .overview h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em;
+                 color: var(--accent-strong); display: flex; align-items: center; gap: 10px; }
+  .overview h2 .spark { color: var(--accent); }
+  .overview h2 .pill { background: var(--accent-soft); color: var(--accent-strong); border-radius: 999px;
+                       padding: 1px 10px; font-size: 11px; letter-spacing: 0; }
+  .overview-points { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+  .overview-point { display: flex; gap: 10px; color: var(--text-1); font-size: 15px; line-height: 1.6; }
+  .overview-point::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
+                            margin-top: 0.58em; background: var(--accent);
+                            box-shadow: 0 0 8px var(--accent-soft); }
+  .overview-point.spotlight { background: var(--accent-soft);
+                              border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+                              border-radius: 10px; padding: 9px 12px; }
+  /* The spotlight is a takeaway callout, not another bullet: swap the dot for an arrow. */
+  .overview-point.spotlight::before { content: "→"; width: auto; height: auto; background: none;
+                                      box-shadow: none; color: var(--accent); font-weight: 700;
+                                      margin-top: 0.05em; }
+
+  /* ===================== sections & cards =====================
+     Section identity: each column gets --section-color; cards carry a subtle
+     left bar that lights up on hover. Stagger reveal respects reduced motion. */
+  section.block { margin-top: 28px; }
+  .sec-papers { --section-color: var(--section-papers); }
+  .sec-tech_news { --section-color: var(--section-news); }
+  .sec-tools_releases { --section-color: var(--section-tools); }
+  .pinned-block { --section-color: var(--section-news); }
+
+  .block h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+              color: var(--text-2); margin: 0 0 12px; display: flex; align-items: baseline; gap: 10px;
+              border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .block h2 .idx { font-family: var(--font-serif); font-size: 21px; font-weight: 700;
+                   color: var(--section-color, var(--text-3)); letter-spacing: 0; }
+  .block h2 .pill { background: color-mix(in srgb, var(--section-color, var(--text-3)) 14%, transparent);
+                    border: 1px solid color-mix(in srgb, var(--section-color, var(--text-3)) 34%, transparent);
+                    color: var(--section-color, var(--text-2)); border-radius: 999px;
+                    padding: 1px 10px; font-size: 12px; letter-spacing: 0; }
+
+  .card { background: var(--bg-raised); border: 1px solid var(--border);
+          border-left: 3px solid color-mix(in srgb, var(--section-color, var(--accent)) 40%, transparent);
+          border-radius: var(--card-radius); padding: 15px 17px; margin-bottom: var(--card-gap);
+          box-shadow: var(--shadow-1);
+          transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+          animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+          animation-delay: calc(min(var(--i, 0), 4) * 30ms); }
+  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-2);
+                border-color: var(--border-strong);
+                border-left-color: var(--section-color, var(--accent)); }
+  /* Subtle reveal: NEVER from full invisibility (captures and fast scrollers
+     must always see content); total stagger capped at ~120ms. */
+  @keyframes rise { from { opacity: 0.55; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .card { animation: none; transition: none; }
+  }
+
+  .card a.title { color: var(--text-1); text-decoration: none; font-weight: 640; font-size: 17.5px;
+                  font-family: var(--font-serif); line-height: 1.35; display: block; }
+  .card a.title:hover { color: var(--link); }
+
+  .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 0; }
+  .chip { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
+          color: var(--text-2); background: var(--bg-overlay); white-space: nowrap; }
+  .src { display: inline-block; border-radius: 999px; padding: 2px 9px; font-weight: 600; font-size: 11.5px; }
+  .src.papers { background: color-mix(in srgb, var(--section-papers) 16%, transparent); color: var(--section-papers);
+                border: 1px solid color-mix(in srgb, var(--section-papers) 32%, transparent); }
+  .src.hn { background: color-mix(in srgb, var(--section-news) 16%, transparent); color: var(--section-news);
+            border: 1px solid color-mix(in srgb, var(--section-news) 32%, transparent); }
+  .why { margin: 9px 0 0; color: var(--accent-strong); font-size: 13.5px; line-height: 1.5; }
+  .why::before { content: "→ "; }
+  .summary { margin: 8px 0 0; color: var(--text-2); font-size: 13.5px;
+             display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .summary.ai { color: var(--text-2); -webkit-line-clamp: 6; }
+  .summary.ai::before { content: "SUMMARY"; display: block; font-size: 9.5px; letter-spacing: 0.12em;
+                        color: var(--accent); font-weight: 700; margin: 0 0 3px;
+                        font-family: var(--font-mono); }
+
+  .pinned-block .card { border-left: 3px dashed var(--section-news); }
+
+  /* ===================== bridge-only UI (feedback buttons, ask drawer) =====================
+     Hidden by default; revealed ONLY when the pywebview api really exists. */
+  .bridge-only { display: none; }
+  body.bridged .bridge-only { display: inline-flex; }
+  .actions { margin-top: 12px; gap: 8px; }
+  .act { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+         min-width: 32px; height: 32px; padding: 0 8px;
+         border: 1px solid var(--border); background: var(--bg-overlay); color: var(--text-2);
+         border-radius: 9px; font-size: 12.5px; cursor: pointer; transition: all 0.18s ease; }
+  .act:hover { border-color: var(--accent); color: var(--accent-strong); transform: translateY(-1px); }
+  .act:disabled { opacity: 0.55; cursor: default; transform: none; }
+  .act.done { background: var(--accent); border-color: var(--accent); color: #ffffff;
+              font-weight: 600; }
+  .act.done .icon { stroke: #ffffff; }
+  .act.failed { border-color: var(--danger); color: var(--danger); }
+  .icon { width: 17px; height: 17px; stroke: currentColor; fill: none;
+          stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-sm { width: 15px; height: 15px; stroke: currentColor; fill: none;
+             stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ask { display: none; margin-top: 10px; }
+  body.bridged .ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ask-input { flex: 1 1 55%; min-width: 0; border: 1px solid var(--border-strong); border-radius: 10px;
+               padding: 8px 12px; font: 13.5px/1.4 var(--font-sans); background: var(--bg); color: var(--text-1); }
+  .ask-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .ask-btn { margin-top: 0; flex: none; }
+  .ask-answer { flex: 1 0 100%; margin-top: 2px; font-size: 13.5px; color: var(--text-2);
+                white-space: pre-wrap; display: none;
+                background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 10px;
+                padding: 10px 12px; }
+  .ask-answer:not(:empty) { display: block; }
+  .dots { display: inline-flex; gap: 4px; padding: 3px 0; }
+  .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+               animation: blink 1.2s infinite ease-in-out; }
+  .dots span:nth-child(2) { animation-delay: 0.18s; }
+  .dots span:nth-child(3) { animation-delay: 0.36s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+                     40% { opacity: 1; transform: translateY(-3px); } }
+
+  footer { margin-top: 40px; color: var(--text-3); font-size: 12.5px; border-top: 1px solid var(--border);
+           padding-top: 14px; }
+  footer code { background: var(--bg-overlay); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px; }
+
+  .empty { border: 1px dashed var(--border-strong); border-radius: var(--card-radius);
+           padding: 18px; color: var(--text-3); font-size: 13px; text-align: center; }
+
+  /* ===================== print: a clean light single-column digest ===================== */
+  @media print {
+    :root, [data-theme="light"], [data-theme="dark"] {
+      --bg: #FFFFFF; --bg-raised: #FFFFFF; --bg-overlay: #F2F2F2;
+      --text-1: #111111; --text-2: #333333; --text-3: #555555;
+      --accent: #7C3AED; --accent-strong: #6D28D9; --accent-soft: rgba(124, 58, 237, 0.08);
+      --link: #0E7490; --border: #CCCCCC; --border-strong: #999999;
+      --section-papers: #0F766E; --section-news: #B45309; --section-tools: #047857;
+      --danger: #DC2626; --ring: #7C3AED;
+      --shadow-1: none; --shadow-2: none;
+    }
+    header { position: static; background: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+             margin: 0 0 8px; padding: 0 0 10px; }
+    .theme-toggle, .bridge-only, .ask, .actions, footer { display: none !important; }
+    .wrap { max-width: 100%; padding: 0; }
+    .card { box-shadow: none; break-inside: avoid; animation: none; margin-bottom: 10px; }
+    .overview { box-shadow: none; }
+    .card a.title { color: #111111; }
+  }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <defs>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-thumb-up" viewBox="0 0 24 24"><path d="M7 11v9M7 11l4-7c.6-1 2-1.2 2.8-.4.4.4.6 1 .5 1.5L13.5 9H18a2 2 0 0 1 2 2.3l-1.2 6A2 2 0 0 1 16.8 19H7M7 11H5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2"/></symbol>
+    <symbol id="i-thumb-down" viewBox="0 0 24 24"><path d="M7 13V4M7 13l4 7c.6 1 2 1.2 2.8.4.4-.4.6-1 .5-1.5L13.5 15H18a2 2 0 0 0 2-2.3l-1.2-6A2 2 0 0 0 16.8 5H7M7 13H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l1 7 2 2H6l2-2 1-7z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></symbol>
+  </defs>
+</svg>
+<div class="wrap">
+  <header>
+    <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+      <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+      <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+    </button>
+    <h1>Daily AI Digest</h1>
+    <div class="date">{{ date }} · {{ total }} items picked for you</div>
+    <div class="badges">
+      <span class="badge">ranked by {% if mode == "llm" %}{{ model_name }}{% elif mode == "empty" %}empty digest (muted){% else %}heuristic (LLM offline){% endif %}</span>
+      {% if counts.papers %}<span class="badge">{{ counts.papers }} papers</span>{% endif %}
+      {% if counts.tech_news %}<span class="badge">{{ counts.tech_news }} tech news</span>{% endif %}
+      {% if counts.tools_releases %}<span class="badge">{{ counts.tools_releases }} tools</span>{% endif %}
+    </div>
+    {% if notice %}
+    <div class="notice">{{ notice }}</div>
+    {% endif %}
+    {% if degraded %}
+    <div class="degraded">
+      This digest ran in degraded mode{% if sources_failed %} — source(s) unavailable: {{ sources_failed | join(", ") }}{% endif %}.
+      Details in <code>logs/daily-digest.log</code>.
+    </div>
+    {% endif %}
+
+    {% if overview %}
+    <section class="overview">
+      <h2><svg class="icon-sm spark" aria-hidden="true"><use href="#i-spark"/></svg>{{ overview_label }} <span class="pill">TL;DR</span></h2>
+      <ul class="overview-points">
+        {% for point in overview.split(". ")[:4] %}
+        <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </header>
+
+  {% if pinned %}
+  <section class="block pinned-block">
+    <h2><svg class="icon-sm" style="color: var(--section-news)" aria-hidden="true"><use href="#i-pin"/></svg> Nhìn lại <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">+{{ pinned_overflow }} mục đã lưu cũ hơn</span>{% endif %}</h2>
+    {% for p in pinned %}
+    <article class="card" data-uid="{{ p.uid }}">
+      <a class="title" href="{{ p.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a>
+      <div class="meta">
+        <span class="src {{ 'papers' if p.source != 'hn' else 'hn' }}">{{ source_names.get(p.source, p.source) }}</span>
+        {% if p.points %}<span class="chip">{{ p.points }} points</span>{% endif %}
+        {% if p.citations %}<span class="chip">{{ p.citations }} citations</span>{% endif %}
+      </div>
+      {% if p.why %}<p class="why">{{ p.why }}</p>{% endif %}
+      {% set p_summary = p.llm_summary or p.summary %}
+      {% if p_summary %}<p class="summary{% if p.llm_summary %} ai{% endif %}">{{ p_summary }}</p>{% endif %}
+      <div class="actions bridge-only">
+        <button class="act" data-feedback="{{ p.uid }}|unsave" title="Đọc xong, bỏ khỏi Nhìn lại" aria-label="Đọc xong, bỏ khỏi Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Đọc xong</span></button>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% for section_key, section_items in sections.items() %}
+    <section class="block sec-{{ section_key }}">
+      <h2><span class="idx">{{ "%02d" | format(loop.index) }}</span>{{ section_titles[section_key] }} <span class="pill">{{ section_items | length }}</span></h2>
+      {% for r in section_items %}
+      <article class="card" data-uid="{{ r.item.id }}" style="--i: {{ loop.index0 }}">
+        <a class="title" href="{{ r.item.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ r.item.title }}</a>
+        <div class="meta">
+          <span class="src {{ 'papers' if r.item.source != 'hn' else 'hn' }}">{{ source_names[r.item.source] }}</span>
+          {% if r.item.points %}<span class="chip">{{ r.item.points }} points</span>{% endif %}
+          {% if r.item.citations %}<span class="chip">{{ r.item.citations }} citations</span>{% endif %}
+          {% if r.item.source == 'arxiv' %}<span class="chip">new today</span>{% endif %}
+        </div>
+        <p class="why">{{ r.why }}</p>
+        {% set summary_text = r.llm_summary or r.item.summary %}
+        {% if summary_text %}
+        <p class="summary{% if r.llm_summary %} ai{% endif %}">{{ summary_text }}</p>
+        {% endif %}
+        <div class="actions bridge-only">
+          <button class="act" data-feedback="{{ r.item.id }}|like" title="Digest này nên có nhiều bài thế này hơn" aria-label="Thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-up"/></svg></button>
+          <button class="act" data-feedback="{{ r.item.id }}|dislike" title="Bớt loại này ra" aria-label="Không thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>
+          <button class="act" data-feedback="{{ r.item.id }}|save" title="Giữ lại trong mục Nhìn lại" aria-label="Lưu mục này vào Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Lưu</span></button>
+        </div>
+        <div class="ask">
+          <input class="ask-input" type="text" placeholder="Hỏi thêm về mục này… (Ctrl+Enter)" aria-label="Nhập câu hỏi về mục này">
+          <button class="act ask-btn" data-ask="1" aria-label="Hỏi về mục này"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Hỏi</button>
+          <div class="ask-answer" aria-live="polite"></div>
+        </div>
+      </article>
+      {% endfor %}
+      {% if not section_items %}
+      <div class="empty">— hôm nay không có mục nào trong nhóm này —</div>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <footer>
+    Generated by daily-digest · to change the ranking model edit <code>llm.model</code> in
+    <code>config.yaml</code> (e.g. glm-5.3-flash, glm-5.3, deepseek-v4.1-flash) ·
+    old digests are archived in <code>output/</code>
+  </footer>
+</div>
+{% if digest_data %}
+<script type="application/json" id="digest-data">{{ digest_data | tojson }}</script>
+{% endif %}
+<script>
+  (function () {
+    /* --- theme: default follows the system; toggle persists in localStorage --- */
+    var KEY = "digest-theme";
+    function applyTheme(t) {
+      if (t === "light" || t === "dark") {
+        document.documentElement.setAttribute("data-theme", t);
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
+    }
+    try { applyTheme(localStorage.getItem(KEY)); } catch (e) { /* storage unavailable: system default */ }
+    var toggle = document.getElementById("theme-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        var current = document.documentElement.getAttribute("data-theme");
+        var systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var effective = current || (systemDark ? "dark" : "light");
+        var next = effective === "dark" ? "light" : "dark";
+        applyTheme(next);
+        try { localStorage.setItem(KEY, next); } catch (e2) { /* per-session only */ }
+      });
+    }
+
+    /* --- pywebview bridge: revealed only when the api really exists --- */
+    function ready() {
+      if (typeof window.pywebview !== "undefined" &&
+          typeof window.pywebview.api !== "undefined" &&
+          typeof window.pywebview.api.feedback === "function") {
+        document.body.classList.add("bridged");
+      }
+    }
+    window.addEventListener("pywebviewready", ready);
+
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-feedback]");
+      if (!btn || !document.body.classList.contains("bridged")) return;
+      var parts = btn.getAttribute("data-feedback").split("|");
+      btn.classList.remove("done", "failed");
+      pywebview.api.feedback(parts[0], parts[1]).then(function (res) {
+        if (res && res.ok) { btn.classList.add("done"); }
+        else { btn.classList.add("failed"); }
+      }).catch(function () { btn.classList.add("failed"); });
+    });
+
+    function sendAsk(card) {
+      var uid = card.getAttribute("data-uid");
+      var input = card.querySelector(".ask-input");
+      var out = card.querySelector(".ask-answer");
+      var btn = card.querySelector(".ask-btn");
+      var q = (input.value || "").trim();
+      if (!q || btn.disabled) return;
+      out.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
+      btn.disabled = true;
+      pywebview.api.ask(uid, q).then(function (answer) {
+        out.textContent = answer || "(không có câu trả lời)";
+        btn.disabled = false;
+      }).catch(function (err) {
+        out.textContent = "Lỗi: " + err;
+        btn.disabled = false;
+      });
+    }
+
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("[data-ask]");
+      if (!btn || !document.body.classList.contains("bridged")) return;
+      sendAsk(btn.closest("[data-uid]"));
+    });
+
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter" || !ev.ctrlKey) return;
+      if (!document.body.classList.contains("bridged")) return;
+      var input = ev.target.closest ? ev.target.closest(".ask-input") : null;
+      if (input) { ev.preventDefault(); sendAsk(input.closest("[data-uid]")); }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+[
+  {
+    "paper": {
+      "id": "2611.21938",
+      "title": "HubEgo-100K: In-the-Wild Egocentric Video of Skilled Work for Robot Learning",
+      "summary": "A large egocentric video dataset built for diversity across environments, for robot imitation learning.",
+      "upvotes": 42,
+      "publishedAt": "2026-11-16T00:00:00.000Z"
+    },
+    "publishedAt": "2026-11-15T19:00:00.000Z"
+  },
+  {
+    "paper": {
+      "id": "2611.11111",
+      "title": "Mechanistic interpretability of induction heads in modern LLMs",
+      "summary": "We study induction heads with sparse autoencoders in production-scale language models.",
+      "upvotes": 7,
+      "publishedAt": "2026-11-17T00:00:00.000Z"
+    }
+  },
+  {
+    "paper": {
+      "id": "",
+      "title": "Broken entry with empty id",
+      "summary": "",
+      "upvotes": 0
+    }
+  },
+  {
+    "paper": {
+      "id": "2611.22222",
+      "title": "Scaling laws for RLHF reward models",
+      "summary": "How reward model quality scales with compute and data.",
+      "upvotes": 15,
+      "publishedAt": "2026-11-17T00:00:00.000Z"
+    }
+  }
+]

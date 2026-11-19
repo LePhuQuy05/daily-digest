@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Emergent Mind Feed</title>
+    <description>Trending arXiv papers, explained by GPT-4</description>
+    <link>https://www.emergentmind.com/assistant</link>
+    <item>
+      <title>Breaking Bad: "Going Badly" Activations Drive Reward Hacking</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>"<p style="color: #292524">Humans often cheat when a task is going badly. We explore an analogous idea in LLMs: an internal pressure state that precedes reward hacking in language models.</p>"</p>
+<p>
+  arXiv: <a href="https://arxiv.org/abs/2611.14996">https://arxiv.org/abs/2611.14996</a>
+</p>
+]]>
+      </description>
+      <pubDate>Wed, 11 Nov 2026 03:49:11 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=Breaking+Bad</link>
+    </item>
+    <item>
+      <title>Gravitational Waveforms from Binary Black Hole Coalescence</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>Numerical relativity simulations of compact binary coalescence constrain the orbital dynamics of astrophysical systems in general relativity.</p>
+<p>
+  arXiv: <a href="https://arxiv.org/abs/2611.77771">https://arxiv.org/abs/2611.77771</a>
+</p>
+]]>
+      </description>
+      <pubDate>Tue, 10 Nov 2026 21:12:00 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=Gravitational</link>
+    </item>
+    <item>
+      <title>Sparse Autoencoders for Mechanistic Interpretability of LLMs</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>We train sparse autoencoders on transformer activations and extract monosemantic features that explain reasoning behavior in production language models.</p>
+<p>
+  arXiv: <a href="https://arxiv.org/abs/2611.11112v1">https://arxiv.org/abs/2611.11112v1</a>
+</p>
+]]>
+      </description>
+      <pubDate>Mon, 09 Nov 2026 12:00:00 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=Sparse+Autoencoders</link>
+    </item>
+    <item>
+      <title>A Study of Prime Gaps in Analytic Number Theory</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>Bounds on gaps between consecutive primes are improved via sieve methods.</p>
+<p>
+  arXiv: <a href="https://arxiv.org/abs/2611.88881">https://arxiv.org/abs/2611.88881</a>
+</p>
+]]>
+      </description>
+      <pubDate>Sun, 08 Nov 2026 08:30:00 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=Prime+Gaps</link>
+    </item>
+    <item>
+      <title>Not an arXiv paper: some blog post</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>An interesting essay about machine learning with no paper link at all.</p>
+]]>
+      </description>
+      <pubDate>Sat, 07 Nov 2026 10:00:00 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=blog</link>
+    </item>
+    <item>
+      <title>Breaking Bad: duplicate feed entry of the first item</title>
+      <description>
+        <![CDATA[
+<p>Abstract:</p>
+<p>Duplicate entry carrying the same paper.</p>
+<p>
+  arXiv: <a href="https://arxiv.org/abs/2611.14996">https://arxiv.org/abs/2611.14996</a>
+</p>
+]]>
+      </description>
+      <pubDate>Fri, 06 Nov 2026 09:00:00 +0000</pubDate>
+      <link>https://www.emergentmind.com/search?q=duplicate</link>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,41 @@
+{
+  "hits": [
+    {
+      "objectID": "1001",
+      "title": "New open-source LLM beats frontier models on reasoning benchmark",
+      "url": "https://example.com/llm-reasoning",
+      "points": 420,
+      "created_at_i": 1760000000,
+      "story_text": null
+    },
+    {
+      "objectID": "1002",
+      "title": "Show HN: I built a local RAG pipeline",
+      "url": null,
+      "points": 45,
+      "created_at_i": 1760000100,
+      "story_text": "<p>a local <b>rag</b> stack for notes</p>"
+    },
+    {
+      "objectID": "1003",
+      "title": "Low score story that should be filtered",
+      "url": "https://example.com/low",
+      "points": 12,
+      "created_at_i": 1760000200
+    },
+    {
+      "objectID": "1004",
+      "title": "",
+      "url": "https://example.com/no-title",
+      "points": 900,
+      "created_at_i": 1760000300
+    },
+    {
+      "objectID": "1005",
+      "title": "Company releases v2.0 of open source vector database",
+      "url": "https://example.com/vdb-v2",
+      "points": 55,
+      "created_at_i": 1760000400
+    }
+  ]
+}

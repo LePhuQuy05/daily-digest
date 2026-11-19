@@ -1,0 +1,97 @@
+# Daily AI Digest — example configuration.
+# Copy to config.yaml and tweak. Everything below has a working default,
+# so the tool runs fine with NO config file at all.
+
+# What the digest focuses on (used by both the LLM editor and the heuristic fallback).
+interests:
+  topics: [
+    LLM, language model, NLP, reinforcement learning, RLHF, GRPO,
+    AI agent, agentic, interpretability, mechanistic, transformer,
+    fine-tuning, LoRA, RAG, distillation, quantization, inference,
+    vLLM, benchmark, reasoning, open source, developer tool, AI engineering, full stack,
+  ]
+  weights: { papers: 1.0, tech_news: 0.8, tools_releases: 0.6 }
+  # F5 keyword rules (case-insensitive, matched on title+summary):
+  mute: []        # hard drop, e.g. [NFT, crypto] — wins over always; >80% drop => WARN
+  always: []      # must-see, e.g. [vLLM] — strong boost + ★ALWAYS marker for the editor
+
+sources:
+  hn:        { enabled: true, min_points: 30, hits: 60 }
+  hf_papers: { enabled: true, max_items: 30 }
+  arxiv:
+    enabled: true
+    categories: [cs.CL, cs.LG, cs.AI]   # add e.g. cs.CV, cs.MA, stat.ML
+    max_per_category: 40
+    pause_seconds: 3.0                   # arXiv rate limit
+  emergent_mind:
+    # emergentmind.com — trending arXiv papers ranked by cross-platform attention
+    # (X, HN, Reddit, YouTube). Keyless. Feed covers ALL arXiv subjects, so a
+    # topic filter keeps the physics/math noise out.
+    enabled: true
+    max_items: 20
+    require_topic: true
+    # topics: [LLM, language model, ...]  # override the default AI keyword filter if needed
+  alphaxiv:
+    # alphaxiv.org — the "hot feed": arXiv papers ranked by community attention
+    # (30-day window), via the official MCP server. Needs a FREE key in .env
+    # (ALPHAXIV_API_KEY); without it the source simply skips itself.
+    enabled: true
+    api_key_env: ALPHAXIV_API_KEY
+    max_items: 20          # maps to the feed's `limit` (1-200)
+
+enrichment:
+  # OpenAlex (api.openalex.org) — keyless citation counts for the candidate pool,
+  # one batched request per run. Feeds "N citations" evidence to the editor LLM.
+  enabled: true
+  email: ""                     # optional: your email joins OpenAlex's polite pool
+
+llm:
+  # >>> TWO LLMs, TWO ROLES — change either with one line <<<
+  # model            = the EDITOR: picks which items make today's digest.
+  # summarize_model  = the WRITER: writes each item's summary ("" = same model).
+  # Any OpenCode Console model id: https://opencode.ai/inference/v1/models
+  #   glm-5.3 · glm-5.3-flash · deepseek-v4.1-flash · kimi-k3 · claude-sonnet-5-5 · gpt-6.1-sol
+  # Popular: strong editor + cheap fast writer.
+  # Env overrides: DIGEST_LLM_MODEL / DIGEST_LLM_SUMMARIZE_MODEL
+  model: glm-5.3
+  summarize_model: ""          # e.g. glm-5.3-flash for a cheaper writer; "" = same model
+  summarize: true              # writer on/off (false -> show raw abstracts)
+  summary_max_words: 70
+  overview_language: vi        # ngôn ngữ của card "Tổng hợp hôm nay" (vi / en / ...)
+  profile_file: profile.md     # F4: đoạn "về bạn" nạp vào prompt ("" để tắt)
+  profile_max_chars: 600
+
+feedback:
+  # F1: 👍/👎/🔖 trong popup ghi vào feedback.jsonl (append-only, atomic).
+  # Editor/writer học từ tín hiệu gần đây; 🔖 hiện lại trong mục "Nhìn lại".
+  path: feedback.jsonl
+  window_days: 14              # rating cũ hơn ngừng ảnh hưởng (pin thì giữ tới khi bỏ)
+  max_prompt_titles: 10        # số tiêu đề like/dislike tối đa đưa vào prompt
+  saved_cap: 5                 # card "Nhìn lại" hiển thị (+ ghi chú "+N cũ hơn")
+  # OpenCode Go subscription endpoint; pay-as-you-go key? use https://opencode.ai/inference
+  base_url: https://opencode.ai/inference/go
+  chat_path: /openai/v1/chat/completions
+  api_key_env: OPENCODE_API_KEY          # the key goes in .env, never here
+  temperature: 0.0
+  top_n: 12                              # items in the digest
+  max_pool: 80                           # candidates shown to the editor LLM
+
+digest:
+  output_dir: output
+  template: templates/digest.html.j2
+
+notify:
+  enabled: true
+  launch: popup                           # clicking the toast opens the digest popup window
+  popup: true                             # also open the desktop popup window automatically
+
+schedule:
+  time: "09:00"                          # used by install-task
+
+log:
+  dir: logs
+  level: INFO
+
+state:
+  path: state.json
+  seen_days: 7                           # don't repeat an item within this many days

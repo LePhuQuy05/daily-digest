@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rss xmlns:arxiv="http://arxiv.org/schemas/atom" version="2.0">
+  <channel>
+    <title>cs.CL updates on arXiv.org</title>
+    <link>http://rss.arxiv.org/rss/cs.CL</link>
+    <description>cs.CL updates on the arXiv.org e-print archive.</description>
+    <item>
+      <title>Reasoning in Small LLMs via Distillation</title>
+      <link>https://arxiv.org/abs/2611.11111</link>
+      <description>arXiv:2611.11111v1 Announce Type: new
+Abstract: We distill reasoning into small language models with RLHF-style reward shaping and show gains on math benchmarks.</description>
+    </item>
+    <item>
+      <title>CrisisBench: an evaluation suite (replaces arXiv:2605.12345)</title>
+      <link>https://arxiv.org/abs/2611.11222</link>
+      <description>arXiv:2611.11222v2 Announce Type: replace
+Abstract: Updated version of the CrisisBench suite.</description>
+    </item>
+    <item>
+      <title>A vision transformer paper cross-listed to cs.CL</title>
+      <link>https://arxiv.org/abs/2611.11333</link>
+      <description>arXiv:2611.11333v1 Announce Type: cross-list
+Abstract: Vision transformers for low data regimes.</description>
+    </item>
+    <item>
+      <title>Long Context RL Agents</title>
+      <link>https://arxiv.org/abs/2611.11444v1</link>
+      <description>arXiv:2611.11444v1 Announce Type: new
+Abstract: Agents with long context windows for multi-step tool use.</description>
+    </item>
+    <item>
+      <title>INT4 Quantization for Fast Inference</title>
+      <link>https://arxiv.org/abs/2611.11555</link>
+      <description>arXiv:2611.11555v1 Announce Type: new
+Abstract: Weight-only quantization with negligible quality loss for LLM inference.</description>
+    </item>
+  </channel>
+</rss>
