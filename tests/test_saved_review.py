@@ -107,6 +107,13 @@ def test_unsave_works_for_old_save_not_in_todays_blob(tmp_path):
     assert bridge.saved_items()["items"] == []
 
 
+def test_saved_items_returns_source_label(tmp_path):
+    config = make_config(tmp_path)
+    append_feedback(config.feedback_path, "arxiv:1", "save", DATE, _snap("One"))
+    item = _bridge(config).saved_items()["items"][0]
+    assert item["source_label"] == "arXiv"
+
+
 def test_refresh_spawns_new_only_and_guards_double_click(tmp_path):
     config = make_config(tmp_path)
     calls: list[list[str]] = []

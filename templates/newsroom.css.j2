@@ -91,6 +91,9 @@ header.masthead { padding: 22px 0 0; border-top: 3px double var(--rule-strong); 
                 font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.12em;
                 text-transform: uppercase; color: var(--ink-3); }
 .edition { display: inline-flex; align-items: center; gap: 6px; }
+.masthead-actions { display: inline-flex; align-items: center; gap: 8px; }
+.masthead-action { height: 26px; padding: 0 9px; font: 700 9.5px/1 var(--font-sans);
+                   letter-spacing: 0.08em; text-transform: uppercase; }
 .theme-toggle { width: 30px; height: 30px; border: 0; background: transparent;
                 color: var(--ink-2); cursor: pointer; display: inline-flex;
                 align-items: center; justify-content: center; }
@@ -321,6 +324,25 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
   .dots span { animation: none; }
 }
 
+/* ===================== saved-articles modal ===================== */
+.saved-modal[hidden] { display: none; }
+.saved-modal { position: fixed; inset: 0; z-index: 100; display: flex;
+               align-items: center; justify-content: center; padding: 18px;
+               background: rgba(20, 18, 15, 0.55); }
+.saved-modal__panel { width: min(680px, 100%); max-height: min(84vh, 900px);
+                      overflow: auto; background: var(--paper); color: var(--ink);
+                      border-top: 3px solid var(--red); padding: 18px 20px 22px; }
+.saved-modal__head { display: flex; align-items: center; justify-content: space-between;
+                     gap: 12px; border-bottom: 1px solid var(--rule); padding-bottom: 10px; }
+.saved-modal__head h2 { margin: 0; font: 700 24px/1.2 var(--font-serif); }
+.saved-card { padding: 14px 0; border-top: 1px solid var(--rule); }
+.saved-card:first-child { border-top: 0; }
+.saved-card h3 { margin: 0; font: 700 18px/1.25 var(--font-serif); }
+.saved-card h3 a { color: var(--ink); text-decoration: none; }
+.saved-card h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.saved-card .summary { margin: 6px 0 10px; font-size: 13.5px; }
+.saved-card button { margin-top: 8px; }
+
 /* ===================== bridge-only UI (feedback buttons, ask drawer) =====================
      Hidden by default; revealed ONLY when the pywebview api really exists. */
   .bridge-only { display: none; }
@@ -390,6 +412,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     body { background: #FFFFFF; color: #111111; font-size: 9.5pt; line-height: 1.35; }
     .wrap { max-width: 100%; padding: 0; }
     .section-nav, .theme-toggle, .bridge-only, .ask, .actions, footer,
+    .saved-modal,
     .most-read, .source-line, .story-media { display: none !important; }
     header.masthead { border-top: 3px double #111; padding: 0 0 4mm; text-align: center; }
     .wordmark { font-size: 24pt; }

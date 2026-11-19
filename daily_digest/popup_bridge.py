@@ -25,6 +25,7 @@ from daily_digest.feedback import (
     read_feedback,
 )
 from daily_digest.normalize import safe_href
+from daily_digest.source_labels import labels_for
 from daily_digest.util import LOG
 
 REFRESH_COOLDOWN_SECONDS = 60.0
@@ -109,9 +110,12 @@ class DigestBridge:
                 self.config.feedback.window_days,
             )
             items: list[dict] = []
+            labels = labels_for(self.config)
             for entry in aggregate_now.saved.values():
                 snapshot = dict(entry)
                 snapshot["href"] = safe_href(str(snapshot.get("url", "")))
+                source = str(snapshot.get("source", ""))
+                snapshot["source_label"] = labels.get(source, source)
                 items.append(snapshot)
             items.reverse()
             return {"ok": True, "items": items}

@@ -128,6 +128,30 @@ def test_bridge_only_css_hidden_by_default(tmp_path):
     assert "typeof window.pywebview.api.feedback" in html  # guarded by api presence
 
 
+def test_saved_review_ui_and_bridge_calls_are_present(tmp_path):
+    ranked = [
+        RankedItem(
+            item=make_item(id="hn:1", title="T", url="https://x.io/1", source="hn"),
+            why="w",
+            section="tech_news",
+        )
+    ]
+    html, _ = _render(tmp_path, ranked)
+
+    for needle in (
+        'id="saved-open"',
+        'id="refresh-now"',
+        'id="saved-modal"',
+        'id="saved-list"',
+        "pywebview.api.saved_items()",
+        "pywebview.api.refresh()",
+        "Đã lưu",
+        "Tìm bài mới",
+        "data-feedback",
+    ):
+        assert needle in html
+
+
 def test_digest_data_omitted_when_none(tmp_path):
     config = make_config(tmp_path)
     html = render_digest(

@@ -26,10 +26,14 @@
   <header class="masthead" id="top">
     <div class="masthead-top">
       <span class="edition">BẢN TIN AI</span>
-      <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
-        <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
-        <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
-      </button>
+      <div class="masthead-actions">
+        <button class="act bridge-only masthead-action" id="saved-open" type="button" title="Xem tất cả bài đã lưu">Đã lưu</button>
+        <button class="act bridge-only masthead-action" id="refresh-now" type="button" title="Tìm các bài mới chưa từng hiển thị">Tìm bài mới</button>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+          <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+      </div>
     </div>
     <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
     <div class="dateline">
@@ -115,6 +119,18 @@
     old digests are archived in <code>output/</code>
   </footer>
 </div>
+
+<div id="saved-modal" class="saved-modal" role="dialog" aria-modal="true" aria-labelledby="saved-title" hidden>
+  <div class="saved-modal__panel">
+    <div class="saved-modal__head">
+      <h2 id="saved-title">Đã lưu</h2>
+      <button id="saved-close" class="act" type="button" aria-label="Đóng">×</button>
+    </div>
+    <div id="saved-list" class="saved-list"></div>
+    <p id="saved-empty" class="empty-note" hidden>Chưa có bài nào được lưu.</p>
+  </div>
+</div>
+
 {% if digest_data %}
 <script type="application/json" id="digest-data">{{ digest_data | tojson }}</script>
 {% endif %}
@@ -157,10 +173,121 @@
       var parts = btn.getAttribute("data-feedback").split("|");
       btn.classList.remove("done", "failed");
       pywebview.api.feedback(parts[0], parts[1]).then(function (res) {
-        if (res && res.ok) { btn.classList.add("done"); }
+        if (res && res.ok) {
+          btn.classList.add("done");
+          var savedCard = btn.closest(".saved-card");
+          if (savedCard) savedCard.remove();  /* modal is a live view; rail stays static */
+        }
         else { btn.classList.add("failed"); }
       }).catch(function () { btn.classList.add("failed"); });
     });
+
+    /* --- saved articles modal: all saves, read live from the bridge --- */
+    var savedModal = document.getElementById("saved-modal");
+    var savedList = document.getElementById("saved-list");
+    var savedEmpty = document.getElementById("saved-empty");
+
+    function closeSaved() {
+      if (savedModal) savedModal.hidden = true;
+    }
+
+    function savedCard(item) {
+      var card = document.createElement("article");
+      card.className = "saved-card";
+      var link = document.createElement("a");
+      link.href = item.href || "#";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = item.title || "(không có tiêu đề)";
+      var heading = document.createElement("h3");
+      heading.appendChild(link);
+      card.appendChild(heading);
+
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      var bits = [item.source_label || item.source || "", "", ""];
+      if (item.points) bits[1] = item.points + " points";
+      if (item.citations) bits[2] = item.citations + " citations";
+      bits.forEach(function (text) {
+        if (!text) return;
+        var span = document.createElement("span");
+        span.textContent = text;
+        meta.appendChild(span);
+      });
+      card.appendChild(meta);
+
+      var summary = item.llm_summary || item.summary || "";
+      if (summary) {
+        var p = document.createElement("p");
+        p.className = "summary";
+        p.textContent = summary;
+        card.appendChild(p);
+      }
+
+      var unsave = document.createElement("button");
+      unsave.type = "button";
+      unsave.className = "act";
+      unsave.textContent = "Đọc xong";
+      unsave.setAttribute("data-feedback", (item.uid || "") + "|unsave");
+      card.appendChild(unsave);
+      return card;
+    }
+
+    function openSaved() {
+      if (!document.body.classList.contains("bridged") ||
+          !window.pywebview.api.saved_items || !savedModal) return;
+      pywebview.api.saved_items().then(function (res) {
+        var items = (res && res.items) || [];
+        savedList.replaceChildren();
+        items.forEach(function (item) { savedList.appendChild(savedCard(item)); });
+        savedEmpty.hidden = items.length > 0;
+        savedEmpty.textContent = "Chưa có bài nào được lưu.";
+        savedModal.hidden = false;
+      }).catch(function () {
+        savedList.replaceChildren();
+        savedEmpty.textContent = "Không tải được danh sách đã lưu.";
+        savedEmpty.hidden = false;
+        savedModal.hidden = false;
+      });
+    }
+
+    var savedOpen = document.getElementById("saved-open");
+    if (savedOpen) savedOpen.addEventListener("click", openSaved);
+    var savedClose = document.getElementById("saved-close");
+    if (savedClose) savedClose.addEventListener("click", closeSaved);
+    if (savedModal) {
+      savedModal.addEventListener("click", function (ev) {
+        if (ev.target === savedModal) closeSaved();
+      });
+    }
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") closeSaved();
+    });
+
+    /* --- find newer articles: detached run --force --new-only --- */
+    var refreshBtn = document.getElementById("refresh-now");
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", function () {
+        if (!document.body.classList.contains("bridged") ||
+            !window.pywebview.api.refresh || refreshBtn.disabled) return;
+        var label = refreshBtn.textContent;
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Đang tìm…";
+        pywebview.api.refresh().then(function (res) {
+          refreshBtn.textContent = (res && res.ok) ? "Đã gửi" : "Thử lại sau";
+          setTimeout(function () {
+            refreshBtn.textContent = label;
+            refreshBtn.disabled = false;
+          }, 4000);
+        }).catch(function () {
+          refreshBtn.textContent = "Thử lại sau";
+          setTimeout(function () {
+            refreshBtn.textContent = label;
+            refreshBtn.disabled = false;
+          }, 4000);
+        });
+      });
+    }
 
     function sendAsk(card) {
       var uid = card.getAttribute("data-uid");
