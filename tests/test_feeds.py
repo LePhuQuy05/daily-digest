@@ -9,7 +9,7 @@ import yaml
 
 from daily_digest.config import ConfigError, FeedEntry, FeedsCfg, load_config
 from daily_digest.source_labels import labels_for
-from daily_digest.sources.feeds import _article_lead, fetch_feeds, parse_feed
+from daily_digest.sources.feeds import fetch_feeds, parse_feed
 from helpers import FIXTURES
 
 
@@ -78,21 +78,6 @@ def test_parse_filters_items_older_than_max_age():
     assert all(item.title != "Old model card" for item in items)
 
 
-def test_article_lead_skips_navigation_and_picks_the_intro():
-    page = (
-        "<html><body><main>"
-        "<p>Search models, datasets, users... Ctrl K Models Datasets Spaces Docs</p>"
-        "<p>Today we are releasing a new open model trained with reinforcement "
-        "learning on long-horizon agent tasks. It uses a 256K context and ships "
-        "with evaluation recipes for reproducibility.</p>"
-        "</main></body></html>"
-    )
-    lead = _article_lead(page)
-
-    assert lead.startswith("Today we are releasing")
-    assert "Search models" not in lead
-
-
 def test_parse_short_summary_falls_back_to_categories():
     xml = """<rss version="2.0"><channel><item>
       <title>Machine intelligence for science</title>
@@ -126,7 +111,8 @@ def test_parse_tools_skips_prereleases_and_sets_section_hint():
 
 
 @respx.mock
-def test_fetch_feeds_hydrates_a_thin_summary_from_meta_description():
+def test_fetch_feeds_hydrates_a_thin_summary_from_meta_description(monkeypatch):
+    monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
     respx.get("https://lab.example/rss").respond(200, text=_rss())
     respx.get("https://openai.example/agents-api").respond(
         200,

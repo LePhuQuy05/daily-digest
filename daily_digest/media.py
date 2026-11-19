@@ -16,11 +16,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import io
-import ipaddress
 import json
 import re
 import shutil
-import socket
 import subprocess
 import tempfile
 from collections.abc import Callable, Sequence
@@ -34,6 +32,7 @@ from PIL import Image, ImageChops
 from daily_digest.config import Config
 from daily_digest.frontpage import build_front_page
 from daily_digest.model import RankedItem
+from daily_digest.net import assert_public_url, get_public
 from daily_digest.util import LOG, PROJECT_ROOT
 
 USER_AGENT = (
@@ -209,34 +208,9 @@ def _hn_target(client: httpx.Client, url: str) -> str:
     return target
 
 
-def _assert_public_url(url: str) -> None:
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ValueError(f"unsupported image URL: {url[:120]}")
-    host = parsed.hostname.lower()
-    if host in ("localhost", "localhost.localdomain") or host.endswith(".local"):
-        raise ValueError("private image host blocked")
-    infos = socket.getaddrinfo(host, None)
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if not ip.is_global:
-            raise ValueError(f"private image IP blocked: {ip}")
-
-
-def _get(client: httpx.Client, url: str) -> httpx.Response:
-    current = url
-    for _ in range(4):
-        _assert_public_url(current)
-        response = client.get(current, follow_redirects=False)
-        if response.status_code in (301, 302, 303, 307, 308):
-            location = response.headers.get("location")
-            if not location:
-                response.raise_for_status()
-            current = urljoin(current, location)
-            continue
-        response.raise_for_status()
-        return response
-    raise httpx.TooManyRedirects("too many image redirects")
+# Moved to daily_digest.net; thin aliases keep the historical imports working.
+_assert_public_url = assert_public_url
+_get = get_public
 
 
 def _get_text(client: httpx.Client, url: str, limit: int = 4_000_000) -> str:

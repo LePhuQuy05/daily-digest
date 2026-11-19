@@ -8,15 +8,19 @@ feed only shrinks that day's candidate pool.
 from __future__ import annotations
 
 import hashlib
-import html
 import re
 import xml.etree.ElementTree as ET
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 import httpx
 
+from daily_digest.article import (
+    MAX_SUMMARY_CHARS,
+    MIN_DESCRIPTION_CHARS,
+    clean_html,
+    hydrate_item,
+)
 from daily_digest.config import FeedEntry, FeedsCfg
 from daily_digest.model import Item
 from daily_digest.normalize import normalize_url
@@ -29,20 +33,8 @@ FEED_ACCEPT = (
     "text/xml;q=0.9, */*;q=0.8"
 )
 MAX_FEED_BYTES = 5_000_000
-MAX_ARTICLE_BYTES = 2_000_000
-MAX_SUMMARY_CHARS = 1500
-MIN_HYDRATED_SUMMARY = 80
 REQUEST_TIMEOUT = 15.0
-HYDRATE_TIMEOUT = 8.0
 
-_TAG_RE = re.compile(r"<[^>]+>")
-_SCRIPT_RE = re.compile(r"<(script|style)\b.*?</\1>", re.IGNORECASE | re.DOTALL)
-_META_RE = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
-_ATTR_RE = re.compile(r"""([\w:-]+)\s*=\s*["']([^"']*)["']""")
-_MAIN_RE = re.compile(r"<main\b.*?</main>", re.IGNORECASE | re.DOTALL)
-_ARTICLE_RE = re.compile(r"<article\b.*?</article>", re.IGNORECASE | re.DOTALL)
-_PARAGRAPH_RE = re.compile(r"<p\b[^>]*>(.*?)</p>", re.IGNORECASE | re.DOTALL)
-_NAV_HINTS = ("Search models, datasets, users", "Ctrl K", "Skip to content")
 # Stable releases only: rc/build/dev tags are noisy for a daily digest.
 _PRERELEASE_RE = re.compile(
     r"(rc\d+|\.dev\b|\bnightly\b|\bcanary\b|\bpreview\b|\balpha\b|\bbeta\b|trunk/)",
@@ -55,14 +47,6 @@ _UNSTABLE_URL_RE = re.compile(
 
 def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
-
-
-def _clean_html(value: str) -> str:
-    text = _SCRIPT_RE.sub(" ", value or "")
-    text = _TAG_RE.sub(" ", text)
-    text = html.unescape(text)
-    text = " ".join(text.split())
-    return re.sub(r"\s+([,.;:!?])", r"\1", text)
 
 
 def _child_text(node: ET.Element, *names: str) -> str:
@@ -121,13 +105,13 @@ def _summary(node: ET.Element) -> str:
             "encoded",
             "subtitle",
         ):
-            cleaned = _clean_html(" ".join(child.itertext()))
+            cleaned = clean_html(" ".join(child.itertext()))
             if cleaned:
                 candidates.append(cleaned)
     summary = max(candidates, key=len) if candidates else ""
-    if len(summary) < MIN_HYDRATED_SUMMARY:
+    if len(summary) < MIN_DESCRIPTION_CHARS:
         categories = [
-            _clean_html(" ".join(child.itertext()))
+            clean_html(" ".join(child.itertext()))
             for child in node
             if _local(child.tag) == "category"
         ]
@@ -136,67 +120,6 @@ def _summary(node: ET.Element) -> str:
             parts = [summary, *categories]
             summary = " · ".join(dict.fromkeys(part for part in parts if part))
     return summary[:MAX_SUMMARY_CHARS]
-
-
-def _meta_description(page: str) -> str:
-    """Longest useful og/twitter/plain meta description on an article page."""
-    best = ""
-    for tag in _META_RE.findall(page):
-        attrs = {key.lower(): value for key, value in _ATTR_RE.findall(tag)}
-        key = (attrs.get("property") or attrs.get("name") or "").lower()
-        if key not in ("og:description", "twitter:description", "description"):
-            continue
-        value = _clean_html(attrs.get("content", ""))
-        if len(value) > len(best):
-            best = value
-    return best[:MAX_SUMMARY_CHARS]
-
-
-def _article_lead(page: str) -> str:
-    """First substantive paragraph of the article (fallback when meta is empty)."""
-    scope = page
-    for pattern in (_MAIN_RE, _ARTICLE_RE):
-        match = pattern.search(page)
-        if match:
-            scope = match.group(0)
-            break
-    paragraphs = [_clean_html(raw) for raw in _PARAGRAPH_RE.findall(scope)]
-    paragraphs = [
-        text
-        for text in paragraphs
-        if len(text) >= 120 and not any(hint in text for hint in _NAV_HINTS)
-    ]
-    for text in paragraphs:
-        if len(text) >= 200:
-            return text[:MAX_SUMMARY_CHARS]
-    return paragraphs[0][:MAX_SUMMARY_CHARS] if paragraphs else ""
-
-
-def _hydrate(client: httpx.Client, item: Item) -> Item:
-    """Fill a thin feed summary from the article's meta description.
-
-    Best-effort: a blocked/slow page keeps the original (often empty) summary;
-    the writer prompt already handles title-only items.
-    """
-    if len(item.summary) >= MIN_HYDRATED_SUMMARY:
-        return item
-    try:
-        response = client.get(
-            item.url,
-            headers={"User-Agent": FEED_USER_AGENT, "Accept": "text/html,*/*;q=0.8"},
-            timeout=HYDRATE_TIMEOUT,
-        )
-        response.raise_for_status()
-        if len(response.content) > MAX_ARTICLE_BYTES:
-            return item
-        description = _meta_description(response.text)
-        if len(description) < MIN_HYDRATED_SUMMARY:
-            description = _article_lead(response.text)
-    except (httpx.HTTPError, TypeError, ValueError):
-        return item
-    if len(description) < MIN_HYDRATED_SUMMARY:
-        return item
-    return replace(item, summary=description)
 
 
 def _item_id(url: str) -> str:
@@ -216,7 +139,7 @@ def parse_feed(xml_text: str, entry: FeedEntry, topics: list[str]) -> list[Item]
     items: list[Item] = []
     seen_urls: set[str] = set()
     for node in nodes:
-        title = _clean_html(_child_text(node, "title"))
+        title = clean_html(_child_text(node, "title"))
         if not title:
             continue
         url = _link(node).strip()
@@ -279,7 +202,7 @@ def fetch_feeds(client: httpx.Client, cfg: FeedsCfg) -> list[Item]:
             )
             continue
         if entry.hydrate:
-            parsed = [_hydrate(client, item) for item in parsed]
+            parsed = [hydrate_item(client, item) for item in parsed]
         items.extend(parsed)
         LOG.info("feed %s: %d items", entry.name, len(parsed))
     if cfg.entries and failures == len(cfg.entries):
