@@ -82,6 +82,7 @@ See the effective config anytime: `uv run daily-digest print-config`.
 | `uv run daily-digest run --no-notify` | Rebuild the digest without toast/popup (won't block the real one) |
 | `uv run daily-digest run --date 2026-11-17` | Backfill a specific date |
 | `uv run daily-digest smoke` | Live-check all sources, print counts |
+| `uv run daily-digest health` | Per-feed status for the 20 curated feeds (OK/FAIL + item counts) |
 | `uv run daily-digest notify-test` | Send a test toast that opens the digest |
 | `uv run daily-digest print-config` | Show effective config (secrets redacted) |
 | `uv run daily-digest open [latest\|YYYY-MM-DD]` | Open a digest manually (popup window; `--web` for browser) |
@@ -95,7 +96,7 @@ See the effective config anytime: `uv run daily-digest print-config`.
 
 ```
 09:00 Task Scheduler (hidden pythonw, battery-safe, catches up when asleep)
-  └─ fetch:  HN front page · HF Daily Papers · arXiv announcements (RSS, cs.CL/cs.LG/cs.AI)
+  └─ fetch:  HN front page (link posts hydrated from the target page) · HF Daily Papers · arXiv announcements (RSS, cs.CL/cs.LG/cs.AI)
              · Emergent Mind (trending on X/Reddit/YouTube) · alphaXiv (community upvotes,
              needs a free key in .env) · curated RSS/Atom (AI labs, tech press/analysis,
              GitHub releases)   — 6 source families / 20 curated feeds, keyless except alphaXiv

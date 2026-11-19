@@ -95,6 +95,8 @@ prefer"). Evidence: agents-radar style ecosystem digests; our adjacent-possible.
 (plain-regex index, no deps) + a results page. Evidence: every newsletter ships
 archive search; agent shortlist #5 (trivial).
 **Effort**: trivial–small.
+**Status (2026-11-19):** deferred until ≥10 digest days carry the `digest-data`
+blob; until then `rg "query" output/digest-*.html` is the honest search.
 
 ### F9. Same-topic grouping within a day
 5 RLHF papers → one grouped card ("5 papers về RLHF hôm nay"). Writer-prompt

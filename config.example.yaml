@@ -16,7 +16,12 @@ interests:
   always: []      # must-see, e.g. [vLLM] — strong boost + ★ALWAYS marker for the editor
 
 sources:
-  hn:        { enabled: true, min_points: 30, hits: 60 }
+  hn:
+    enabled: true
+    min_points: 30
+    hits: 60
+    hydrate: true             # link posts carry no story_text: fetch the target
+    hydrate_limit: 12         # page's meta description / first paragraph (bounded)
   hf_papers: { enabled: true, max_items: 30 }
   arxiv:
     enabled: true
@@ -75,6 +80,7 @@ llm:
   overview_language: vi        # ngôn ngữ của card "Tổng hợp hôm nay" (vi / en / ...)
   profile_file: profile.md     # F4: đoạn "về bạn" nạp vào prompt ("" để tắt)
   profile_max_chars: 600
+  diversify_tech_news: true    # max 1 tech_news item per source (never pads)
 
 feedback:
   # F1: 👍/👎/🔖 trong popup ghi vào feedback.jsonl (append-only, atomic).

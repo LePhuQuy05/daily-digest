@@ -101,3 +101,17 @@ Notes:
 - Repeated live probes tripped arXiv's 429 limit for alphaXiv's metadata call.
   alphaXiv now logs and skips on a metadata 429/timeout instead of marking the
   whole digest degraded; the feeds themselves delivered all 48 items.
+
+## Sprint follow-up: HN hydration, diversity, feed health (2026-11-19)
+
+- **HN link hydration** (`sources.hn.hydrate`, limit 12, best-effort, before
+  `balanced_pool`): live run logged `hn hydration: 4/4 link posts hydrated` and
+  the digest contains **zero** "No description provided" items.
+- **Tech News source diversity** (`llm.diversify_tech_news`): the live run
+  replaced the second Hugging Face pick with Import AI, so Tech News ran with
+  **three distinct sources** — Hugging Face, Import AI, Google DeepMind —
+  without padding (8 papers / 3 tech news / 1 tool).
+- **`daily-digest health`**: live output `feeds: 20/20 healthy`, exit 0.
+- Full suite: **325 passed**. `run --force` exit 0 with no new degraded causes;
+  digest contract unchanged (12 uid / 12 like / 12 ask, `digest-data` blob
+  intact, `open --web latest` exit 0).
