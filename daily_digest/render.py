@@ -8,7 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from daily_digest.frontpage import build_front_page
-from daily_digest.model import RankedItem, SECTIONS, SECTION_TITLES
+from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
 from daily_digest.util import atomic_write_text
 
@@ -85,10 +85,6 @@ def render_digest(
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
     tpl = env.get_template(template.name)
-    sections = {
-        section: [r for r in ranked if r.section == section] for section in SECTIONS
-    }
-    counts = {section: len(items) for section, items in sections.items()}
     front_page = build_front_page(ranked)
     return tpl.render(
         date=date,
@@ -104,9 +100,6 @@ def render_digest(
         pinned=list(pinned),
         pinned_overflow=pinned_overflow,
         front_page=front_page,
-        sections=sections,
-        counts=counts,
-        section_titles=SECTION_TITLES,
         source_names=SOURCE_NAMES,
         total=len(ranked),
     )

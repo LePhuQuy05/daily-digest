@@ -56,75 +56,54 @@
   </div>
   {% endif %}
 
-  {% if overview %}
-  <section class="overview briefing" id="briefing" aria-label="{{ overview_label }}">
-    <div class="briefing-head">
-      <div class="kicker">{{ overview_label | upper }}</div>
-      <div class="briefing-title">Trong ngày</div>
+  {% from "partials/_story.html.j2" import story, pinned_item, rail with context %}
+
+  {% if front_page.lead %}
+  <div class="top-fold">
+    {{ story(front_page.lead, "hero") }}
+    {{ rail() }}
+  </div>
+  {% else %}
+  <div class="top-fold top-fold--empty">
+    <div class="empty-note">— hôm nay không có mục nào —</div>
+    {{ rail() }}
+  </div>
+  {% endif %}
+
+  {% for section in front_page.sections %}
+  {% set section_key = section.key %}
+  {% set section_variant = "empty" if section.total == 0 else ("hero-only" if section.lead is none else ("band" if section.briefs | length == 0 else ("split" if section.briefs | length <= 3 else "grid"))) %}
+  <section class="section-front sec-{{ section_key }} section-front--{{ section_variant }}" id="{{ section_key | replace('_', '-') }}">
+    <div class="section-head">
+      <span class="idx">{{ "%02d" | format(loop.index) }}</span>
+      <h2>{{ section.title }}</h2>
+      <span class="count">{{ section.total }} stories</span>
     </div>
-    <ul class="overview-points">
-      {% for point in overview.split(". ")[:4] %}
-      <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
-      {% endfor %}
-    </ul>
-  </section>
-  {% endif %}
 
-  {% if pinned %}
-  <section class="block pinned-block" id="pinned">
-    <h2><svg class="icon-sm" style="color: var(--section-news)" aria-hidden="true"><use href="#i-pin"/></svg> Nhìn lại <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">+{{ pinned_overflow }} mục đã lưu cũ hơn</span>{% endif %}</h2>
-    {% for p in pinned %}
-    <article class="card" data-uid="{{ p.uid }}">
-      <a class="title" href="{{ p.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a>
-      <div class="meta">
-        <span class="src {{ 'papers' if p.source != 'hn' else 'hn' }}">{{ source_names.get(p.source, p.source) }}</span>
-        {% if p.points %}<span class="chip">{{ p.points }} points</span>{% endif %}
-        {% if p.citations %}<span class="chip">{{ p.citations }} citations</span>{% endif %}
+    {% if section.total == 0 %}
+    <p class="empty-note">— hôm nay không có mục nào trong nhóm này —</p>
+    {% elif section.lead is none %}
+    <p class="section-note"><a href="#story-{{ front_page.lead.item.id if front_page.lead else '' }}">Bài chính ở trên.</a></p>
+    {% else %}
+    {% set shown = 1 + (section.briefs | length) %}
+    {% if section.total > shown %}
+    <p class="section-note"><a href="#story-{{ front_page.lead.item.id if front_page.lead else '' }}">1 bài chính ở trên.</a></p>
+    {% endif %}
+    <div class="section-body">
+      {{ story(section.lead, "lead") }}
+      {% if section.briefs %}
+      <div class="briefs">
+        {% for r in section.briefs[:6] %}{{ story(r, "brief") }}{% endfor %}
       </div>
-      {% if p.why %}<p class="why">{{ p.why }}</p>{% endif %}
-      {% set p_summary = p.llm_summary or p.summary %}
-      {% if p_summary %}<p class="summary{% if p.llm_summary %} ai{% endif %}">{{ p_summary }}</p>{% endif %}
-      <div class="actions bridge-only">
-        <button class="act" data-feedback="{{ p.uid }}|unsave" title="Đọc xong, bỏ khỏi Nhìn lại" aria-label="Đọc xong, bỏ khỏi Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Đọc xong</span></button>
-      </div>
-    </article>
-    {% endfor %}
-  </section>
-  {% endif %}
-
-  {% for section_key, section_items in sections.items() %}
-    <section class="block sec-{{ section_key }}" id="{{ section_key | replace('_', '-') }}">
-      <h2><span class="idx">{{ "%02d" | format(loop.index) }}</span>{{ section_titles[section_key] }} <span class="pill">{{ section_items | length }}</span></h2>
-      {% for r in section_items %}
-      <article class="card" data-uid="{{ r.item.id }}" style="--i: {{ loop.index0 }}">
-        <a class="title" href="{{ r.item.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ r.item.title }}</a>
-        <div class="meta">
-          <span class="src {{ 'papers' if r.item.source != 'hn' else 'hn' }}">{{ source_names[r.item.source] }}</span>
-          {% if r.item.points %}<span class="chip">{{ r.item.points }} points</span>{% endif %}
-          {% if r.item.citations %}<span class="chip">{{ r.item.citations }} citations</span>{% endif %}
-          {% if r.item.source == 'arxiv' %}<span class="chip">new today</span>{% endif %}
-        </div>
-        <p class="why">{{ r.why }}</p>
-        {% set summary_text = r.llm_summary or r.item.summary %}
-        {% if summary_text %}
-        <p class="summary{% if r.llm_summary %} ai{% endif %}">{{ summary_text }}</p>
-        {% endif %}
-        <div class="actions bridge-only">
-          <button class="act" data-feedback="{{ r.item.id }}|like" title="Digest này nên có nhiều bài thế này hơn" aria-label="Thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-up"/></svg></button>
-          <button class="act" data-feedback="{{ r.item.id }}|dislike" title="Bớt loại này ra" aria-label="Không thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>
-          <button class="act" data-feedback="{{ r.item.id }}|save" title="Giữ lại trong mục Nhìn lại" aria-label="Lưu mục này vào Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Lưu</span></button>
-        </div>
-        <div class="ask">
-          <input class="ask-input" type="text" placeholder="Hỏi thêm về mục này… (Ctrl+Enter)" aria-label="Nhập câu hỏi về mục này">
-          <button class="act ask-btn" data-ask="1" aria-label="Hỏi về mục này"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Hỏi</button>
-          <div class="ask-answer" aria-live="polite"></div>
-        </div>
-      </article>
-      {% endfor %}
-      {% if not section_items %}
-      <div class="empty">— hôm nay không có mục nào trong nhóm này —</div>
       {% endif %}
-    </section>
+    </div>
+    {% if section.briefs | length > 6 %}
+    <div class="more-list">
+      {% for r in section.briefs[6:] %}{{ story(r, "more") }}{% endfor %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </section>
   {% endfor %}
 
   <footer>

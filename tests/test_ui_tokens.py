@@ -16,6 +16,14 @@ def _css():
     return (PROJECT_ROOT / "templates" / "newsroom.css.j2").read_text(encoding="utf-8")
 
 
+def _partial():
+    from daily_digest.util import PROJECT_ROOT
+
+    return (PROJECT_ROOT / "templates" / "partials" / "_story.html.j2").read_text(
+        encoding="utf-8"
+    )
+
+
 def _html(tmp_path, **extra):
     config = make_config(tmp_path)
     ranked = [
@@ -58,7 +66,7 @@ class TestNewsroomShell:
         html = _html(tmp_path)
         h1_rule = re.search(r"h1 \{[^}]*\}", html).group(0)
         assert "var(--font-serif)" in h1_rule
-        title_rule = re.search(r"\.card a\.title \{[^}]*\}", html).group(0)
+        title_rule = re.search(r"\.story-title \{[^}]*\}", html).group(0)
         assert "var(--font-serif)" in title_rule
 
     def test_section_nav_is_sticky(self, tmp_path):
@@ -85,9 +93,9 @@ class TestNewsroomShell:
         html = _html(tmp_path)
         assert ".overview-points" in html
         assert 'class="overview-point' in html
-        tpl = self._template()
-        assert 'overview.split(". ")[:4]' in tpl  # one bullet per sentence, capped
-        assert "spotlight" in tpl  # last (takeaway) bullet highlighted
+        partial = _partial()
+        assert 'overview.split(". ")[:4]' in partial  # one bullet per sentence, capped
+        assert "spotlight" in partial  # last (takeaway) bullet highlighted
 
     def test_briefing_is_news_box_not_gradient(self, tmp_path):
         html = _html(tmp_path)
@@ -113,7 +121,7 @@ class TestNewsroomShell:
         assert "background: none" in spotlight
 
 
-class TestStep3CardsSections:
+class TestNewsroomSectionFronts:
     @staticmethod
     def _template():
         from daily_digest.util import PROJECT_ROOT
@@ -139,38 +147,29 @@ class TestStep3CardsSections:
         assert ".idx" in css  # CSS moved to newsroom.css.j2 at P2a
         assert '"%02d" | format(loop.index)' in tpl
 
-    def test_cards_have_left_bar_and_hover_lift(self, tmp_path):
+    def test_story_has_no_card_chrome(self, tmp_path):
         html = _html(tmp_path)
-        card_rule = re.search(r"\.card \{[^}]*\}", html).group(0)
-        assert "border-left: 3px solid" in card_rule
-        assert "--section-color" in card_rule
-        hover = re.search(r"\.card:hover \{[^}]*\}", html).group(0)
-        assert "translateY(-2px)" in hover
-        assert "var(--shadow-2)" in hover
+        story_rule = re.search(r"\.story \{[^}]*\}", html).group(0)
+        assert "box-shadow" not in story_rule
+        assert "border-radius" not in story_rule
+        assert "background" not in story_rule
 
-    def test_stagger_reveal_with_reduced_motion_guard(self, tmp_path):
+    def test_no_shimmer_or_stagger(self, tmp_path):
         html = _html(tmp_path)
-        assert "@keyframes rise" in html
-        assert "calc(min(var(--i, 0), 4) * 30ms)" in html  # capped stagger
+        assert "shimmer" not in html
+        assert "@keyframes rise" not in html
         assert "prefers-reduced-motion: reduce" in html
         reduced = html.split("prefers-reduced-motion: reduce", 1)[1][:120]
         assert "animation: none" in reduced
-        # never fully invisible: fast scrollers/captures must always see content
-        rise = html.split("@keyframes rise", 1)[1].split("}", 1)[0]
-        assert "opacity: 0.55" in rise and "opacity: 0;" not in rise
 
-    def test_cards_carry_stagger_index_style(self, tmp_path):
-        tpl = self._template()
-        assert 'style="--i: {{ loop.index0 }}"' in tpl
+    def test_meta_is_text_not_chips(self, tmp_path):
+        partial = _partial()
+        assert '<div class="meta">' in partial
+        assert 'class="chip"' not in partial
 
-    def test_meta_is_chips(self, tmp_path):
-        tpl = self._template()
-        assert '<span class="chip">{{ r.item.points }} points</span>' in tpl
-        assert '<span class="chip">{{ r.item.citations }} citations</span>' in tpl
-
-    def test_pinned_section_keeps_test_locked_class(self, tmp_path):
-        tpl = self._template()
-        assert 'class="block pinned-block"' in tpl  # locked by test_feedback
+    def test_pinned_section_keeps_test_locked_class(self):
+        partial = _partial()
+        assert 'class="block pinned-block"' in partial  # locked by test_feedback
 
 
 class TestStep4IconsStates:
@@ -202,7 +201,7 @@ class TestStep4IconsStates:
             assert f'id="{symbol}"' in html, f"missing SVG symbol {symbol}"
 
     def test_buttons_use_svg_and_aria_labels(self, tmp_path):
-        tpl = self._template()
+        tpl = _partial()
         assert '<use href="#i-thumb-up"/>' in tpl
         assert '<use href="#i-thumb-down"/>' in tpl
         assert '<use href="#i-bookmark"/>' in tpl
@@ -364,8 +363,10 @@ class TestStep1Tokens:
         html = _html(tmp_path)
         body_rule = re.search(r"body \{[^}]*\}", html).group(0)
         assert "var(--bg)" in body_rule and "var(--text-1)" in body_rule
-        card_rule = re.search(r"\.card \{[^}]*\}", html).group(0)
-        assert "var(--bg-raised)" in card_rule
+        title_rule = re.search(r"\.story-title \{[^}]*\}", html).group(0)
+        assert "var(--font-serif)" in title_rule
+        meta_rule = re.search(r"\.meta \{[^}]*\}", html).group(0)
+        assert "var(--ink-3)" in meta_rule
         # the old hardcoded palette is gone
         for old_hex in ("#f6f7f9", "#1a2233", "#eef0ff", "#4338ca"):
             assert old_hex not in html, f"stale raw hex {old_hex}"
