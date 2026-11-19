@@ -1,6 +1,7 @@
 # Newsroom Front Page — Kế hoạch redesign UI Daily AI Digest
 
-> **Trạng thái:** proposal · 2026-11-19
+> **Trạng thái:** ✅ approved / implementing · 2026-11-19
+> **Decision log:** C′-amended (architect + critic) — xem §12.
 > **Thay thế:** `docs/ui-redesign-plan.md` (dark reading room) — phần interaction layer,
 > token architecture và print vẫn được kế thừa.
 > **Research nền:** `docs/research/news-ui.md` + ảnh tham chiếu trong
@@ -37,7 +38,8 @@ phase sau (xem §10).
 ### Không làm trong v1
 - Không fetch/cache ảnh OG, không thumbnail tự sinh.
 - Không đổi model/ranking/prompt; không thêm trang con hay routing.
-- Không dùng React/Tailwind/shadcn (app là plain CSS + Jinja2 một file).
+- Không dùng React/Tailwind/shadcn. Entry template + CSS partial + story partial;
+  output vẫn là một HTML string self-contained (xem §12).
 - Không infinite scroll, ads, paywall, newsletter popup.
 
 ---
@@ -373,7 +375,7 @@ Quy tắc render section front theo số item còn lại:
 - `>=4`: lead 5 cột + brief grid 2 cột (tối đa 6 briefs) + "More" list
   (phần còn lại, dense 1 cột). Tất cả item vẫn hiển thị, không cắt.
 
-### 5.1 `build_front_page(ranked, pinned=())` trong `daily_digest/render.py`
+### 5.1 `build_front_page(ranked)` trong `daily_digest/frontpage.py`
 
 ```python
 @dataclass(frozen=True)
@@ -398,15 +400,16 @@ Quy tắc:
    `lead = items[0]`, `briefs = items[1:]`.
 3. `most_read = ranked[1:4]` — chỉ dùng để render link `#story-<uid>`, không
    render lại card (tránh trùng `data-feedback`, tránh double feedback).
-4. `pinned` vẫn là list dict từ pipeline; pipeline đã loại uid trùng ranked.
-   Nếu `pinned` rỗng: ẩn box "Nhìn lại", rail hiện "Đọc nhiều" + "Nguồn hôm nay".
+4. `pinned` không đi vào `FrontPage`; `render_digest` nhận `pinned` riêng từ
+   pipeline (đã dedup). Nếu `pinned` rỗng: ẩn box "Nhìn lại", rail hiện
+   "Đọc nhiều" + "Nguồn hôm nay".
 5. `total` của section = tổng item ban đầu trong section (gồm hero nếu hero
    thuộc section đó) để số trên header không nhảy. Header ghi "11 stories";
    hero là item đầu của section được đẩy lên trên, nên section front hiển thị
    10 item còn lại — thêm chú thích nhỏ "1 bài chính ở trên" nếu cần.
 6. `source_counts` = đếm source trong ranked (arXiv/HN/HF) cho rail "Nguồn".
-7. Không mutate `ranked`/`pinned`; hàm pure, test được. `pinned` truyền vào chỉ
-   để lọc uid trùng ranked (defensive), không đưa vào `FrontPage`.
+7. Không mutate `ranked`; hàm pure, test được. Bỏ param `pinned` — pipeline đã
+   lọc uid trùng ở `pipeline.py:262-263` và có test riêng.
 
 ### 5.2 Edge cases
 - `ranked=[]`: không hero; briefing nếu có; hiện empty state full-width; rail
@@ -418,14 +421,17 @@ Quy tắc:
   papers grid 2 cột + More, tech band, tools note. Không chia đều 3 cột.
 - `pinned` rỗng: ẩn "Nhìn lại", không render wrapper rỗng; rail vẫn có "Đọc nhiều"
   + "Nguồn hôm nay".
-- `pinned` trùng ranked (defensive): lọc trong `build_front_page`/render; test.
+- `pinned` trùng ranked: pipeline đã lọc trước render (`test_pipeline`); front
+  page không nhận `pinned` nên không có filter thứ hai — edge case này được xóa
+  khỏi plan.
 - 1 item toàn digest: hero only + empty sections; không crash.
 - Overview 1 câu: briefing 1 điểm, không spotlight rỗng.
 
 ### 5.3 Template context
-- Thêm `front_page` vào `render_digest()`; giữ `sections`, `counts` cho
-  backward-compat (có thể bỏ sau khi template chuyển xong).
-- Không đổi signature public của `render_digest` (trừ optional).
+- `render_digest` tính `front_page` + `date_long` **bên trong**; signature public
+  không đổi.
+- Giữ `sections`/`counts` đến hết P3; P3 xóa chúng trong cùng commit với việc
+  template chuyển sang `front_page` (không consumer ngoài template).
 - `digest_data` blob giữ nguyên 100%.
 
 ---
@@ -451,6 +457,8 @@ Quy tắc:
 - Links: `Tổng hợp` (#top), `Nghiên cứu` (#papers), `Công nghệ` (#tech-news),
   `Công cụ` (#tools-releases), `Nhìn lại` (#pinned).
   **Link "Nhìn lại" chỉ render khi `pinned` có item** — không để anchor chết.
+  Trên desktop rail đã hiện above-the-fold, ẩn link này ở `min-width:760px`;
+  mobile giữ để cuộn xuống rail.
 - 12px uppercase 700, gap 22px; active: 2px red underline; hover: red.
 - Mobile: overflow-x auto, ẩn scrollbar; không wrap.
 - **Không làm "Trending" keyword bar ở v1** vì `overview` là free text, chưa có
@@ -547,13 +555,15 @@ Quy tắc:
 
 | Phase | Scope | Files chính | Proof |
 |---|---|---|---|
-| **0. Research + chốt** | Đọc NYT/VnExpress, chốt 5 quyết định §10 | `docs/research/news-ui.md`, plan này | Ảnh tham chiếu + review |
-| **1. Layout model** | `build_front_page()` + tests; không đổi UI | `render.py`, `tests/test_front_page.py` | pytest mới xanh; edge cases |
-| **2. Newsroom shell** | Tokens light/night, masthead, dateline, nav, briefing, footer; bỏ gradient/shimmer; light default | `templates/digest.html.j2`, `tests/test_ui_tokens.py` | Ảnh popup light 980px; toggle night |
-| **3. Front page modules** | Hero, rail, section fronts, 4 story variants; data binding; responsive 760/520 | template + `tests/test_news_layout.py` | Ảnh full page; đủ 12 item, không trùng |
-| **4. Interaction + bridge** | Sticky nav active, hover underline, feedback states, ask `<details>`, focus, reduced motion | template + `tests/test_popup_bridge.py` | States screenshot; bridge smoke |
-| **5. Print + a11y** | Print broadsheet, contrast audit, empty/degraded, 720px | template + tests | PDF; 720px screenshot; contrast pass |
-| **6. Visual QA** | So sánh NYT/VnExpress, vision review, live smoke, pixel metrics | `output/*` | Score + artifacts; final report |
+| **0. Plan amendments** | Ghi C′-amended + quyết định đã duyệt | plan này | diff + commit |
+| **1. Layout model** | `build_front_page(ranked)` + tests; UI cũ | `frontpage.py`, `render.py`, `test_front_page.py` | pytest mới xanh; edge cases |
+| **2a. CSS extraction** | Move CSS → `newsroom.css.j2` include; re-point test; **giữ autoescape=True** | `newsroom.css.j2`, `digest.html.j2`, `test_ui_tokens.py` | pytest xanh; render giống |
+| **2b. Newsroom shell** | Tokens light/night, masthead, dateline, nav, briefing, footer; rewrite contrast/theme tests | `digest.html.j2`, `newsroom.css.j2`, tests | Ảnh popup light/night; known-ugly 1 phase |
+| **3. Front page modules** | Hero, rail, section fronts, story partial; **P3 atomic**; bỏ sections/counts | template + `partials/_story.html.j2` + tests | Ảnh full page; đủ 12 item, không trùng |
+| **3.5 Width** | 980→1120 commit riêng nếu vision QA cần | `popup.py` | Ảnh 980/1120 |
+| **4. Interaction + bridge** | `<details>` ask, nav observer, states; bridge tests untouched | template + tests | States screenshot; bridge smoke |
+| **5. Print + a11y** | Print broadsheet, sticky-nav print reset, contrast, 720px | template + tests | PDF; 720px; contrast pass |
+| **6. Visual QA** | A/B, PrintWindow, vision review, live smoke | `output/*` | Score + artifacts; final report |
 
 **Ước lượng:** 5–6 ngày làm việc tập trung (hoặc 3–4 session), mỗi phase shippable.
 
@@ -565,7 +575,8 @@ Quy tắc:
 - 0 item: `lead=None`, tất cả sections rỗng, `most_read=()`, không crash.
 - 2 item cùng section: lead + 1 brief.
 - Section chỉ có hero: section front rỗng; template hiện "Bài chính ở trên".
-- `pinned` trùng uid ranked: bị lọc, không render 2 lần.
+- `pinned` trùng uid ranked: pipeline đã lọc trước render; `build_front_page`
+  không nhận `pinned` nên không có filter thứ hai.
 - Không duplicate uid giữa hero + section leads + briefs.
 - Thứ tự section/item giữ nguyên ranked order (không re-sort trong view).
 
@@ -625,10 +636,10 @@ Quy tắc:
 
 ---
 
-## 10. Quyết định cần chốt (đề xuất mặc định)
+## 10. Quyết định đã chốt (approved 2026-11-19)
 
 1. **Theme mặc định:** ✅ **Light newsprint `#FBFAF7`** (giấy ấm), Night edition
-   qua toggle. Không auto theo system. *(Nếu bạn muốn giữ dark mặc định, nói rõ.)*
+   qua toggle. Không auto theo system.
 2. **Ảnh:** ✅ **Không ảnh ở v1** — text-first broadsheet. VnExpress/NYT thật
    dùng ảnh hero; muốn sát hơn sẽ cần phase 2 fetch/cache OG image (network +
    storage + data URI). *(Đây là giới hạn lớn nhất của độ giống.)*
@@ -641,8 +652,7 @@ Quy tắc:
    Việt; Georgia thiếu glyph). Optional bundle **Newsreader** (OFL, Vietnamese
    subset, data URI) nếu visual QA thấy chưa đủ "NYT".
 
-> Nếu bạn đồng ý 1–5, tôi bắt đầu **Phase 1** (layout model + tests) rồi
-> **Phase 2** (newsroom shell) — không big-bang rewrite.
+> 5 quyết định này đã được duyệt; thực thi theo §7.
 
 ---
 
@@ -655,3 +665,26 @@ Quy tắc:
 - Render/data: `daily_digest/render.py`, `daily_digest/pipeline.py`
 - Bridge: `daily_digest/popup_bridge.py`, `tests/test_popup_bridge.py`
 - UI tests hiện tại: `tests/test_ui_tokens.py`
+
+---
+
+## 12. Decision log — C′-amended (2026-11-19)
+
+- **Architecture:** in-place entry template + `daily_digest/frontpage.py` +
+  `templates/newsroom.css.j2` include + `templates/partials/_story.html.j2`.
+  Không template song song, không config rollback flag; rollback = git revert,
+  test sửa cùng commit code; P3 atomic.
+- **Hard rule (critic KILL):** giữ `autoescape=True`; **không** dùng
+  `select_autoescape` — Jinja 3.1.6 match suffix, `digest.html.j2` kết thúc
+  `.j2` → default False → XSS qua title hostile; `test_render.py` escaping phải
+  xanh. CSS partial chỉ literal CSS, không `{{ }}`.
+- **Data:** `build_front_page(ranked)`; bỏ `pinned` param (pipeline dedup);
+  `most_read` anchor-only; `id="story-<uid>"` trên mọi rendering; rail
+  link-only, pinned giữ unsave.
+- **Ask:** `<details class="ask">`; bridged giữ flex row input+button; giữ
+  `.ask-input/.ask-btn/.ask-answer`, `data-ask`, dots, `aria-live`.
+- **P2a** là refactor chạm test: re-point `test_light_tokens_match_audited_values`
+  sang `newsroom.css.j2`; **P2b** rewrite contrast/theme tests theo palette ship.
+- **Width:** 980 default; 1120 là commit riêng sau P3 nếu vision QA cần.
+- **Print:** sticky-nav print reset; PDF smoke có checklist "no clipped items".
+- **Baseline:** commit `bc5a44a`, 233 tests pass.
