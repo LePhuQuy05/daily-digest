@@ -10,6 +10,12 @@ from daily_digest.render import render_digest
 from helpers import make_config, make_item
 
 
+def _css():
+    from daily_digest.util import PROJECT_ROOT
+
+    return (PROJECT_ROOT / "templates" / "newsroom.css.j2").read_text(encoding="utf-8")
+
+
 def _html(tmp_path, **extra):
     config = make_config(tmp_path)
     ranked = [
@@ -128,7 +134,8 @@ class TestStep3CardsSections:
 
     def test_section_header_has_numbered_index(self, tmp_path):
         tpl = self._template()
-        assert ".idx" in tpl
+        css = _css()
+        assert ".idx" in css  # CSS moved to newsroom.css.j2 at P2a
         assert '"%02d" | format(loop.index)' in tpl
 
     def test_cards_have_left_bar_and_hover_lift(self, tmp_path):
@@ -319,8 +326,8 @@ class TestStep5PrintPolish:
             assert ratio >= 4.5, f"light: {label} = {ratio:.2f}:1 (< 4.5)"
 
     def test_light_tokens_match_audited_values(self):
-        tpl = self._template()
-        light_block = tpl.split('[data-theme="light"] {', 1)[1].split("}", 1)[0]
+        css = _css()
+        light_block = css.split('[data-theme="light"] {', 1)[1].split("}", 1)[0]
         for audited in (
             "--text-3: #5D6878",
             "--link: #0E7490",
