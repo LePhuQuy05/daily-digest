@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
@@ -176,21 +177,26 @@ def parse_feed(xml_text: str, entry: FeedEntry, topics: list[str]) -> list[Item]
     return items
 
 
+def _fetch_entry(client: httpx.Client, entry: FeedEntry, cfg: FeedsCfg) -> list[Item]:
+    """Fetch + parse one feed. Raises on HTTP/parse/size errors."""
+    response = client.get(
+        entry.url,
+        headers={"User-Agent": FEED_USER_AGENT, "Accept": FEED_ACCEPT},
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+    if len(response.content) > MAX_FEED_BYTES:
+        raise ValueError(f"feed larger than {MAX_FEED_BYTES} bytes")
+    return parse_feed(response.text, entry, cfg.topics)
+
+
 def fetch_feeds(client: httpx.Client, cfg: FeedsCfg) -> list[Item]:
     """Fetch every configured feed. A partial failure is logged, not fatal."""
     items: list[Item] = []
     failures = 0
     for entry in cfg.entries:
         try:
-            response = client.get(
-                entry.url,
-                headers={"User-Agent": FEED_USER_AGENT, "Accept": FEED_ACCEPT},
-                timeout=REQUEST_TIMEOUT,
-            )
-            response.raise_for_status()
-            if len(response.content) > MAX_FEED_BYTES:
-                raise ValueError(f"feed larger than {MAX_FEED_BYTES} bytes")
-            parsed = parse_feed(response.text, entry, cfg.topics)
+            parsed = _fetch_entry(client, entry, cfg)
         except (httpx.HTTPError, ET.ParseError, TypeError, ValueError) as exc:
             failures += 1
             LOG.warning(
@@ -208,3 +214,44 @@ def fetch_feeds(client: httpx.Client, cfg: FeedsCfg) -> list[Item]:
     if cfg.entries and failures == len(cfg.entries):
         raise ValueError("all configured feeds failed")
     return items
+
+
+@dataclass(frozen=True)
+class FeedHealth:
+    """Status of one configured feed (for `daily-digest health`)."""
+
+    name: str
+    url: str
+    label: str
+    ok: bool
+    item_count: int = 0
+    error: str = ""
+
+
+def check_feeds(client: httpx.Client, cfg: FeedsCfg) -> list[FeedHealth]:
+    """Per-feed status; never raises and never hydrates (fast drill-down)."""
+    health: list[FeedHealth] = []
+    for entry in cfg.entries:
+        try:
+            parsed = _fetch_entry(client, entry, cfg)
+        except (httpx.HTTPError, ET.ParseError, TypeError, ValueError) as exc:
+            health.append(
+                FeedHealth(
+                    name=entry.name,
+                    url=entry.url,
+                    label=entry.label or entry.name,
+                    ok=False,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+            )
+            continue
+        health.append(
+            FeedHealth(
+                name=entry.name,
+                url=entry.url,
+                label=entry.label or entry.name,
+                ok=True,
+                item_count=len(parsed),
+            )
+        )
+    return health

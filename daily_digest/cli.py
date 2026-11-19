@@ -102,6 +102,27 @@ def cmd_smoke(config: Config, args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_health(config: Config, args: argparse.Namespace) -> int:
+    import httpx
+
+    from daily_digest.sources.feeds import check_feeds
+
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+        health = check_feeds(client, config.sources.feeds)
+    for feed in health:
+        status = "OK  " if feed.ok else "FAIL"
+        line = f"{status} {feed.name}: {feed.item_count} items"
+        if not feed.ok:
+            line += f" — {feed.error}"
+        print(line)
+    ok = sum(1 for feed in health if feed.ok)
+    print(f"feeds: {ok}/{len(health)} healthy")
+    if not health:
+        print("health: no feeds configured", file=sys.stderr)
+        return 1
+    return 0 if ok else 1
+
+
 def cmd_notify_test(config: Config, args: argparse.Namespace) -> int:
     from daily_digest.notify import send_toast
     from daily_digest.popup import spawn_popup_detached
@@ -307,6 +328,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("smoke", help="fetch all sources live and print counts")
+    sub.add_parser("health", help="per-feed status for the curated feed source")
     sub.add_parser("notify-test", help="show a test toast that opens the digest")
     sub.add_parser("print-config", help="print effective config (secrets redacted)")
     sub.add_parser("install-task", help="register the daily Task Scheduler job")
@@ -344,6 +366,7 @@ def main(argv: list[str] | None = None) -> int:
         handlers = {
             "run": cmd_run,
             "smoke": cmd_smoke,
+            "health": cmd_health,
             "notify-test": cmd_notify_test,
             "print-config": cmd_print_config,
             "install-task": cmd_install_task,
