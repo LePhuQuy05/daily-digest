@@ -217,6 +217,13 @@ class TestStep4IconsStates:
         assert "min-width: 32px" in act_rule and "height: 32px" in act_rule
         assert "display: inline-flex" in act_rule
 
+    def test_buttons_have_a_pressed_tactile_state(self, tmp_path):
+        html = _html(tmp_path)
+        assert ".act:active:not(:disabled)" in html
+        assert "scale(0.97)" in html
+        assert "box-shadow: inset" in html
+        assert "prefers-reduced-motion: reduce" in html
+
     def test_feedback_states_are_high_contrast(self, tmp_path):
         html = _html(tmp_path)
         done_rule = re.search(r"\.act\.done \{[^}]*\}", html).group(0)
