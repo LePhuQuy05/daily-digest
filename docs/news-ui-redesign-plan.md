@@ -1,6 +1,6 @@
 # Newsroom Front Page — Kế hoạch redesign UI Daily AI Digest
 
-> **Trạng thái:** ✅ approved / implementing · 2026-11-19
+> **Trạng thái:** ✅ implemented · 2026-11-19
 > **Decision log:** C′-amended (architect + critic) — xem §12.
 > **Thay thế:** `docs/ui-redesign-plan.md` (dark reading room) — phần interaction layer,
 > token architecture và print vẫn được kế thừa.
@@ -688,3 +688,41 @@ Quy tắc:
 - **Width:** 980 default; 1120 là commit riêng sau P3 nếu vision QA cần.
 - **Print:** sticky-nav print reset; PDF smoke có checklist "no clipped items".
 - **Baseline:** commit `bc5a44a`, 233 tests pass.
+
+---
+
+## 13. Implementation log (2026-11-19)
+
+- **Commits:** baseline `bc5a44a`; P0 `c0c0673`; P1 `d575a05`; P2a
+  `d3ee7df`; P2b `3657b33`; P3 `5f7607d`; P4/P5 + visual fixes `73eb1e8`;
+  grid/print fit `3603a42`.
+- **Files added:** `daily_digest/frontpage.py`,
+  `templates/newsroom.css.j2`, `templates/partials/_story.html.j2`,
+  `tests/test_front_page.py`, `tests/test_news_layout.py`.
+- **Tests:** `uv run pytest` → **260 passed** (baseline 233 + 27 new/rewritten).
+- **Security:** `autoescape=True` kept; no `select_autoescape`; CSS partial is
+  literal only; `test_render.py` escaping green.
+- **Deviations accepted during implementation:**
+  - Added a **secondary lead** under the hero (`.hero-col`) to balance the top
+    fold against the rail; improves the front-page rhythm and fills the former
+    blank left column.
+  - Moved the "More" row **inside the lead column** under the section lead.
+  - Kept `WINDOW_WIDTH=980` (no P3.5 change): 980 and 1120 were both rendered;
+    980 passed visual QA with 1-column briefs, so widening was unnecessary.
+  - `pinned=0` today; the pinned rail path is covered by `test_news_layout.py`
+    with a pinned fixture (exact class + unsave action).
+- **Evidence:** `output/newsroom-preview-980-light.png`,
+  `newsroom-preview-1120-light.png`, `newsroom-preview-1120-dark.png`;
+  `newsroom-live-light.png`, `newsroom-live-dark.png`,
+  `newsroom-live-states-f0/f1.png`; `newsroom-print.pdf` (3 A4 pages) +
+  `newsroom-print-page1..3.png`; 720px scrollWidth 671/686 (no horizontal
+  scroll); `open --web` exit 0; browser DOM `<body>` without `bridged`,
+  12 unique uids, 12 like + 12 ask buttons, 3 section fronts.
+- **Vision QA:** 7.8 → 8.3 → **9.4/10, ready to ship**; the grid bug
+  (secondary inside the 2-col top fold) was caught and fixed before sign-off.
+  Final live-popup + PDF sign-off: **"Ship it"** (light/night/states/PDF clean).
+- **Live smoke:** light paper 2.42M px, night 2.42M px, states crimson 13.7k /
+  danger 637, typing-dots animation diff bbox 52×18 only; ask `<details>` open,
+  done/failed/dots confirmed visually.
+- **Shipped artifact:** `output/latest.html` now renders the newsroom UI
+  (old UI backed up to `output/latest-old-ui.html`).
