@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from daily_digest.frontpage import build_front_page
 from daily_digest.model import RankedItem, SECTIONS, SECTION_TITLES
 from daily_digest.normalize import safe_href
 from daily_digest.util import atomic_write_text
@@ -17,6 +19,25 @@ SOURCE_NAMES = {
     "emergentmind": "Emergent Mind",
     "alphaxiv": "alphaXiv",
 }
+
+_VI_WEEKDAYS = (
+    "THỨ HAI",
+    "THỨ BA",
+    "THỨ TƯ",
+    "THỨ NĂM",
+    "THỨ SÁU",
+    "THỨ BẢY",
+    "CHỦ NHẬT",
+)
+
+
+def _format_date_long(date: str) -> str:
+    """'2026-11-19' -> 'THỨ NĂM, 19.11.2026'; invalid input falls back verbatim."""
+    try:
+        parsed = datetime.strptime(date, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return date
+    return f"{_VI_WEEKDAYS[parsed.weekday()]}, {parsed:%d.%m.%Y}"
 
 
 def build_digest_data(ranked: list[RankedItem], pinned: list[dict], date: str) -> dict:
@@ -68,8 +89,10 @@ def render_digest(
         section: [r for r in ranked if r.section == section] for section in SECTIONS
     }
     counts = {section: len(items) for section, items in sections.items()}
+    front_page = build_front_page(ranked)
     return tpl.render(
         date=date,
+        date_long=_format_date_long(date),
         mode=mode,
         model_name=model_name,
         degraded=degraded,
@@ -80,6 +103,7 @@ def render_digest(
         digest_data=digest_data,
         pinned=list(pinned),
         pinned_overflow=pinned_overflow,
+        front_page=front_page,
         sections=sections,
         counts=counts,
         section_titles=SECTION_TITLES,
