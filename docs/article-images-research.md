@@ -192,6 +192,9 @@ Resolver priority:
   - night mat `#EAE6DD` + `filter: brightness(0.92)`; **do not** invert. Match
     the mat to the dimmed figure white point to avoid letterbox seams.
 - No image → no slot; no placeholder fake image.
+- Column rules (`briefs`, rail) carry **18px padding** so text never touches the
+  vertical rule; portrait figures use a **3:4 mat** (hero capped at 460px), not a
+  letterboxed 16:9 strip.
 - Print: include hero/section-lead images at small size; test A4 page count;
   config can disable.
 - Alt text: figure `<figcaption>` / article title; credit `"Hình: arXiv:<id>"` /

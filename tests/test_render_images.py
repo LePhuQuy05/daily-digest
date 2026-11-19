@@ -45,7 +45,9 @@ def _render(tmp_path, images=None):
     )
 
 
-def _asset(uid: str, kind: str = "arxiv_img") -> ImageAsset:
+def _asset(
+    uid: str, kind: str = "arxiv_img", width: int = 400, height: int = 240
+) -> ImageAsset:
     return ImageAsset(
         uid=uid,
         data_uri="data:image/jpeg;base64,AAAA",
@@ -53,8 +55,8 @@ def _asset(uid: str, kind: str = "arxiv_img") -> ImageAsset:
         credit=f"Hình: arXiv:{uid}",
         source_url=f"https://arxiv.org/abs/{uid}",
         kind=kind,
-        width=400,
-        height=240,
+        width=width,
+        height=height,
     )
 
 
@@ -73,6 +75,21 @@ def test_images_only_hero_and_section_lead(tmp_path):
     assert "Alt p0" in html and "Alt p2" in html
     assert "Alt p1" not in html and "Alt p3" not in html
     assert "Hình: arXiv:p0" in html and "Hình: arXiv:p2" in html
+
+
+def test_portrait_figure_uses_tall_mat(tmp_path):
+    html = _render(
+        tmp_path,
+        images={
+            "p0": _asset("p0", width=750, height=1000),
+            "p2": _asset("p2"),
+        },
+    )
+    assert (
+        html.count('class="story-media story-media--arxiv_img story-media--portrait"')
+        == 1
+    )
+    assert html.count('class="story-media story-media--arxiv_img"') == 1
 
 
 def test_without_images_keeps_text_layout(tmp_path):
