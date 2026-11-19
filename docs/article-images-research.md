@@ -270,3 +270,5 @@ Resolver priority:
 - Vision verdict: arXiv figures = genuine/legible; HF page-1 thumbnails and
   GitHub auto banners = reject; no LLM images; images only hero + section leads
   (secondary text-only); skip tiny text-table figures (e.g. 22171).
+- **Final layout sign-off:** **ship** — hero + section leads, secondary text-only,
+  dark mat `#EAE6DD`; the 4:3 letterbox is now a tasteful paper border.
