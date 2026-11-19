@@ -424,6 +424,9 @@ class LlmCfg:
     temperature: float = 0.0
     top_n: int = 12
     max_pool: int = 80
+    # Editorial diversity guard: replace duplicate-source tech_news picks with
+    # qualified unused candidates (never pads; see ranking/diversify.py).
+    diversify_tech_news: bool = True
 
 
 @dataclass

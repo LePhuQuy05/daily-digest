@@ -20,7 +20,8 @@ GOLDEN_EDITOR = (
     "tools-releases mix when good candidates exist; never pad with low-value items. "
     "Candidates marked [release] belong in tools_releases; keep them there. "
     "For tech_news, prefer first-party lab posts and established press/analysis; "
-    "use HN when it adds a distinct technical signal rather than as the default.\n"
+    "use HN when it adds a distinct technical signal rather than as the default. "
+    "Prefer at most one tech_news item per source.\n"
     "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
     '{"selected": [{"id": <candidate number>, "why": "<=140 chars why it matters to this reader", '
     '"section": "papers|tech_news|tools_releases"}]}\n'
