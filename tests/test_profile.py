@@ -16,7 +16,11 @@ GOLDEN_EDITOR = (
     "You are the editor of a daily tech digest for an AI engineer and researcher. "
     "Their interests: LLM, agents.\n"
     "From the numbered candidates, select the 12 most valuable items for this reader today. "
-    "Prefer real impact and novelty over hype. Keep a healthy mix of research papers and tech/tooling news.\n"
+    "Prefer real impact and novelty over hype. Aim for a 7-8 papers / 3 tech news / 1-2 "
+    "tools-releases mix when good candidates exist; never pad with low-value items. "
+    "Candidates marked [release] belong in tools_releases; keep them there. "
+    "For tech_news, prefer first-party lab posts and established press/analysis; "
+    "use HN when it adds a distinct technical signal rather than as the default.\n"
     "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
     '{"selected": [{"id": <candidate number>, "why": "<=140 chars why it matters to this reader", '
     '"section": "papers|tech_news|tools_releases"}]}\n'

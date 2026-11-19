@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from daily_digest.model import Section
 from daily_digest.util import LOG, PROJECT_ROOT, load_env_file
 
 
@@ -128,6 +129,245 @@ class AlphaxivCfg:
     max_items: int = 20  # maps to the tool's `limit` (1-200)
 
 
+@dataclass(frozen=True)
+class FeedEntry:
+    """One curated RSS/Atom feed.
+
+    `section` is a hint for the heuristic fallback and the LLM's allowed
+    section fallback; the editor may still reclassify non-paper items.
+    """
+
+    name: str
+    url: str
+    label: str = ""
+    section: Section = "tech_news"
+    max_items: int = 3
+    max_age_days: int = 14
+    require_topic: bool = False
+    hydrate: bool = False  # fetch the article's meta description when summary is thin
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("feed name is required")
+        if not self.url.lower().startswith(("http://", "https://")):
+            raise ValueError(f"feed {self.name!r}: url must be http(s)")
+        if self.section not in ("tech_news", "tools_releases"):
+            raise ValueError(
+                f"feed {self.name!r}: section must be tech_news or tools_releases"
+            )
+        if self.max_items < 1:
+            raise ValueError(f"feed {self.name!r}: max_items must be >= 1")
+        if self.max_age_days < 0:
+            raise ValueError(f"feed {self.name!r}: max_age_days must be >= 0")
+
+
+def _default_feeds() -> list[FeedEntry]:
+    """Curated, keyless feeds verified live in docs/tech-news-sources.md.
+
+    Labs first, then reputable press/analysis, then GitHub releases. Caps are
+    deliberately small: the digest needs signal, not a second firehose.
+    """
+    return [
+        # --- first-party AI labs -------------------------------------------
+        FeedEntry(
+            "openai_news",
+            "https://openai.com/news/rss.xml",
+            "OpenAI",
+            max_items=3,
+            hydrate=True,
+        ),
+        FeedEntry(
+            "deepmind_blog",
+            "https://deepmind.google/blog/rss.xml",
+            "Google DeepMind",
+            max_items=3,
+            hydrate=True,
+        ),
+        FeedEntry(
+            "google_ai_blog",
+            "https://blog.google/technology/ai/rss/",
+            "Google AI",
+            max_items=3,
+            hydrate=True,
+        ),
+        FeedEntry(
+            "google_research",
+            "https://research.google/blog/rss/",
+            "Google Research",
+            max_items=3,
+            require_topic=True,
+            hydrate=True,
+        ),
+        FeedEntry(
+            "microsoft_research",
+            "https://www.microsoft.com/en-us/research/feed/",
+            "Microsoft Research",
+            max_items=3,
+            require_topic=True,
+            hydrate=True,
+        ),
+        FeedEntry(
+            "huggingface_blog",
+            "https://huggingface.co/blog/feed.xml",
+            "Hugging Face",
+            max_items=3,
+            hydrate=True,
+        ),
+        # --- reputable tech press (AI-specific unless require_topic) --------
+        FeedEntry(
+            "the_verge_ai",
+            "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+            "The Verge",
+            max_items=4,
+            max_age_days=7,
+        ),
+        FeedEntry(
+            "ieee_spectrum_ai",
+            "https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss",
+            "IEEE Spectrum",
+            max_items=4,
+        ),
+        FeedEntry(
+            "ars_technica",
+            "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "Ars Technica",
+            max_items=3,
+            max_age_days=7,
+            require_topic=True,
+        ),
+        FeedEntry(
+            "mit_tech_review",
+            "https://www.technologyreview.com/feed/",
+            "MIT Technology Review",
+            max_items=3,
+            max_age_days=7,
+            require_topic=True,
+        ),
+        # --- independent AI analysis ---------------------------------------
+        FeedEntry(
+            "simon_willison",
+            "https://simonwillison.net/atom/everything/",
+            "Simon Willison",
+            max_items=3,
+            require_topic=True,
+        ),
+        FeedEntry(
+            "interconnects",
+            "https://www.interconnects.ai/feed",
+            "Interconnects",
+            max_items=3,
+        ),
+        FeedEntry(
+            "import_ai",
+            "https://importai.substack.com/feed",
+            "Import AI",
+            max_items=2,
+        ),
+        # --- tool releases (stable versions only; prereleases filtered) -----
+        FeedEntry(
+            "gh_vllm",
+            "https://github.com/vllm-project/vllm/releases.atom",
+            "vLLM",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_ollama",
+            "https://github.com/ollama/ollama/releases.atom",
+            "Ollama",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_transformers",
+            "https://github.com/huggingface/transformers/releases.atom",
+            "Transformers",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_openwebui",
+            "https://github.com/open-webui/open-webui/releases.atom",
+            "Open WebUI",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_sglang",
+            "https://github.com/sgl-project/sglang/releases.atom",
+            "SGLang",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_unsloth",
+            "https://github.com/unslothai/unsloth/releases.atom",
+            "Unsloth",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "gh_comfyui",
+            "https://github.com/comfyanonymous/ComfyUI/releases.atom",
+            "ComfyUI",
+            section="tools_releases",
+            max_items=2,
+            max_age_days=30,
+        ),
+    ]
+
+
+@dataclass
+class FeedsCfg:
+    # One configurable source covering curated RSS/Atom feeds. Each feed fails
+    # independently; bounded caps keep the candidate pool balanced.
+    enabled: bool = True
+    topics: list[str] = field(
+        default_factory=lambda: [
+            "AI",
+            "artificial intelligence",
+            "machine learning",
+            "machine intelligence",
+            "deep learning",
+            "LLM",
+            "NLP",
+            "natural language",
+            "language model",
+            "GPT",
+            "ChatGPT",
+            "Claude",
+            "Gemini",
+            "OpenAI",
+            "Anthropic",
+            "DeepMind",
+            "NVIDIA",
+            "GPU",
+            "agent",
+            "agentic",
+            "model",
+            "neural",
+            "transformer",
+            "inference",
+            "training",
+            "benchmark",
+            "alignment",
+            "safety",
+            "robotics",
+            "multimodal",
+            "computer vision",
+            "generative",
+            "open source",
+        ]
+    )
+    entries: list[FeedEntry] = field(default_factory=_default_feeds)
+
+
 @dataclass
 class SourcesCfg:
     hn: HnCfg = field(default_factory=HnCfg)
@@ -135,6 +375,7 @@ class SourcesCfg:
     arxiv: ArxivCfg = field(default_factory=ArxivCfg)
     emergent_mind: EmergentMindCfg = field(default_factory=EmergentMindCfg)
     alphaxiv: AlphaxivCfg = field(default_factory=AlphaxivCfg)
+    feeds: FeedsCfg = field(default_factory=FeedsCfg)
 
 
 @dataclass
@@ -278,6 +519,35 @@ def _merge_obj(obj: object, data: dict) -> None:
             setattr(obj, key, value)
 
 
+def _normalize_feed_entries(config: Config) -> None:
+    """Turn YAML feed mappings into validated FeedEntry objects."""
+    feeds = config.sources.feeds
+    if not isinstance(feeds, FeedsCfg):
+        raise ConfigError("sources.feeds must be a mapping")
+    raw = feeds.entries
+    if not isinstance(raw, list):
+        raise ConfigError("sources.feeds.entries must be a list")
+    entries: list[FeedEntry] = []
+    seen: set[str] = set()
+    for entry in raw:
+        if isinstance(entry, FeedEntry):
+            parsed = entry
+        elif isinstance(entry, dict):
+            try:
+                parsed = FeedEntry(**entry)
+            except (TypeError, ValueError) as exc:
+                raise ConfigError(f"invalid sources.feeds entry: {exc}") from exc
+        else:
+            raise ConfigError(
+                f"sources.feeds.entries must contain mappings, got {type(entry).__name__}"
+            )
+        if parsed.name in seen:
+            raise ConfigError(f"duplicate feed name: {parsed.name!r}")
+        seen.add(parsed.name)
+        entries.append(parsed)
+    config.sources.feeds.entries = entries
+
+
 def load_config(path: Path | None = None) -> Config:
     """Defaults <- config.yaml overlay <- environment overrides. Never requires a config file."""
     load_env_file(PROJECT_ROOT / ".env")
@@ -294,6 +564,8 @@ def load_config(path: Path | None = None) -> Config:
         if not isinstance(data, dict):
             raise ConfigError(f"top level of {config_path} must be a mapping")
         _merge_obj(config, data)
+
+    _normalize_feed_entries(config)
 
     # Environment overrides (handy for quick model switches / CI)
     if os.environ.get("DIGEST_LLM_MODEL"):

@@ -12,15 +12,10 @@ from daily_digest.frontpage import build_front_page
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
+from daily_digest.source_labels import SOURCE_LABELS
 from daily_digest.util import atomic_write_text
 
-SOURCE_NAMES = {
-    "hn": "Hacker News",
-    "arxiv": "arXiv",
-    "hf_papers": "HF Papers",
-    "emergentmind": "Emergent Mind",
-    "alphaxiv": "alphaXiv",
-}
+SOURCE_NAMES = SOURCE_LABELS
 
 _VI_WEEKDAYS = (
     "THỨ HAI",
@@ -84,6 +79,7 @@ def render_digest(
     pinned: list[dict] = (),
     pinned_overflow: int = 0,
     images: Mapping[str, ImageAsset] | None = None,
+    source_names: Mapping[str, str] | None = None,
 ) -> str:
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
@@ -104,7 +100,7 @@ def render_digest(
         pinned_overflow=pinned_overflow,
         front_page=front_page,
         images=images or {},
-        source_names=SOURCE_NAMES,
+        source_names={**SOURCE_NAMES, **(source_names or {})},
         total=len(ranked),
     )
 

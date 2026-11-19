@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from daily_digest.config import Config
-from daily_digest.model import Item
+from daily_digest.model import Item, Section
 from daily_digest.util import PROJECT_ROOT
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -20,6 +20,7 @@ def make_config(tmp_path: Path) -> Config:
     config.log_dir = tmp_path / "logs"
     config.feedback_path = tmp_path / "feedback.jsonl"
     config.media.enabled = False  # tests stay offline; media tests opt in
+    config.sources.feeds.enabled = False  # feed tests opt in explicitly
     config.template_path = PROJECT_ROOT / "templates" / "digest.html.j2"
     config.sources.arxiv.pause_seconds = 0.0
     return config
@@ -33,6 +34,7 @@ def make_item(
     source: str = "hn",
     points: int | None = None,
     summary: str = "",
+    section_hint: Section | None = None,
 ) -> Item:
     return Item(
         id=id,
@@ -42,6 +44,7 @@ def make_item(
         points=points,
         published=datetime(2026, 11, 18, 2, 0, tzinfo=timezone.utc),
         summary=summary,
+        section_hint=section_hint,
     )
 
 

@@ -29,7 +29,7 @@ from daily_digest.popup import spawn_popup_detached
 from daily_digest.profile import load_profile
 from daily_digest.ranking import select
 from daily_digest.ranking.heuristic import (
-    heuristic_order,
+    balanced_pool,
     heuristic_overview,
     overview_label,
 )
@@ -38,6 +38,7 @@ from daily_digest.ranking.llm import LlmClient, summarize_with_llm
 from daily_digest.render import build_digest_data, render_digest, write_digest
 from daily_digest.rules import apply_mute, log_mute_summary
 from daily_digest.sources import SourceError, enabled_sources, fetch_all
+from daily_digest.source_labels import labels_for
 from daily_digest.util import LOG, load_json, save_json, today_str
 
 
@@ -89,6 +90,7 @@ def merge_items(items: list[Item]) -> list[Item]:
             published=published,
             summary=summary,
             citations=citations,
+            section_hint=keep.section_hint or other.section_hint,
         )
     return list(merged.values())
 
@@ -221,7 +223,7 @@ def run_day(
             exc,
         )
 
-    pool = heuristic_order(fresh, config, adjustments)[: config.llm.max_pool]
+    pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments)
 
     # 2b. Citation enrichment (OpenAlex, keyless, one batched request): gives the
     # editor LLM — and the heuristic fallback — citation evidence per paper.
@@ -287,6 +289,7 @@ def run_day(
         pinned_overflow=pinned_overflow,
         digest_data=build_digest_data(ranked, pinned, date),
         images=images,
+        source_names=labels_for(config),
     )
     digest_path = write_digest(html, config.output_dir, date)
 

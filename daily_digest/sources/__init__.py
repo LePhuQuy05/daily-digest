@@ -13,6 +13,7 @@ from daily_digest.model import Item
 from daily_digest.sources.alphaxiv import AlphaxivError, fetch_alphaxiv
 from daily_digest.sources.arxiv import fetch_arxiv
 from daily_digest.sources.emergent_mind import fetch_emergent_mind
+from daily_digest.sources.feeds import fetch_feeds
 from daily_digest.sources.hf_papers import fetch_hf_papers
 from daily_digest.sources.hn import fetch_hn
 from daily_digest.util import LOG
@@ -25,6 +26,7 @@ REGISTRY: dict[str, FetchFn] = {
     "arxiv": fetch_arxiv,
     "emergent_mind": fetch_emergent_mind,
     "alphaxiv": fetch_alphaxiv,
+    "feeds": fetch_feeds,
 }
 
 

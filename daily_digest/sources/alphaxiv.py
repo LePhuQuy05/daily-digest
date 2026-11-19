@@ -247,7 +247,16 @@ def fetch_alphaxiv(client: httpx.Client, cfg: AlphaxivCfg) -> list[Item]:
             f"changed: {str(result)[:300]}"
         )
 
-    metadata = fetch_arxiv_metadata(client, ids)
+    try:
+        metadata = fetch_arxiv_metadata(client, ids)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 429:
+            LOG.warning("alphaXiv metadata rate-limited (arXiv 429); skipping this run")
+            return []
+        raise
+    except httpx.TimeoutException:
+        LOG.warning("alphaXiv metadata timed out; skipping this run")
+        return []
     items = [
         Item(
             id=f"arxiv:{arxiv_id}",

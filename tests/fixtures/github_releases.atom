@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Release notes</title>
+  <entry>
+    <title>v0.34.0</title>
+    <link rel="alternate" type="text/html" href="https://github.example/vllm/releases/tag/v0.34.0"/>
+    <id>tag:github.example,2008:Repository/1/v0.34.0</id>
+    <updated>2026-11-18T21:02:33Z</updated>
+    <content type="html"><![CDATA[<h1>v0.34.0</h1><p>Stable release with 10 new models.</p>]]></content>
+  </entry>
+  <entry>
+    <title>v0.34.0rc4</title>
+    <link rel="alternate" type="text/html" href="https://github.example/vllm/releases/tag/v0.34.0rc4"/>
+    <id>tag:github.example,2008:Repository/1/v0.34.0rc4</id>
+    <updated>2026-11-18T20:00:00Z</updated>
+    <content type="html"><![CDATA[<p>Release candidate.</p>]]></content>
+  </entry>
+  <entry>
+    <title>v0.40.17</title>
+    <link rel="alternate" type="text/html" href="https://github.example/ollama/releases/tag/v0.40.17-rc1"/>
+    <id>tag:github.example,2008:Repository/2/v0.40.17-rc1</id>
+    <updated>2026-11-16T19:02:48Z</updated>
+    <content type="html"><![CDATA[<p>Release candidate with a stable-looking title.</p>]]></content>
+  </entry>
+  <entry>
+    <title>v0.33.0</title>
+    <link rel="alternate" type="text/html" href="https://github.example/vllm/releases/tag/v0.33.0"/>
+    <id>tag:github.example,2008:Repository/1/v0.33.0</id>
+    <updated>2026-11-10T10:00:00Z</updated>
+    <content type="html"><![CDATA[<h1>v0.33.0</h1><p>Previous stable release.</p>]]></content>
+  </entry>
+  <entry>
+    <title>trunk/abc123: nightly fix</title>
+    <link rel="alternate" type="text/html" href="https://github.example/vllm/commit/abc123"/>
+    <id>tag:github.example,2008:Repository/1/abc123</id>
+    <updated>2026-11-19T01:00:00Z</updated>
+    <content type="html"><![CDATA[<p>Nightly build.</p>]]></content>
+  </entry>
+</feed>

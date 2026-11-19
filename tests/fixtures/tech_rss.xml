@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Lab News</title>
+    <item>
+      <title>OpenAI ships an agents API</title>
+      <link></link>
+      <guid>https://openai.example/agents-api</guid>
+      <pubDate>Wed, 18 Nov 2026 10:00:00 GMT</pubDate>
+      <description><![CDATA[<p>A new <b>LLM agent</b> API with tool use and tracing.</p>]]></description>
+    </item>
+    <item>
+      <title>Old model card</title>
+      <link>https://openai.example/old</link>
+      <guid>https://openai.example/old</guid>
+      <pubDate>Mon, 01 Jan 2024 10:00:00 GMT</pubDate>
+      <description>Ancient news.</description>
+    </item>
+    <item>
+      <title>Gemini benchmark update</title>
+      <link>https://openai.example/gemini</link>
+      <guid>https://openai.example/gemini</guid>
+      <pubDate>Wed, 18 Nov 2026 11:00:00 GMT</pubDate>
+      <description>New benchmark numbers for reasoning models.</description>
+    </item>
+  </channel>
+</rss>

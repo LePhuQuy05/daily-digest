@@ -1,7 +1,11 @@
 import pytest
 
 from daily_digest.ranking import select
-from daily_digest.ranking.heuristic import rank_heuristic
+from daily_digest.ranking.heuristic import (
+    balanced_pool,
+    default_section,
+    rank_heuristic,
+)
 from daily_digest.ranking.llm import LlmError, rank_with_llm
 from helpers import FakeChat, FakeLlmClient, llm_ok_json, make_config, make_item
 
@@ -78,6 +82,147 @@ def test_heuristic_sections(tmp_path):
     assert ranked["LLM reasoning via RLHF"] == "papers"
     assert ranked["Local city council news"] == "tech_news"
     assert ranked["Acme releases v2.0 of its open source database"] == "tools_releases"
+
+
+def test_balanced_pool_reserves_news_and_tool_slots(tmp_path):
+    config = make_config(tmp_path)
+    papers = [
+        make_item(
+            id=f"arxiv:{i}",
+            title=f"LLM paper {i}",
+            url=f"https://arxiv.org/abs/{i}",
+            source="arxiv",
+        )
+        for i in range(60)
+    ]
+    news = [
+        make_item(
+            id=f"hn:{i}",
+            title=f"AI product news {i}",
+            url=f"https://example.com/news/{i}",
+            source="hn",
+            points=50 + i,
+        )
+        for i in range(10)
+    ]
+    tools = [
+        make_item(
+            id=f"gh:{i}",
+            title=f"v{i}.0.0",
+            url=f"https://github.com/example/repo/releases/tag/v{i}.0.0",
+            source="gh_vllm",
+            section_hint="tools_releases",
+        )
+        for i in range(5)
+    ]
+    pool = balanced_pool(papers + news + tools, config, cap=20)
+    sections = [default_section(item) for item in pool]
+
+    assert len(pool) == 20
+    assert sections.count("tech_news") == 8
+    assert sections.count("tools_releases") == 5
+    assert sections.count("papers") == 7
+
+
+def test_balanced_pool_drops_off_topic_hn_links(tmp_path):
+    config = make_config(tmp_path)
+    off_topic = [
+        make_item(
+            id=f"hn:off{i}",
+            title=f"City council budget item {i}",
+            url=f"https://example.com/off/{i}",
+            source="hn",
+            points=900,
+        )
+        for i in range(20)
+    ]
+    on_topic = [
+        make_item(
+            id=f"hn:ai{i}",
+            title=f"New LLM agent release {i}",
+            url=f"https://example.com/ai/{i}",
+            source="hn",
+            points=20,
+        )
+        for i in range(3)
+    ]
+    papers = [
+        make_item(
+            id=f"arxiv:{i}",
+            title=f"LLM paper {i}",
+            url=f"https://arxiv.org/abs/{i}",
+            source="arxiv",
+        )
+        for i in range(40)
+    ]
+    pool = balanced_pool(off_topic + on_topic + papers, config, cap=20)
+    titles = [item.title for item in pool]
+
+    assert not any("City council" in title for title in titles)
+    assert any("LLM agent release" in title for title in titles)
+
+
+def test_default_section_honors_source_hint():
+    tool = make_item(
+        id="feed:abc",
+        title="v0.34.0",
+        url="https://github.com/vllm-project/vllm/releases/tag/v0.34.0",
+        source="gh_vllm",
+        section_hint="tools_releases",
+    )
+    assert default_section(tool) == "tools_releases"
+
+
+def test_llm_accepts_tech_news_for_feed_sources(tmp_path):
+    config = make_config(tmp_path)
+    items = [
+        make_item(
+            id=f"feed:{i}",
+            title=f"AI lab update {i}",
+            url=f"https://example.com/update-{i}",
+            source="openai_news",
+            section_hint="tech_news",
+        )
+        for i in range(3)
+    ]
+    response = (
+        '{"selected": ['
+        '{"id": 0, "why": "w0", "section": "tech_news"},'
+        '{"id": 1, "why": "w1", "section": "tech_news"},'
+        '{"id": 2, "why": "w2", "section": "tools_releases"}'
+        "]}"
+    )
+    ranked = rank_with_llm(items, FakeChat(response), config)
+
+    assert [r.section for r in ranked] == ["tech_news", "tech_news", "tools_releases"]
+
+
+def test_llm_keeps_release_feed_items_in_tools(tmp_path):
+    config = make_config(tmp_path)
+    items = [
+        make_item(
+            id=f"feed:{i}",
+            title=f"v{i}.0.0",
+            url=f"https://github.com/example/repo/releases/tag/v{i}.0.0",
+            source="gh_vllm",
+            section_hint="tools_releases",
+        )
+        for i in range(3)
+    ]
+    response = (
+        '{"selected": ['
+        '{"id": 0, "why": "w0", "section": "tech_news"},'
+        '{"id": 1, "why": "w1", "section": "tech_news"},'
+        '{"id": 2, "why": "w2", "section": "tools_releases"}'
+        "]}"
+    )
+    ranked = rank_with_llm(items, FakeChat(response), config)
+
+    assert [r.section for r in ranked] == [
+        "tools_releases",
+        "tools_releases",
+        "tools_releases",
+    ]
 
 
 def test_llm_ranking_valid_json_order_and_drop_rules(tmp_path):

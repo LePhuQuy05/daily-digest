@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 
 from daily_digest.config import Config
 from daily_digest.model import Item, RankedItem, Section
+from daily_digest.relevance import matches_topics
+from daily_digest.source_labels import labels_for
 
 TOPIC_BONUS = 2.0
 HF_TRENDING_BONUS = 1.5  # human-curated signal
@@ -22,6 +24,24 @@ ALWAYS_BONUS = 3.0  # F5: reader's explicit must-see keyword
 ADJUSTMENT_ITEM_CLAMP = 1.5  # F1: item-level bound on summed feedback adjustments
 FRESH_HOURS = 24.0
 FRESH_BONUS = 1.0
+# Curated first-party/analysis feeds are more trustworthy than an unvetted
+# front-page link; the bonus makes them competitive without overriding topics.
+SOURCE_QUALITY_BONUS = {
+    "openai_news": 1.8,
+    "deepmind_blog": 1.8,
+    "google_ai_blog": 1.6,
+    "google_research": 1.4,
+    "microsoft_research": 1.4,
+    "huggingface_blog": 1.4,
+    "the_verge_ai": 1.0,
+    "ieee_spectrum_ai": 1.0,
+    "ars_technica": 1.0,
+    "mit_tech_review": 1.0,
+    "simon_willison": 1.3,
+    "interconnects": 1.3,
+    "import_ai": 1.3,
+}
+RELEASE_SOURCE_BONUS = 0.8
 
 _TOOLS_RE = re.compile(
     r"\b(release[sd]?|launch(?:es|ed)?|open[- ]sourc(?:e|ed)|announc(?:e|es|ed)|v[0-9]+\.[0-9]+|beta|is now|GA)\b",
@@ -30,6 +50,8 @@ _TOOLS_RE = re.compile(
 
 
 def default_section(item: Item) -> Section:
+    if item.section_hint:
+        return item.section_hint
     return (
         "papers"
         if item.source in ("arxiv", "hf_papers", "emergentmind", "alphaxiv")
@@ -68,6 +90,10 @@ def score_item(
         score += ALPHAXIV_TRENDING_BONUS
     elif item.source == "emergentmind":
         score += EM_TRENDING_BONUS
+    if item.source.startswith("gh_"):
+        score += RELEASE_SOURCE_BONUS
+    else:
+        score += SOURCE_QUALITY_BONUS.get(item.source, 0.0)
     from daily_digest.rules import always_match
 
     if always_match(item, config.interests.always):
@@ -79,7 +105,9 @@ def score_item(
     return score
 
 
-def _why_line(item: Item, topics: list[str]) -> str:
+def _why_line(
+    item: Item, topics: list[str], labels: dict[str, str] | None = None
+) -> str:
     bits: list[str] = []
     hits = topic_hits(item, topics)
     if hits:
@@ -96,8 +124,13 @@ def _why_line(item: Item, topics: list[str]) -> str:
         bits.append("trending across social media (Emergent Mind)")
     elif item.source == "arxiv":
         bits.append(f"new arXiv {item.id.removeprefix('arxiv:')}")
-    else:
+    elif item.source == "hn":
         bits.append("HN front page")
+    elif item.source.startswith("gh_"):
+        bits.append("new release")
+    else:
+        label = (labels or {}).get(item.source, item.source)
+        bits.append(f"via {label}")
     return " · ".join(bits) if bits else "top story today"
 
 
@@ -105,6 +138,7 @@ def rank_heuristic(
     items: list[Item], config: Config, adjustments: dict[str, float] | None = None
 ) -> list[RankedItem]:
     """Deterministic ranking + a mechanical 'why' line so the digest never renders empty reasons."""
+    labels = labels_for(config)
     ordered = sorted(
         items, key=lambda item: score_item(item, config, adjustments), reverse=True
     )
@@ -116,7 +150,7 @@ def rank_heuristic(
         ranked.append(
             RankedItem(
                 item=item,
-                why=_why_line(item, config.interests.topics)[:140],
+                why=_why_line(item, config.interests.topics, labels)[:140],
                 section=section,
             )
         )
@@ -128,6 +162,63 @@ def heuristic_order(
 ) -> list[Item]:
     """Order-only view, used to pre-cap the candidate pool before the LLM sees it."""
     return [ranked.item for ranked in rank_heuristic(items, config, adjustments)]
+
+
+def balanced_pool(
+    items: list[Item],
+    config: Config,
+    cap: int,
+    adjustments: dict[str, float] | None = None,
+) -> list[Item]:
+    """Pre-cap the editor pool while reserving space for news and tool releases.
+
+    A pure score cut is paper-dominated (papers earn topic hits, citations and
+    source weight), so the LLM never sees enough news/tool candidates to fill
+    those sections. Quotas guarantee the editor has a real choice; leftover
+    slots still go to the best remaining items.
+    """
+    ranked = rank_heuristic(items, config, adjustments)
+    # HN is a general front page: keep only AI-relevant links in the editorial
+    # pool, otherwise high-score off-topic stories crowd out lab/press feeds.
+    ranked = [
+        ranked_item
+        for ranked_item in ranked
+        if ranked_item.item.source != "hn"
+        or matches_topics(
+            ranked_item.item.title,
+            ranked_item.item.summary,
+            config.sources.feeds.topics,
+        )
+    ]
+    by_section: dict[Section, list[Item]] = {
+        "papers": [],
+        "tech_news": [],
+        "tools_releases": [],
+    }
+    for ranked_item in ranked:
+        by_section[ranked_item.section].append(ranked_item.item)
+
+    news_quota = min(len(by_section["tech_news"]), max(8, cap * 20 // 100))
+    tools_quota = min(len(by_section["tools_releases"]), max(5, cap * 12 // 100))
+    paper_quota = max(0, cap - news_quota - tools_quota)
+
+    chosen: set[int] = set()
+    for section_items, quota in (
+        (by_section["papers"], paper_quota),
+        (by_section["tech_news"], news_quota),
+        (by_section["tools_releases"], tools_quota),
+    ):
+        for item in section_items[:quota]:
+            chosen.add(id(item))
+
+    for ranked_item in ranked:
+        if len(chosen) >= cap:
+            break
+        chosen.add(id(ranked_item.item))
+
+    return [
+        ranked_item.item for ranked_item in ranked if id(ranked_item.item) in chosen
+    ]
 
 
 _OVERVIEW_LABELS = {"vi": "Tổng hợp hôm nay", "en": "Today's overview"}

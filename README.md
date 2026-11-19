@@ -2,9 +2,10 @@
 
 A Windows morning digest with everything you should know today as an AI engineer:
 the best new research papers (arXiv + Hugging Face Daily Papers) and the top
-tech/AI news (Hacker News), curated by **two LLMs**:
+tech/AI news (Hacker News + first-party lab blogs + reputable tech press/analysis),
+curated by **two LLMs**:
 
-- 🧠 **The editor** (default: GLM 5.3) picks the ~12 items worth your time and writes a one-line *why it matters*
+- 🧠 **The editor** (default: DeepSeek V4.1 Flash) picks the ~12 items worth your time and writes a one-line *why it matters*
 - ✍️ **The writer** writes a proper 2–3 sentence summary of every selected item — what it does, the key finding, and why it's relevant to you — plus a **"Tổng hợp hôm nay"** card at the top: a Vietnamese synthesis of the day's themes and the single most important takeaway (language configurable via `llm.overview_language`)
 
 Every morning at **09:00** you get it two ways:
@@ -96,7 +97,8 @@ See the effective config anytime: `uv run daily-digest print-config`.
 09:00 Task Scheduler (hidden pythonw, battery-safe, catches up when asleep)
   └─ fetch:  HN front page · HF Daily Papers · arXiv announcements (RSS, cs.CL/cs.LG/cs.AI)
              · Emergent Mind (trending on X/Reddit/YouTube) · alphaXiv (community upvotes,
-             needs a free key in .env)   — 5 independent sources, keyless except alphaXiv
+             needs a free key in .env) · curated RSS/Atom (AI labs, tech press/analysis,
+             GitHub releases)   — 6 source families / 20 curated feeds, keyless except alphaXiv
   └─ merge:  same paper from several sources → one item (provenance: HF > alphaXiv > EM > arXiv)
   └─ enrich: OpenAlex citation counts (keyless, one batched request) → "N citations" evidence
   └─ filter: skip items already shown in the last 7 days (state.json seen-set)
@@ -121,6 +123,8 @@ Everything lives in `config.yaml` (all optional; sensible defaults built in):
 
 - `interests.topics` — what the ranker optimizes for
 - `sources.*.enabled`, `sources.arxiv.categories` — add `cs.CV`, `stat.ML`, ...
+- `sources.feeds.entries` — curated RSS/Atom for Tech News/Tools (20 feeds built in;
+  override the complete list to customize). Catalog: `docs/tech-news-sources.md`.
 - `llm.top_n` — digest size (default 12)
 - `notify.popup` / `notify.enabled` — turn the popup/toast channels on/off
 - `schedule.time` — when `install-task` schedules it (default 09:00)

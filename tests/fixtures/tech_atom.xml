@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example AI Press</title>
+  <entry>
+    <title>The Verge AI story</title>
+    <link rel="alternate" type="text/html" href="https://theverge.example/ai-story"/>
+    <id>https://theverge.example/?p=1</id>
+    <published>2026-11-18T18:18:35-05:00</published>
+    <summary><![CDATA[<p>An <b>AI agent</b> changes how teams ship software.</p>]]></summary>
+  </entry>
+  <entry>
+    <title>City council approves budget</title>
+    <link rel="alternate" type="text/html" href="https://theverge.example/budget"/>
+    <id>https://theverge.example/?p=2</id>
+    <published>2026-11-18T12:00:00-05:00</published>
+    <summary>Local politics, no technology angle.</summary>
+  </entry>
+  <entry>
+    <title>New inference benchmark</title>
+    <link rel="alternate" type="text/html" href="https://theverge.example/inference"/>
+    <id>https://theverge.example/?p=3</id>
+    <updated>2026-11-18T09:00:00-05:00</updated>
+    <content type="html"><![CDATA[<p>GPU inference throughput doubled on the new benchmark.</p>]]></content>
+  </entry>
+</feed>

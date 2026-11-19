@@ -38,6 +38,21 @@ sources:
     enabled: true
     api_key_env: ALPHAXIV_API_KEY
     max_items: 20          # maps to the feed's `limit` (1-200)
+  feeds:
+    # Curated RSS/Atom for Tech News + Tools & Releases. One configurable source
+    # covers 20 feeds by default: OpenAI, Google DeepMind, Google AI/Research,
+    # Microsoft Research, Hugging Face; The Verge AI, IEEE Spectrum AI,
+    # Ars Technica, MIT Technology Review; Simon Willison, Interconnects,
+    # Import AI; and GitHub releases for vLLM, Ollama, Transformers, Open WebUI,
+    # SGLang, Unsloth, ComfyUI. Each feed has its own cap/window and fails
+    # independently. Omit `entries` to use the built-in curated list.
+    enabled: true
+    # To customize, provide the COMPLETE list (it replaces the defaults):
+    # entries:
+    #   - {name: openai_news, url: https://openai.com/news/rss.xml,
+    #      label: OpenAI, max_items: 3, max_age_days: 14, hydrate: true}
+    #   - {name: gh_vllm, url: https://github.com/vllm-project/vllm/releases.atom,
+    #      label: vLLM, section: tools_releases, max_items: 2, max_age_days: 30}
 
 enrichment:
   # OpenAlex (api.openalex.org) — keyless citation counts for the candidate pool,

@@ -103,7 +103,7 @@ def test_fetch_arxiv_metadata_parses_atom():
     assert metadata["2611.23144"]["published"] is not None
 
 
-def _mock_mcp_and_arxiv(monkeypatch, feed_payload):
+def _mock_mcp_and_arxiv(monkeypatch, feed_payload, arxiv_status: int = 200):
     monkeypatch.setenv("ALPHAXIV_API_KEY", "test-key")
     calls: list[dict] = []
 
@@ -134,8 +134,30 @@ def _mock_mcp_and_arxiv(monkeypatch, feed_payload):
         )
 
     respx.post(ALPHAXIV_MCP_URL).mock(side_effect=mcp_handler)
-    respx.get(ARXIV_API_URL).respond(200, text=ARXIV_ATOM)
+    if arxiv_status == 200:
+        respx.get(ARXIV_API_URL).respond(200, text=ARXIV_ATOM)
+    else:
+        respx.get(ARXIV_API_URL).respond(arxiv_status)
     return calls
+
+
+@respx.mock
+def test_fetch_alphaxiv_skips_on_arxiv_429(monkeypatch):
+    _mock_mcp_and_arxiv(monkeypatch, HOT_FEED, arxiv_status=429)
+    with httpx.Client() as client:
+        items = fetch_alphaxiv(client, AlphaxivCfg(enabled=True, max_items=20))
+
+    assert items == []
+
+
+@respx.mock
+def test_fetch_alphaxiv_skips_on_metadata_timeout(monkeypatch):
+    _mock_mcp_and_arxiv(monkeypatch, HOT_FEED)
+    respx.get(ARXIV_API_URL).mock(side_effect=httpx.ReadTimeout("timed out"))
+    with httpx.Client() as client:
+        items = fetch_alphaxiv(client, AlphaxivCfg(enabled=True, max_items=20))
+
+    assert items == []
 
 
 @respx.mock

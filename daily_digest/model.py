@@ -29,6 +29,9 @@ class Item:
     published: datetime | None = None
     summary: str = ""
     citations: int | None = None  # from OpenAlex enrichment (None = not looked up)
+    # Optional source-declared section (e.g. GitHub releases -> tools_releases).
+    # The editor LLM may still reclassify a non-paper item as tech_news/tool.
+    section_hint: Section | None = None
 
 
 @dataclass(frozen=True)
