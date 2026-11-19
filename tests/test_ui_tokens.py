@@ -45,7 +45,7 @@ def _html(tmp_path, **extra):
     )
 
 
-class TestStep2TypographyHeader:
+class TestNewsroomShell:
     @staticmethod
     def _template():
         from daily_digest.util import PROJECT_ROOT
@@ -61,17 +61,19 @@ class TestStep2TypographyHeader:
         title_rule = re.search(r"\.card a\.title \{[^}]*\}", html).group(0)
         assert "var(--font-serif)" in title_rule
 
-    def test_sticky_blurred_header(self, tmp_path):
+    def test_section_nav_is_sticky(self, tmp_path):
         html = _html(tmp_path)
-        header_rule = re.search(r"header \{[^}]*\}", html).group(0)
-        assert "position: sticky" in header_rule
-        assert "backdrop-filter" in header_rule
-        assert "color-mix" in header_rule
+        nav_rule = re.search(r"\.section-nav \{[^}]*\}", html).group(0)
+        assert "position: sticky" in nav_rule
+        assert "top: 0" in nav_rule
+        assert "backdrop-filter" not in nav_rule
 
-    def test_date_uses_mono(self, tmp_path):
+    def test_dateline_uses_sans_caps(self, tmp_path):
         html = _html(tmp_path)
-        date_rule = re.search(r"\.date \{[^}]*\}", html).group(0)
-        assert "var(--font-mono)" in date_rule
+        date_rule = re.search(r"\.dateline \{[^}]*\}", html).group(0)
+        assert "var(--font-sans)" in date_rule
+        assert "text-transform: uppercase" in date_rule
+        assert "THỨ NĂM, 19.11.2026" in html
 
     def test_overview_no_newspaper_drop_cap(self, tmp_path):
         """The drop-cap split Vietnamese words ('H | ôm') — it must stay removed."""
@@ -87,16 +89,15 @@ class TestStep2TypographyHeader:
         assert 'overview.split(". ")[:4]' in tpl  # one bullet per sentence, capped
         assert "spotlight" in tpl  # last (takeaway) bullet highlighted
 
-    def test_overview_ai_briefing_surface(self, tmp_path):
+    def test_briefing_is_news_box_not_gradient(self, tmp_path):
         html = _html(tmp_path)
-        overview_rule = re.search(r"\.overview \{[^}]*\}", html).group(0)
-        assert "linear-gradient" in overview_rule  # gradient surface, not a flat column
-        assert ".overview::before" in html and "shimmer" in html  # alive, not static
-        assert (
-            "animation: none"
-            in html.split("prefers-reduced-motion: reduce", 1)[1][:160]
-        )
-        assert 'id="i-spark"' in html
+        overview_rule = re.search(r"\.overview\.briefing \{[^}]*\}", html).group(0)
+        assert "var(--paper-warm)" in overview_rule
+        assert "border-top: 3px solid var(--red)" in overview_rule
+        assert "linear-gradient" not in html
+        assert "shimmer" not in html
+        assert "TỔNG HỢP HÔM NAY" in html  # kicker from overview_label
+        assert "Trong ngày" in html
 
     def test_overview_line_height_reading(self, tmp_path):
         html = _html(tmp_path)
@@ -233,9 +234,11 @@ class TestStep4IconsStates:
 
     def test_theme_toggle_icon_swaps_by_theme(self, tmp_path):
         html = _html(tmp_path)
+        css = _css()
         assert 'class="icon icon-moon"' in html and 'class="icon icon-sun"' in html
-        assert '[data-theme="light"] .icon-sun { display: inline; }' in html
-        assert '[data-theme="light"] .icon-moon { display: none; }' in html
+        assert ".icon-sun { display: inline; }" in css  # light is the default
+        assert '[data-theme="dark"] .icon-sun { display: none; }' in css
+        assert '[data-theme="dark"] .icon-moon { display: inline; }' in css
 
     def test_typing_dots_animation(self, tmp_path):
         html = _html(tmp_path)
@@ -295,31 +298,24 @@ class TestStep5PrintPolish:
 
     def test_dark_theme_contrast_audit(self):
         pairs = [
-            ("#E8EDF6", "#0B1220", "text-1 on bg"),
-            ("#ABB6C9", "#0E1526", "text-2 on card"),
-            ("#74829B", "#0B1220", "text-3 on bg"),
-            ("#A78BFA", "#0B1220", "why-line on bg"),
-            ("#22D3EE", "#0B1220", "link on bg"),
-            ("#2DD4BF", "#0B1220", "papers badge on bg"),
-            ("#FBBF24", "#0B1220", "news badge on bg"),
-            ("#34D399", "#0B1220", "tools badge on bg"),
-            ("#F87171", "#0B1220", "danger on bg"),
+            ("#F2EFE9", "#121212", "text-1 on bg"),
+            ("#C9C4BC", "#121212", "text-2 on card"),
+            ("#9A958D", "#121212", "text-3 on bg"),
+            ("#FF6B6B", "#121212", "red on bg"),
+            ("#8CC8FF", "#121212", "link on bg"),
         ]
         for fg, bg, label in pairs:
             ratio = self._contrast(fg, bg)
-            assert ratio >= 4.5, f"dark: {label} = {ratio:.2f}:1 (< 4.5)"
+            assert ratio >= 4.5, f"night: {label} = {ratio:.2f}:1 (< 4.5)"
 
     def test_light_theme_contrast_audit(self):
         pairs = [
-            ("#1B2437", "#F6F7FB", "text-1 on bg"),
-            ("#46536B", "#FFFFFF", "text-2 on card"),
-            ("#5D6878", "#F6F7FB", "text-3 on bg"),
-            ("#6D28D9", "#F6F7FB", "why-line on bg"),
-            ("#0E7490", "#F6F7FB", "link on bg"),
-            ("#0F766E", "#F6F7FB", "papers badge on bg"),
-            ("#B45309", "#F6F7FB", "news badge on bg"),
-            ("#047857", "#F6F7FB", "tools badge on bg"),
-            ("#DC2626", "#F6F7FB", "danger on bg"),
+            ("#1A1A1A", "#FBFAF7", "text-1 on paper"),
+            ("#4F4F4F", "#FBFAF7", "text-2 on paper"),
+            ("#6B6B6B", "#FBFAF7", "text-3 on paper"),
+            ("#9F224E", "#FBFAF7", "red on paper"),
+            ("#1A4F8B", "#FBFAF7", "link on paper"),
+            ("#B91C1C", "#FBFAF7", "danger on paper"),
         ]
         for fg, bg, label in pairs:
             ratio = self._contrast(fg, bg)
@@ -327,17 +323,13 @@ class TestStep5PrintPolish:
 
     def test_light_tokens_match_audited_values(self):
         css = _css()
-        light_block = css.split('[data-theme="light"] {', 1)[1].split("}", 1)[0]
         for audited in (
-            "--text-3: #5D6878",
-            "--link: #0E7490",
-            "--section-papers: #0F766E",
-            "--section-news: #B45309",
-            "--section-tools: #047857",
+            "--paper: #FBFAF7",
+            "--red: #9F224E",
+            "--ink-3: #6B6B6B",
+            "--danger-ink: #B91C1C",
         ):
-            assert audited in light_block, (
-                f"light token drifted from the contrast audit: {audited}"
-            )
+            assert audited in css, f"token drifted from audit: {audited}"
 
 
 class TestStep1Tokens:
@@ -360,14 +352,13 @@ class TestStep1Tokens:
         ):
             assert token in html, f"missing token {token}"
 
-    def test_dark_is_default_and_light_overrides_exist(self, tmp_path):
+    def test_light_is_default_and_dark_overrides_exist(self, tmp_path):
         html = _html(tmp_path)
-        root = html.split(":root {", 1)[1].split("}", 1)[0]
-        assert "--bg: var(--slate-900);" in root  # dark default
-        assert '[data-theme="light"]' in html  # explicit light override
-        # system-preference light when the user never chose
-        assert "@media (prefers-color-scheme: light)" in html
-        assert ':root:not([data-theme="dark"])' in html
+        css = _css()
+        root = css.split(":root {", 1)[1].split("}", 1)[0]
+        assert "--paper: #FBFAF7;" in root  # light newsprint default
+        assert '[data-theme="dark"]' in css  # explicit night edition
+        assert "@media (prefers-color-scheme" not in css  # no auto switching
 
     def test_component_styles_use_tokens_not_raw_hex(self, tmp_path):
         html = _html(tmp_path)
@@ -396,5 +387,6 @@ class TestStep1Tokens:
 
     def test_font_stacks_are_system_offline(self, tmp_path):
         html = _html(tmp_path)
-        assert "Segoe UI Variable Serif" in html  # serif stack exists from day one
-        assert "Georgia" in html and "system-ui" in html
+        assert "Cambria" in html and '"Times New Roman"' in html  # Vietnamese glyphs
+        assert "Segoe UI Variable Text" in html
+        assert "fonts.googleapis.com" not in html

@@ -1,176 +1,161 @@
-  /* ===================== Design tokens — "Editorial Dark Reading Room" =====================
-     Three layers (primitive -> semantic -> component). Dark is the default;
-     light overrides via [data-theme="light"] or system preference. No CDN, no
-     external assets: offline-first by construction. */
+/* ===================== Newsroom tokens =====================
+   Light newsprint is the default; Night edition is an explicit override via
+   [data-theme="dark"]. No auto prefers-color-scheme switching. Offline: no
+   external fonts/assets. One crimson accent; section colors are decorative
+   ticks only and are never used for text. */
 
-  :root {
-    /* --- primitives --- */
-    --slate-950: #070B14;
-    --slate-900: #0B1220;
-    --slate-850: #0E1526;
-    --slate-800: #141E33;
-    --slate-700: #1D2A45;
-    --slate-400: #64748B;
-    --slate-300: #9AA7BC;
-    --slate-200: #CBD5E4;
-    --violet-600: #7C3AED;
-    --violet-500: #8B5CF6;
-    --violet-400: #A78BFA;
-    --cyan-400: #22D3EE;
-    --teal-400: #2DD4BF;
-    --amber-400: #FBBF24;
-    --emerald-400: #34D399;
-    --red-400: #F87171;
+:root {
+  /* paper & ink */
+  --paper: #FBFAF7;
+  --paper-warm: #F3F1EB;
+  --ink: #1A1A1A;
+  --ink-2: #4F4F4F;
+  --ink-3: #6B6B6B;
+  --rule: #E5E5E5;
+  --rule-strong: #1A1A1A;
 
-    /* --- semantic (dark default) --- */
-    --bg: var(--slate-900);
-    --bg-raised: var(--slate-850);
-    --bg-overlay: var(--slate-800);
-    --text-1: #E8EDF6;
-    --text-2: #ABB6C9;
-    --text-3: #74829B;
-    --accent: var(--violet-500);
-    --accent-strong: var(--violet-400);
-    --accent-soft: rgba(139, 92, 246, 0.14);
-    --link: var(--cyan-400);
-    --border: rgba(154, 167, 188, 0.15);
-    --border-strong: rgba(154, 167, 188, 0.30);
-    --section-papers: var(--teal-400);
-    --section-news: var(--amber-400);
-    --section-tools: var(--emerald-400);
-    --danger: var(--red-400);
-    --ring: var(--violet-400);
+  /* brand */
+  --red: #9F224E;
+  --red-ink: #7A1839;
+  --danger-ink: #B91C1C;
+  --link: #1A4F8B;
 
-    /* --- component --- */
-    --card-radius: 14px;
-    --card-gap: 14px;
-    --shadow-1: 0 1px 2px rgba(3, 7, 18, 0.35);
-    --shadow-2: 0 8px 24px rgba(3, 7, 18, 0.45);
-    --font-serif: "Segoe UI Variable Serif", Georgia, "Times New Roman", serif;
-    --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-    --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
-  }
+  /* section identity — decorative ticks only */
+  --sec-papers: #0F766E;
+  --sec-news: #B45309;
+  --sec-tools: #047857;
 
-  [data-theme="light"] {
-    --bg: #F6F7FB;
-    --bg-raised: #FFFFFF;
-    --bg-overlay: #EEF0F7;
-    --text-1: #1B2437;
-    --text-2: #46536B;
-    --text-3: #5D6878;
-    --accent: var(--violet-600);
-    --accent-strong: #6D28D9;
-    --accent-soft: rgba(124, 58, 237, 0.10);
-    --link: #0E7490;
-    --border: rgba(27, 36, 55, 0.12);
-    --border-strong: rgba(27, 36, 55, 0.25);
-    --section-papers: #0F766E;
-    --section-news: #B45309;
-    --section-tools: #047857;
-    --danger: #DC2626;
-    --ring: var(--violet-600);
-    --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
-    --shadow-2: 0 8px 24px rgba(15, 23, 42, 0.14);
-  }
+  /* semantic aliases kept from the previous design system */
+  --bg: var(--paper);
+  --bg-raised: var(--paper);
+  --bg-overlay: var(--paper-warm);
+  --text-1: var(--ink);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-3);
+  --accent: var(--red);
+  --accent-strong: var(--red-ink);
+  --accent-soft: rgba(159, 34, 78, 0.08);
+  --border: var(--rule);
+  --border-strong: var(--rule-strong);
+  --danger: var(--danger-ink);
+  --ring: var(--red);
 
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-      --bg: #F6F7FB;
-      --bg-raised: #FFFFFF;
-      --bg-overlay: #EEF0F7;
-      --text-1: #1B2437;
-      --text-2: #46536B;
-      --text-3: #5D6878;
-      --accent: var(--violet-600);
-      --accent-strong: #6D28D9;
-      --accent-soft: rgba(124, 58, 237, 0.10);
-      --link: #0E7490;
-      --border: rgba(27, 36, 55, 0.12);
-      --border-strong: rgba(27, 36, 55, 0.25);
-      --section-papers: #0F766E;
-      --section-news: #B45309;
-      --section-tools: #047857;
-      --danger: #DC2626;
-      --ring: var(--violet-600);
-      --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08);
-      --shadow-2: 0 8px 24px rgba(15, 23, 42, 0.14);
-    }
-  }
+  --card-radius: 2px;
+  --card-gap: 24px;
+  --shadow-1: none;
+  --shadow-2: none;
 
-  /* ===================== base ===================== */
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text-1);
-         font: 15px/1.55 var(--font-sans); -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 28px 20px 60px; }
-  a { color: inherit; }
-  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+  --font-serif: "Newsreader", Cambria, "Times New Roman", Georgia, serif;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
 
-  /* ===================== header (sticky, blurred) ===================== */
-  header { position: sticky; top: 0; z-index: 10; margin: 0 -20px 8px; padding: 20px 20px 14px;
-           background: color-mix(in srgb, var(--bg) 80%, transparent);
-           backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-           border-bottom: 1px solid var(--border); }
-  h1 { margin: 0 0 6px; font-family: var(--font-serif); font-size: 28px; font-weight: 650;
-       letter-spacing: -0.01em; }
-  .date { color: var(--text-3); font-size: 12.5px; font-family: var(--font-mono); letter-spacing: 0.02em; }
-  .badges { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
-  .badge { background: var(--accent-soft); color: var(--accent-strong); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-           border-radius: 999px; padding: 3px 12px; font-size: 12.5px; font-weight: 600; }
-  .badge.warn { background: rgba(251, 191, 36, 0.14); color: var(--section-news); }
+  --content-max: 1040px;
+  --gutter: 24px;
+  --radius-btn: 2px;
+}
 
-  .theme-toggle { position: absolute; top: 24px; right: 22px; width: 34px; height: 34px;
-                  display: inline-flex; align-items: center; justify-content: center;
-                  border: 1px solid var(--border); background: var(--bg-raised); color: var(--text-2);
-                  border-radius: 10px; cursor: pointer; transition: all 0.18s ease; }
-  .theme-toggle:hover { border-color: var(--accent); color: var(--accent-strong); }
-  .icon-sun { display: none; }
-  [data-theme="light"] .icon-sun { display: inline; }
-  [data-theme="light"] .icon-moon { display: none; }
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) .icon-sun { display: inline; }
-    :root:not([data-theme="dark"]) .icon-moon { display: none; }
-  }
+[data-theme="dark"] {
+  --paper: #121212;
+  --paper-warm: #1A1A1A;
+  --ink: #F2EFE9;
+  --ink-2: #C9C4BC;
+  --ink-3: #9A958D;
+  --rule: #2E2E2E;
+  --rule-strong: #F2EFE9;
+  --red: #FF6B6B;
+  --red-ink: #FF9A9A;
+  --danger-ink: #FF8A8A;
+  --link: #8CC8FF;
+  --accent-soft: rgba(255, 107, 107, 0.12);
+  --sec-papers: #5EEAD4;
+  --sec-news: #FCD34D;
+  --sec-tools: #6EE7B7;
+}
 
-  .degraded { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
-              background: rgba(248, 113, 113, 0.08); border: 1px solid rgba(248, 113, 113, 0.30);
-              color: var(--danger); border-radius: 999px; padding: 3px 12px; margin: 10px 0 0;
-              font-size: 12.5px; }
-  .notice { background: rgba(248, 113, 113, 0.10); border: 1px solid rgba(248, 113, 113, 0.35);
-            color: var(--danger); border-radius: 10px; padding: 10px 14px; margin: 16px 0 0; font-size: 13.5px; }
+/* ===================== base ===================== */
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text-1);
+       font: 15px/1.55 var(--font-sans); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: var(--content-max); margin: 0 auto; padding: 0 var(--gutter) 60px; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
 
-  /* ===== TL;DR card: an AI briefing, not a newspaper column =====
-     Gradient surface + shimmering top line + one scannable bullet per sentence;
-     the last (takeaway) sentence gets a spotlight sub-box. No drop-cap. */
-  .overview { position: relative; overflow: hidden; margin: 18px 0 0;
-              background: linear-gradient(140deg, var(--accent-soft), transparent 55%), var(--bg-raised);
-              border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
-              border-left: 4px solid var(--accent); border-radius: var(--card-radius);
-              padding: 18px 20px 16px; box-shadow: var(--shadow-1); }
-  .overview::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px;
-                      background: linear-gradient(90deg, transparent, var(--accent), var(--link), transparent);
-                      background-size: 200% 100%; opacity: 0.7;
-                      animation: shimmer 8s linear infinite; }
-  @keyframes shimmer { to { background-position: 200% 0; } }
-  @media (prefers-reduced-motion: reduce) { .overview::before { animation: none; } }
-  .overview h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em;
-                 color: var(--accent-strong); display: flex; align-items: center; gap: 10px; }
-  .overview h2 .spark { color: var(--accent); }
-  .overview h2 .pill { background: var(--accent-soft); color: var(--accent-strong); border-radius: 999px;
-                       padding: 1px 10px; font-size: 11px; letter-spacing: 0; }
-  .overview-points { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; }
-  .overview-point { display: flex; gap: 10px; color: var(--text-1); font-size: 15px; line-height: 1.6; }
-  .overview-point::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%;
-                            margin-top: 0.58em; background: var(--accent);
-                            box-shadow: 0 0 8px var(--accent-soft); }
-  .overview-point.spotlight { background: var(--accent-soft);
-                              border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
-                              border-radius: 10px; padding: 9px 12px; }
-  /* The spotlight is a takeaway callout, not another bullet: swap the dot for an arrow. */
-  .overview-point.spotlight::before { content: "→"; width: auto; height: auto; background: none;
-                                      box-shadow: none; color: var(--accent); font-weight: 700;
-                                      margin-top: 0.05em; }
+/* ===================== masthead & dateline ===================== */
+header.masthead { padding: 22px 0 0; border-top: 3px double var(--rule-strong); text-align: center; }
+.masthead-top { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+                font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.12em;
+                text-transform: uppercase; color: var(--ink-3); }
+.edition { display: inline-flex; align-items: center; gap: 6px; }
+.theme-toggle { width: 30px; height: 30px; border: 0; background: transparent;
+                color: var(--ink-2); cursor: pointer; display: inline-flex;
+                align-items: center; justify-content: center; }
+.theme-toggle:hover { color: var(--red); }
+h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
+.wordmark { margin: 8px 0 6px; font: 700 42px/1.02 var(--font-serif);
+            letter-spacing: -0.03em; color: var(--ink); display: flex;
+            align-items: center; justify-content: center; gap: 10px; }
+.wordmark .stamp { display: inline-flex; align-items: center; justify-content: center;
+                   width: 26px; height: 26px; background: var(--red); color: #fff;
+                   font: 700 11px/1 var(--font-sans); letter-spacing: 0; }
+.dateline { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px;
+            padding: 7px 0 9px; border-bottom: 1px solid var(--rule);
+            font: 500 10.5px/1.4 var(--font-sans); letter-spacing: 0.10em;
+            text-transform: uppercase; color: var(--ink-3); }
+.icon-sun { display: inline; }
+.icon-moon { display: none; }
+[data-theme="dark"] .icon-sun { display: none; }
+[data-theme="dark"] .icon-moon { display: inline; }
 
-  /* ===================== sections & cards =====================
+/* ===================== section nav (sticky) ===================== */
+.section-nav { position: sticky; top: 0; z-index: 30; display: flex; align-items: stretch;
+               gap: 22px; height: 42px; background: var(--paper);
+               border-bottom: 1px solid var(--rule); overflow-x: auto;
+               scrollbar-width: none; }
+.section-nav::-webkit-scrollbar { display: none; }
+.section-nav a { flex: none; display: inline-flex; align-items: center;
+                 font: 700 11px/1 var(--font-sans); letter-spacing: 0.08em;
+                 text-transform: uppercase; color: var(--ink-2);
+                 text-decoration: none; border-bottom: 2px solid transparent;
+                 padding: 0 1px; }
+.section-nav a:hover { color: var(--red); }
+.section-nav a.active { color: var(--red); border-bottom-color: var(--red); }
+@media (min-width: 760px) {
+  .section-nav .pinned-link { display: none; }
+}
+
+/* ===================== status strips ===================== */
+.status-strip { margin: 10px 0 0; padding: 8px 12px; border: 1px solid var(--rule);
+                background: var(--paper-warm); font-size: 12.5px; line-height: 1.45; }
+.status-strip.notice { color: var(--ink-2); }
+.status-strip.degraded { border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+                         color: var(--danger); }
+.status-strip code { font-family: var(--font-mono); font-size: 0.95em; }
+
+/* ===================== briefing box ===================== */
+.overview.briefing { margin: 22px 0 0; padding: 16px 18px; background: var(--paper-warm);
+                     border-top: 3px solid var(--red); border-bottom: 1px solid var(--rule);
+                     display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+                     gap: 18px 24px; }
+.briefing-head { min-width: 0; }
+.briefing .kicker { font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.12em;
+                    text-transform: uppercase; color: var(--red); }
+.briefing-title { margin-top: 4px; font: 700 22px/1.15 var(--font-serif); color: var(--ink); }
+.overview-points { counter-reset: brief; list-style: none; margin: 0; padding: 0;
+                   display: grid; gap: 8px; }
+.overview-point { display: flex; gap: 10px; color: var(--ink-2);
+                  font: 14.5px/1.6 var(--font-sans); }
+.overview-point::before { counter-increment: brief; content: counter(brief, decimal-leading-zero);
+                          flex: none; width: 20px; color: var(--red); font-weight: 700;
+                          font-size: 11px; line-height: 1.6; letter-spacing: 0.04em; }
+.overview-point.spotlight { color: var(--ink); font-weight: 600; }
+.overview-point.spotlight::before { content: "→"; width: auto; background: none;
+                                    box-shadow: none; color: var(--red); font-weight: 700; }
+.briefing .spark, .briefing .pill { display: none; }
+@media (max-width: 760px) {
+  .overview.briefing { grid-template-columns: 1fr; padding: 14px; }
+}
+
+/* ===================== sections & cards =====================
      Section identity: each column gets --section-color; cards carry a subtle
      left bar that lights up on hover. Stagger reveal respects reduced motion. */
   section.block { margin-top: 28px; }

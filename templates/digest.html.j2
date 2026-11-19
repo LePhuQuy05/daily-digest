@@ -23,43 +23,55 @@
   </defs>
 </svg>
 <div class="wrap">
-  <header>
-    <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
-      <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
-      <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
-    </button>
-    <h1>Daily AI Digest</h1>
-    <div class="date">{{ date }} · {{ total }} items picked for you</div>
-    <div class="badges">
-      <span class="badge">ranked by {% if mode == "llm" %}{{ model_name }}{% elif mode == "empty" %}empty digest (muted){% else %}heuristic (LLM offline){% endif %}</span>
-      {% if counts.papers %}<span class="badge">{{ counts.papers }} papers</span>{% endif %}
-      {% if counts.tech_news %}<span class="badge">{{ counts.tech_news }} tech news</span>{% endif %}
-      {% if counts.tools_releases %}<span class="badge">{{ counts.tools_releases }} tools</span>{% endif %}
+  <header class="masthead" id="top">
+    <div class="masthead-top">
+      <span class="edition">BẢN TIN AI</span>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+        <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
+        <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
+      </button>
     </div>
-    {% if notice %}
-    <div class="notice">{{ notice }}</div>
-    {% endif %}
-    {% if degraded %}
-    <div class="degraded">
-      This digest ran in degraded mode{% if sources_failed %} — source(s) unavailable: {{ sources_failed | join(", ") }}{% endif %}.
-      Details in <code>logs/daily-digest.log</code>.
+    <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
+    <div class="dateline">
+      <span>{{ date_long or date }} · {{ total }} câu chuyện</span>
+      <span>Biên tập: {% if mode == "llm" %}{{ model_name }}{% elif mode == "empty" %}empty digest{% else %}heuristic{% endif %}</span>
     </div>
-    {% endif %}
-
-    {% if overview %}
-    <section class="overview">
-      <h2><svg class="icon-sm spark" aria-hidden="true"><use href="#i-spark"/></svg>{{ overview_label }} <span class="pill">TL;DR</span></h2>
-      <ul class="overview-points">
-        {% for point in overview.split(". ")[:4] %}
-        <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
-        {% endfor %}
-      </ul>
-    </section>
-    {% endif %}
   </header>
 
+  <nav class="section-nav" aria-label="Chuyên mục">
+    <a href="#top" class="active">Tổng hợp</a>
+    <a href="#papers">Nghiên cứu</a>
+    <a href="#tech-news">Công nghệ</a>
+    <a href="#tools-releases">Công cụ</a>
+    {% if pinned %}<a href="#pinned" class="pinned-link">Nhìn lại</a>{% endif %}
+  </nav>
+
+  {% if notice %}
+  <div class="status-strip notice">{{ notice }}</div>
+  {% endif %}
+  {% if degraded %}
+  <div class="status-strip degraded">
+    This digest ran in degraded mode{% if sources_failed %} — source(s) unavailable: {{ sources_failed | join(", ") }}{% endif %}.
+    Details in <code>logs/daily-digest.log</code>.
+  </div>
+  {% endif %}
+
+  {% if overview %}
+  <section class="overview briefing" id="briefing" aria-label="{{ overview_label }}">
+    <div class="briefing-head">
+      <div class="kicker">{{ overview_label | upper }}</div>
+      <div class="briefing-title">Trong ngày</div>
+    </div>
+    <ul class="overview-points">
+      {% for point in overview.split(". ")[:4] %}
+      <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
   {% if pinned %}
-  <section class="block pinned-block">
+  <section class="block pinned-block" id="pinned">
     <h2><svg class="icon-sm" style="color: var(--section-news)" aria-hidden="true"><use href="#i-pin"/></svg> Nhìn lại <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">+{{ pinned_overflow }} mục đã lưu cũ hơn</span>{% endif %}</h2>
     {% for p in pinned %}
     <article class="card" data-uid="{{ p.uid }}">
@@ -81,7 +93,7 @@
   {% endif %}
 
   {% for section_key, section_items in sections.items() %}
-    <section class="block sec-{{ section_key }}">
+    <section class="block sec-{{ section_key }}" id="{{ section_key | replace('_', '-') }}">
       <h2><span class="idx">{{ "%02d" | format(loop.index) }}</span>{{ section_titles[section_key] }} <span class="pill">{{ section_items | length }}</span></h2>
       {% for r in section_items %}
       <article class="card" data-uid="{{ r.item.id }}" style="--i: {{ loop.index0 }}">
@@ -140,8 +152,7 @@
     if (toggle) {
       toggle.addEventListener("click", function () {
         var current = document.documentElement.getAttribute("data-theme");
-        var systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var effective = current || (systemDark ? "dark" : "light");
+        var effective = current || "light";
         var next = effective === "dark" ? "light" : "dark";
         applyTheme(next);
         try { localStorage.setItem(KEY, next); } catch (e2) { /* per-session only */ }
