@@ -249,6 +249,16 @@ class TestStep4IconsStates:
         tpl = self._template()
         assert "IntersectionObserver" in tpl
         assert "aria-current" in tpl
+        assert "section-nav-indicator" in tpl
+        assert "moveIndicator" in tpl
+        assert "offsetLeft" in tpl
+        assert "scrollIntoView" in tpl
+
+    def test_nav_scrolls_smoothly_to_sections(self, tmp_path):
+        html = _html(tmp_path)
+        assert "scroll-behavior: smooth" in html
+        assert "scroll-margin-top: 56px" in html
+        assert 'behavior: reduce ? "auto" : "smooth"' in html
 
     def test_theme_toggle_icon_swaps_by_theme(self, tmp_path):
         html = _html(tmp_path)

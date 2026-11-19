@@ -48,6 +48,7 @@
     <a href="#tech-news">Công nghệ</a>
     <a href="#tools-releases">Công cụ</a>
     {% if pinned %}<a href="#pinned" class="pinned-link">Nhìn lại</a>{% endif %}
+    <span class="section-nav-indicator" aria-hidden="true"></span>
   </nav>
 
   {% if notice %}
@@ -469,10 +470,66 @@
 </script>
 <script>
   (function () {
-    var links = document.querySelectorAll('.section-nav a[href^="#"]');
-    if (!("IntersectionObserver" in window) || !links.length) return;
+    var nav = document.querySelector(".section-nav");
+    if (!nav) return;
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+    if (!links.length) return;
+    var indicator = nav.querySelector(".section-nav-indicator");
     var byId = {};
+    var navLockUntil = 0;
     links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+
+    function moveIndicator(link) {
+      if (!indicator) return;
+      if (!link) { indicator.style.width = "0px"; return; }
+      indicator.style.width = link.offsetWidth + "px";
+      indicator.style.transform = "translateX(" + link.offsetLeft + "px)";
+    }
+
+    function activate(link) {
+      links.forEach(function (a) {
+        a.classList.remove("active");
+        a.removeAttribute("aria-current");
+      });
+      if (!link) return;
+      link.classList.add("active");
+      link.setAttribute("aria-current", "page");
+      moveIndicator(link);
+    }
+
+    activate(nav.querySelector("a.active") || links[0]);
+    links.forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        var target = document.getElementById(a.getAttribute("href").slice(1));
+        if (target) {
+          ev.preventDefault();
+          navLockUntil = Date.now() + 800;
+          var reduce = window.matchMedia &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          target.scrollIntoView({
+            behavior: reduce ? "auto" : "smooth",
+            block: "start",
+          });
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", a.getAttribute("href"));
+          }
+        }
+        activate(a);
+      });
+    });
+    window.addEventListener("resize", function () {
+      moveIndicator(nav.querySelector("a.active"));
+    });
+    window.addEventListener("load", function () {
+      moveIndicator(nav.querySelector("a.active"));
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        moveIndicator(nav.querySelector("a.active"));
+      });
+    }
+
+    if (!("IntersectionObserver" in window)) return;
     var targets = [];
     links.forEach(function (a) {
       var t = document.getElementById(a.getAttribute("href").slice(1));
@@ -480,16 +537,9 @@
     });
     var observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        links.forEach(function (a) {
-          a.classList.remove("active");
-          a.removeAttribute("aria-current");
-        });
+        if (!entry.isIntersecting || Date.now() < navLockUntil) return;
         var link = byId[entry.target.id];
-        if (link) {
-          link.classList.add("active");
-          link.setAttribute("aria-current", "page");
-        }
+        if (link) activate(link);
       });
     }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
     targets.forEach(function (t) { observer.observe(t); });
