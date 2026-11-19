@@ -60,6 +60,10 @@ class HnCfg:
     enabled: bool = True
     min_points: int = 30
     hits: int = 60
+    # Link posts carry no Algolia story_text: fetch the target page's meta
+    # description / first paragraph so the editor pool sees a real summary.
+    hydrate: bool = True
+    hydrate_limit: int = 12  # bounded: max article pages per run
 
 
 @dataclass

@@ -13,8 +13,11 @@ from dataclasses import replace
 
 import httpx
 
+from daily_digest.config import Config
 from daily_digest.model import Item
 from daily_digest.net import get_public
+from daily_digest.relevance import matches_topics
+from daily_digest.util import LOG
 
 MAX_ARTICLE_BYTES = 2_000_000
 MIN_DESCRIPTION_CHARS = 80
@@ -107,3 +110,55 @@ def hydrate_item(
     if len(description) < min_chars:
         return item
     return replace(item, summary=description[:MAX_SUMMARY_CHARS])
+
+
+def _hn_hydration_candidates(items: list[Item], config: Config) -> list[Item]:
+    """HN link posts worth one article fetch: thin summary, external target,
+    and an AI-relevant title (the same broad filter balanced_pool applies)."""
+    return [
+        item
+        for item in items
+        if item.source == "hn"
+        and len(item.summary) < MIN_DESCRIPTION_CHARS
+        and item.url.lower().startswith(("http://", "https://"))
+        and "news.ycombinator.com/item" not in item.url.lower()
+        and matches_topics(item.title, item.summary, config.sources.feeds.topics)
+    ]
+
+
+def hydrate_hn_links(
+    items: list[Item],
+    config: Config,
+    client: httpx.Client | None = None,
+) -> list[Item]:
+    """Hydrate AI-relevant HN link posts with empty/thin summaries.
+
+    Best-effort and bounded: at most `hn.hydrate_limit` article pages, highest
+    points first. Failures keep the original item and never degrade the run.
+    Returns a new list (Item is frozen); the input list is untouched.
+    """
+    hn_cfg = config.sources.hn
+    if not hn_cfg.hydrate:
+        return items
+
+    def run(pool_client: httpx.Client) -> list[Item]:
+        candidates = _hn_hydration_candidates(items, config)
+        candidates.sort(key=lambda item: item.points or 0, reverse=True)
+        targets = candidates[: hn_cfg.hydrate_limit]
+        if not targets:
+            return items
+        hydrated: dict[str, Item] = {}
+        for item in targets:
+            new_item = hydrate_item(pool_client, item)
+            if new_item is not item:
+                hydrated[item.id] = new_item
+        if hydrated:
+            LOG.info(
+                "hn hydration: %d/%d link posts hydrated", len(hydrated), len(targets)
+            )
+        return [hydrated.get(item.id, item) for item in items]
+
+    if client is not None:
+        return run(client)
+    with httpx.Client(timeout=ARTICLE_TIMEOUT, follow_redirects=False) as owned_client:
+        return run(owned_client)

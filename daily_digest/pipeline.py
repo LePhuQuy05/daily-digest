@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 
 from daily_digest.config import Config
+from daily_digest.article import hydrate_hn_links
 from daily_digest.enrich import enrich_citations
 from daily_digest.feedback import (
     FeedbackAggregate,
@@ -205,6 +206,12 @@ def run_day(
             exit_code=0,
             message="muted everything today",
         )
+
+    # 2b. HN link hydration: link posts carry no Algolia story_text, so the
+    # editor pool and the writer would otherwise see title-only items.
+    # Best-effort quality step — failures never degrade the run.
+    if config.sources.hn.hydrate:
+        fresh = hydrate_hn_links(fresh, config)
 
     # 2c. F1 feedback: aggregate recent signals (ratings within the window,
     # saves pinned until unsave). ANY failure degrades to "no feedback" — never
