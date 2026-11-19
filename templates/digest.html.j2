@@ -61,6 +61,7 @@
   {% if front_page.lead %}
   <div class="top-fold">
     {{ story(front_page.lead, "hero") }}
+    {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
     {{ rail() }}
   </div>
   {% else %}
@@ -72,23 +73,20 @@
 
   {% for section in front_page.sections %}
   {% set section_key = section.key %}
+  {% set shown = (1 if section.lead else 0) + (section.briefs | length) %}
   {% set section_variant = "empty" if section.total == 0 else ("hero-only" if section.lead is none else ("band" if section.briefs | length == 0 else ("split" if section.briefs | length <= 3 else "grid"))) %}
   <section class="section-front sec-{{ section_key }} section-front--{{ section_variant }}" id="{{ section_key | replace('_', '-') }}">
     <div class="section-head">
       <span class="idx">{{ "%02d" | format(loop.index) }}</span>
       <h2>{{ section.title }}</h2>
-      <span class="count">{{ section.total }} stories</span>
+      <span class="count">{{ section.total }} stories{% if section.total > shown %} · {{ section.total - shown }} ở trên{% endif %}</span>
     </div>
 
     {% if section.total == 0 %}
     <p class="empty-note">— hôm nay không có mục nào trong nhóm này —</p>
     {% elif section.lead is none %}
-    <p class="section-note"><a href="#story-{{ front_page.lead.item.id if front_page.lead else '' }}">Bài chính ở trên.</a></p>
+    <p class="section-note">Bài chính ở trên.</p>
     {% else %}
-    {% set shown = 1 + (section.briefs | length) %}
-    {% if section.total > shown %}
-    <p class="section-note"><a href="#story-{{ front_page.lead.item.id if front_page.lead else '' }}">1 bài chính ở trên.</a></p>
-    {% endif %}
     <div class="section-body">
       {{ story(section.lead, "lead") }}
       {% if section.briefs %}
@@ -189,6 +187,34 @@
       var input = ev.target.closest ? ev.target.closest(".ask-input") : null;
       if (input) { ev.preventDefault(); sendAsk(input.closest("[data-uid]")); }
     });
+  })();
+</script>
+<script>
+  (function () {
+    var links = document.querySelectorAll('.section-nav a[href^="#"]');
+    if (!("IntersectionObserver" in window) || !links.length) return;
+    var byId = {};
+    links.forEach(function (a) { byId[a.getAttribute("href").slice(1)] = a; });
+    var targets = [];
+    links.forEach(function (a) {
+      var t = document.getElementById(a.getAttribute("href").slice(1));
+      if (t) targets.push(t);
+    });
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        links.forEach(function (a) {
+          a.classList.remove("active");
+          a.removeAttribute("aria-current");
+        });
+        var link = byId[entry.target.id];
+        if (link) {
+          link.classList.add("active");
+          link.setAttribute("aria-current", "page");
+        }
+      });
+    }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
+    targets.forEach(function (t) { observer.observe(t); });
   })();
 </script>
 </body>

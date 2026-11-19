@@ -21,11 +21,14 @@
     <button class="act" data-feedback="{{ item.item.id }}|dislike" title="Bớt loại này ra" aria-label="Không thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>
     <button class="act" data-feedback="{{ item.item.id }}|save" title="Giữ lại trong mục Nhìn lại" aria-label="Lưu mục này vào Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Lưu</span></button>
   </div>
-  <div class="ask">
-    <input class="ask-input" type="text" placeholder="Hỏi thêm về mục này… (Ctrl+Enter)" aria-label="Nhập câu hỏi về mục này">
-    <button class="act ask-btn" data-ask="1" aria-label="Hỏi về mục này"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Hỏi</button>
+  <details class="ask">
+    <summary>Hỏi biên tập</summary>
+    <div class="ask-row">
+      <input class="ask-input" type="text" placeholder="Hỏi thêm về mục này… (Ctrl+Enter)" aria-label="Nhập câu hỏi về mục này">
+      <button class="act ask-btn" data-ask="1" aria-label="Hỏi về mục này"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Hỏi</button>
+    </div>
     <div class="ask-answer" aria-live="polite"></div>
-  </div>
+  </details>
 </article>
 {% endmacro %}
 

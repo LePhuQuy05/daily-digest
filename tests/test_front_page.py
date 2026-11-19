@@ -43,9 +43,15 @@ class TestFrontPageRealShape:
     def test_papers_lead_and_briefs_after_hero(self):
         page = build_front_page(_real_mix())
         papers = next(s for s in page.sections if s.key == "papers")
-        assert papers.total == 11  # includes hero
-        assert papers.lead is not None and papers.lead.item.id == "p1"
-        assert [b.item.id for b in papers.briefs] == [f"p{i}" for i in range(2, 11)]
+        assert papers.total == 11  # includes hero + secondary
+        assert page.secondary is not None and page.secondary.item.id == "p1"
+        assert papers.lead is not None and papers.lead.item.id == "p2"
+        assert [b.item.id for b in papers.briefs] == [f"p{i}" for i in range(3, 11)]
+
+    def test_secondary_is_second_ranked(self):
+        ranked = _real_mix()
+        page = build_front_page(ranked)
+        assert page.secondary is ranked[1]
 
     def test_one_item_section_becomes_band_lead(self):
         page = build_front_page(_real_mix())
@@ -61,10 +67,10 @@ class TestFrontPageRealShape:
         assert tools.lead is None
         assert tools.briefs == ()
 
-    def test_most_read_is_next_three_ranked(self):
+    def test_most_read_skips_hero_and_secondary(self):
         ranked = _real_mix()
         page = build_front_page(ranked)
-        assert page.most_read == tuple(ranked[1:4])
+        assert page.most_read == tuple(ranked[2:5])
 
     def test_source_counts_raw_keys(self):
         page = build_front_page(_real_mix())
@@ -76,6 +82,8 @@ class TestFrontPageRealShape:
         rendered = []
         if page.lead:
             rendered.append(page.lead)
+        if page.secondary:
+            rendered.append(page.secondary)
         for section in page.sections:
             if section.lead:
                 rendered.append(section.lead)
@@ -84,17 +92,19 @@ class TestFrontPageRealShape:
         assert len(ids) == len(set(ids)) == 12
         assert set(ids) == {r.item.id for r in ranked}
 
-    def test_hero_not_duplicated_in_its_section(self):
+    def test_hero_and_secondary_not_duplicated_in_their_section(self):
         page = build_front_page(_real_mix())
         papers = next(s for s in page.sections if s.key == "papers")
         section_ids = {papers.lead.item.id} | {b.item.id for b in papers.briefs}
         assert page.lead.item.id not in section_ids
+        assert page.secondary.item.id not in section_ids
 
 
 class TestFrontPageEdgeCases:
     def test_empty_digest(self):
         page = build_front_page([])
         assert page.lead is None
+        assert page.secondary is None
         assert tuple(s.key for s in page.sections) == SECTIONS
         assert all(
             s.lead is None and s.briefs == () and s.total == 0 for s in page.sections
@@ -107,18 +117,22 @@ class TestFrontPageEdgeCases:
         page = build_front_page(ranked)
         papers = next(s for s in page.sections if s.key == "papers")
         assert page.lead is not None and page.lead.item.id == "only"
+        assert page.secondary is None
         assert papers.total == 1
         assert papers.lead is None
         assert papers.briefs == ()
         assert page.most_read == ()
 
-    def test_two_items_same_section_lead_plus_brief(self):
+    def test_two_items_same_section_hero_plus_secondary(self):
         ranked = [_ranked_item("a", "papers"), _ranked_item("b", "papers")]
         page = build_front_page(ranked)
         papers = next(s for s in page.sections if s.key == "papers")
+        assert page.lead.item.id == "a"
+        assert page.secondary.item.id == "b"
         assert papers.total == 2
-        assert papers.lead is not None and papers.lead.item.id == "b"
+        assert papers.lead is None
         assert papers.briefs == ()
+        assert page.most_read == ()
 
     def test_order_is_preserved_not_reranked(self):
         ranked = [
@@ -133,20 +147,24 @@ class TestFrontPageEdgeCases:
         tech = next(s for s in page.sections if s.key == "tech_news")
         tools = next(s for s in page.sections if s.key == "tools_releases")
         assert page.lead.item.id == "a"
+        assert page.secondary.item.id == "b"  # tech secondary is above its section
         assert papers.total == 3
         assert papers.lead.item.id == "c"
         assert [b.item.id for b in papers.briefs] == ["e"]
-        assert tech.lead.item.id == "b"
+        assert tech.total == 1
+        assert tech.lead is None  # the only tech item is the secondary
         assert tools.lead.item.id == "d"
-        assert page.most_read == tuple(ranked[1:4])
+        assert page.most_read == tuple(ranked[2:5])
 
-    def test_section_with_only_hero_is_empty_but_total_correct(self):
+    def test_section_with_only_lead_and_secondary_above(self):
         ranked = [_ranked_item("hero", "papers"), _ranked_item("t", "tech_news", "hn")]
         page = build_front_page(ranked)
         papers = next(s for s in page.sections if s.key == "papers")
+        tech = next(s for s in page.sections if s.key == "tech_news")
         assert page.lead.item.id == "hero"
-        assert papers.total == 1
-        assert papers.lead is None
+        assert page.secondary.item.id == "t"
+        assert papers.total == 1 and papers.lead is None
+        assert tech.total == 1 and tech.lead is None
 
 
 class TestDateLong:

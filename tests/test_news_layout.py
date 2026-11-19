@@ -68,7 +68,7 @@ def test_most_read_links_point_to_existing_story_anchors(tmp_path):
     start = html.index('<section class="most-read">')
     end = html.index("</section>", start)
     rail = html[start:end]
-    for item in ranked[1:4]:
+    for item in ranked[2:5]:
         uid = item.item.id
         assert f'href="#story-{uid}"' in rail
         assert f'id="story-{uid}"' in html
@@ -113,7 +113,7 @@ def test_content_aware_section_variants(tmp_path):
     assert "section-front--band" in tech
     assert "section-front--empty" in tools
     assert "11 stories" in papers
-    assert "1 bài chính ở trên" in papers
+    assert "2 ở trên" in papers
     assert "hôm nay không có mục nào" in tools
     assert 'id="papers"' in html
     assert 'id="tech-news"' in html
@@ -122,7 +122,13 @@ def test_content_aware_section_variants(tmp_path):
 
 def test_split_and_hero_only_variants(tmp_path):
     split = _render(
-        tmp_path, [_item("p0", "papers"), _item("p1", "papers"), _item("p2", "papers")]
+        tmp_path,
+        [
+            _item("p0", "papers"),
+            _item("p1", "papers"),
+            _item("p2", "papers"),
+            _item("p3", "papers"),
+        ],
     )
     assert "section-front--split" in _section(split, "papers")
 

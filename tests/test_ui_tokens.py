@@ -227,9 +227,21 @@ class TestStep4IconsStates:
 
     def test_ask_row_is_inline(self, tmp_path):
         html = _html(tmp_path)
-        assert "body.bridged .ask { display: flex" in html
+        assert "body.bridged .ask { display: block" in html
+        row_rule = re.search(r"\.ask-row \{[^}]*\}", html).group(0)
+        assert "display: flex" in row_rule
         input_rule = re.search(r"\.ask-input \{[^}]*\}", html).group(0)
         assert "flex: 1 1 55%" in input_rule  # input + button share one row
+
+    def test_ask_is_native_details(self):
+        partial = _partial()
+        assert '<details class="ask">' in partial
+        assert "<summary>Hỏi biên tập</summary>" in partial
+
+    def test_nav_active_observer(self):
+        tpl = self._template()
+        assert "IntersectionObserver" in tpl
+        assert "aria-current" in tpl
 
     def test_theme_toggle_icon_swaps_by_theme(self, tmp_path):
         html = _html(tmp_path)
@@ -272,6 +284,15 @@ class TestStep5PrintPolish:
             ".theme-toggle" in print_block and "display: none !important" in print_block
         )
         assert "break-inside: avoid" in print_block
+
+    def test_print_is_a4_two_column_broadsheet(self):
+        css = _css()
+        assert "@page { size: A4; margin: 16mm; }" in css
+        print_block = css.split("@media print", 1)[1]
+        assert ".section-nav" in print_block and ".most-read" in print_block
+        assert "--paper: #FFFFFF" in print_block
+        assert "column-count: 2" in print_block
+        assert "break-after: avoid" in print_block
 
     def test_empty_state_renders_for_empty_sections(self, tmp_path):
         html = _html(tmp_path)  # 1 tech_news item -> papers/tools empty
