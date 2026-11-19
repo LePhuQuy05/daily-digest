@@ -16,11 +16,11 @@ And you can summon it **any time**:
 - 🖱️ **Tray icon** — an indigo "D" near the clock: click it → the digest pops up
 - ⌨️ **Ctrl+Alt+D** — works from anywhere (registered on the Desktop shortcut)
 - 🖥️ **Desktop shortcut** — double-click "Daily AI Digest"
-- 🔁 Right-click the tray → **"Làm mới ngay"** re-runs the whole pipeline on demand (fetch + both LLMs + toast + popup)
+- 🔁 Right-click the tray → **"Làm mới ngay"** re-runs the whole pipeline on demand (fetch + both LLMs + toast + popup); the popup's **"Tìm bài mới"** button does the same with a new-only + backfill refresh
 
 The popup is **interactive**:
 - 👍/👎 — teach the editor what you want more/less of (persists in `feedback.jsonl`; the editor and writer prompts learn from your last 14 days; run `daily-digest feedback` to see the stats)
-- 🔖 Lưu — pin an item; it resurfaces in the **"Nhìn lại"** section of future digests until you click ✓ Đọc xong
+- 🔖 Lưu — pin an item; it resurfaces in the **"Nhìn lại"** section of future digests until you click ✓ Đọc xong. The **"Đã lưu"** button opens the full saved list, not only the rail's five.
 - 💬 **Hỏi** — ask any question about an item right in the drawer; the answer is grounded only in that item's abstract + digest summary (needs the API key; politely declines without it)
 
 Personalization:
@@ -79,6 +79,7 @@ See the effective config anytime: `uv run daily-digest print-config`.
 | --- | --- |
 | `uv run daily-digest run` | Fetch → rank → digest → popup + toast (the daily job; idempotent per day) |
 | `uv run daily-digest run --force` | Redo today even if already delivered |
+| `uv run daily-digest run --force --new-only` | Refresh with only unseen items; backs up the morning digest, backfills notable older items if short |
 | `uv run daily-digest run --no-notify` | Rebuild the digest without toast/popup (won't block the real one) |
 | `uv run daily-digest run --date 2026-11-17` | Backfill a specific date |
 | `uv run daily-digest smoke` | Live-check all sources, print counts |
