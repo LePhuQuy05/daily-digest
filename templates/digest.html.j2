@@ -198,12 +198,44 @@
       }).catch(function () { /* ratings are decorative */ });
     }
 
+    function setSaved(button, saved) {
+      button.classList.toggle("active", saved);
+      button.setAttribute("data-saved", saved ? "1" : "0");
+      var label = button.querySelector("span");
+      if (label) label.textContent = saved ? "Đã lưu" : "Lưu";
+      var text = saved ? "Bỏ lưu mục này" : "Giữ lại trong mục Nhìn lại";
+      button.title = text;
+      button.setAttribute("aria-label", text);
+    }
+
+    function setSavedByUid(uid, saved) {
+      document.querySelectorAll('[data-feedback="' + uid + '|save"]')
+        .forEach(function (button) { setSaved(button, saved); });
+    }
+
+    function applySaved() {
+      if (!document.body.classList.contains("bridged") ||
+          !window.pywebview.api.saved_items) return;
+      pywebview.api.saved_items().then(function (res) {
+        if (!res || !res.ok) return;
+        var saved = {};
+        (res.items || []).forEach(function (item) {
+          if (item.uid) saved[item.uid] = true;
+        });
+        document.querySelectorAll('[data-feedback$="|save"]').forEach(function (button) {
+          var uid = button.getAttribute("data-feedback").split("|")[0];
+          setSaved(button, !!saved[uid]);
+        });
+      }).catch(function () { /* default labels stay Lưu */ });
+    }
+
     function ready() {
       if (typeof window.pywebview !== "undefined" &&
           typeof window.pywebview.api !== "undefined" &&
           typeof window.pywebview.api.feedback === "function") {
         document.body.classList.add("bridged");
         applyRatings();
+        applySaved();
       }
     }
     window.addEventListener("pywebviewready", ready);
@@ -213,6 +245,7 @@
       if (!btn || !document.body.classList.contains("bridged")) return;
       var parts = btn.getAttribute("data-feedback").split("|");
       var action = parts[1];
+      var isSave = action === "save";
       var isRating = action === "like" || action === "dislike";
       if (isRating) {
         var current = btn.getAttribute("data-rating") ||
@@ -222,11 +255,20 @@
         }
       }
       btn.classList.remove("done", "failed");
-      pywebview.api.feedback(parts[0], action).then(function (res) {
+      var request = isSave
+        ? pywebview.api.toggle_save(parts[0])
+        : pywebview.api.feedback(parts[0], action);
+      request.then(function (res) {
         if (res && res.ok) {
-          if (isRating) setRating(btn, action);
-          else btn.classList.add("done");
-          if (action === "unsave") {
+          if (isSave) {
+            setSavedByUid(parts[0], !!res.saved);  /* Lưu <-> Đã lưu, one button */
+          } else if (isRating) {
+            setRating(btn, action);
+          } else {
+            btn.classList.add("done");
+          }
+          if (!isSave && action === "unsave") {
+            setSavedByUid(parts[0], false);
             var savedCard = btn.closest(".saved-card");
             if (savedCard) savedCard.remove();  /* modal is live; rail stays static */
             showUndo(parts[0]);
@@ -354,6 +396,7 @@
         undoBtn.disabled = true;
         pywebview.api.undo_unsave(uid).then(function (res) {
           if (res && res.ok) {
+            setSavedByUid(uid, true);
             hideUndo();
             if (savedModal && !savedModal.hidden) openSaved();
           } else {

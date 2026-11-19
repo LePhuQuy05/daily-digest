@@ -114,6 +114,54 @@ def test_saved_items_returns_source_label(tmp_path):
     assert item["source_label"] == "arXiv"
 
 
+def test_toggle_save_uses_the_same_button_for_save_and_unsave(tmp_path):
+    config = make_config(tmp_path)
+    bridge = DigestBridge(
+        config,
+        {"date": DATE, "items": {"arxiv:1": _snap("Toggle me")}, "pinned": []},
+    )
+
+    first = bridge.toggle_save("arxiv:1")
+    assert first == {
+        "ok": True,
+        "uid": "arxiv:1",
+        "action": "save",
+        "saved": True,
+    }
+    assert len(bridge.saved_items()["items"]) == 1
+
+    second = bridge.toggle_save("arxiv:1")
+    assert second["ok"] is True and second["action"] == "unsave"
+    assert second["saved"] is False
+    assert bridge.saved_items()["items"] == []
+
+
+def test_toggle_save_can_unsave_an_old_saved_item(tmp_path):
+    config = make_config(tmp_path)
+    append_feedback(
+        config.feedback_path, "arxiv:old", "save", "2026-11-18", _snap("Old save")
+    )
+    bridge = _bridge(config)  # blob has no items
+
+    result = bridge.toggle_save("arxiv:old")
+
+    assert result["ok"] is True and result["saved"] is False
+    assert bridge.saved_items()["items"] == []
+
+
+def test_toggle_save_unknown_and_exception_proof(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    bridge = _bridge(config)
+    assert bridge.toggle_save("arxiv:missing")["ok"] is False
+
+    def boom(path):
+        raise RuntimeError("toggle exploded")
+
+    monkeypatch.setattr("daily_digest.popup_bridge.read_feedback", boom)
+    result = _bridge(config).toggle_save("x:1")
+    assert result["ok"] is False and "toggle exploded" in result["error"]
+
+
 def test_undo_unsave_restores_the_saved_item(tmp_path):
     config = make_config(tmp_path)
     append_feedback(

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from daily_digest.model import RankedItem
 from daily_digest.render import render_digest
 from helpers import make_config, make_item
@@ -154,12 +156,12 @@ def test_empty_digest_renders_without_crash(tmp_path):
     html = _render(tmp_path, [], overview="")
     assert "top-fold--empty" in html
     assert html.count("empty-note") >= 3
-    assert "data-feedback=" not in html
+    assert not re.search(r"<button[^>]*data-feedback=", html)
 
 
 def test_most_read_rail_has_no_duplicate_feedback(tmp_path):
     ranked = _real_mix()
     html = _render(tmp_path, ranked)
     # 3 feedback buttons per ranked story, no extra feedback from the rail.
-    assert html.count("data-feedback=") == len(ranked) * 3
+    assert len(re.findall(r"<button[^>]*data-feedback=", html)) == len(ranked) * 3
     assert html.count('id="story-') == len(ranked)

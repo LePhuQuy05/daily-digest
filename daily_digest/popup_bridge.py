@@ -97,6 +97,42 @@ class DigestBridge:
         except Exception:  # noqa: BLE001 — bridge must never raise
             return None
 
+    def toggle_save(self, uid: str) -> dict:
+        """Save an item, or unsave it when it is already saved.
+
+        This is the Lưu button's toggle: one button does both directions, so an
+        accidental save can be undone with the same click. Never raises.
+        """
+        try:
+            if not self.date:
+                return {"ok": False, "error": "digest carries no date"}
+            with self._lock:
+                signals = read_feedback(self.config.feedback_path)
+                aggregate_now = aggregate(
+                    signals, self.date, self.config.feedback.window_days
+                )
+                if uid in aggregate_now.saved:
+                    snapshot = dict(aggregate_now.saved[uid])
+                    action = "unsave"
+                else:
+                    snapshot = self._snapshot_for(uid)
+                    action = "save"
+                if snapshot is None:
+                    return {"ok": False, "error": "unknown item (old digest?)"}
+                append_feedback(
+                    self.config.feedback_path, uid, action, self.date, snapshot
+                )
+            LOG.info("feedback: toggle_save %s -> %s", uid, action)
+            return {
+                "ok": True,
+                "uid": uid,
+                "action": action,
+                "saved": action == "save",
+            }
+        except Exception as exc:  # noqa: BLE001 — Promise must never reject
+            LOG.error("toggle_save failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc)}
+
     def ratings(self) -> dict:
         """Current like/dislike state per uid, so the popup can mark buttons."""
         try:
