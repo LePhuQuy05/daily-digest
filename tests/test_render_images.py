@@ -1,0 +1,82 @@
+"""Render-level tests: images only on hero + section leads."""
+
+from __future__ import annotations
+
+from daily_digest.media import ImageAsset
+from daily_digest.model import RankedItem
+from daily_digest.render import render_digest
+from helpers import make_config, make_item
+
+
+def _item(uid: str, section: str) -> RankedItem:
+    return RankedItem(
+        item=make_item(
+            id=uid,
+            title=f"Title {uid}",
+            url=f"https://example.test/{uid}",
+            source="arxiv",
+        ),
+        why=f"why {uid}",
+        section=section,  # type: ignore[arg-type]
+        llm_summary=f"summary {uid}",
+    )
+
+
+def _render(tmp_path, images=None):
+    config = make_config(tmp_path)
+    ranked = [
+        _item("p0", "papers"),
+        _item("p1", "papers"),
+        _item("p2", "papers"),
+        _item("p3", "papers"),
+        _item("t0", "tech_news"),
+    ]
+    return render_digest(
+        ranked,
+        date="2026-11-19",
+        mode="llm",
+        degraded=False,
+        sources_failed=[],
+        model_name="deepseek-v4.1-flash",
+        template=config.template_path,
+        overview="Tổng hợp hôm nay.",
+        overview_label="Tổng hợp hôm nay",
+        images=images,
+    )
+
+
+def _asset(uid: str, kind: str = "arxiv_img") -> ImageAsset:
+    return ImageAsset(
+        uid=uid,
+        data_uri="data:image/jpeg;base64,AAAA",
+        alt=f"Alt {uid}",
+        credit=f"Hình: arXiv:{uid}",
+        source_url=f"https://arxiv.org/abs/{uid}",
+        kind=kind,
+        width=400,
+        height=240,
+    )
+
+
+def test_images_only_hero_and_section_lead(tmp_path):
+    html = _render(
+        tmp_path,
+        images={
+            "p0": _asset("p0"),
+            "p1": _asset("p1"),  # secondary: must be ignored
+            "p2": _asset("p2", "arxiv_svg"),  # papers lead: shown
+            "p3": _asset("p3"),  # brief: ignored
+        },
+    )
+    assert html.count('class="story-media') == 2
+    assert html.count('src="data:image/jpeg;base64,AAAA"') == 2
+    assert "Alt p0" in html and "Alt p2" in html
+    assert "Alt p1" not in html and "Alt p3" not in html
+    assert "Hình: arXiv:p0" in html and "Hình: arXiv:p2" in html
+
+
+def test_without_images_keeps_text_layout(tmp_path):
+    html = _render(tmp_path, images={})
+    assert 'class="story-media' not in html
+    assert "story--hero" in html
+    assert "section-front" in html

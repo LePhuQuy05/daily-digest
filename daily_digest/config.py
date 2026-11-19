@@ -160,9 +160,9 @@ class LlmCfg:
     # `model`           = the EDITOR: picks which items make the digest.
     # `summarize_model` = the WRITER: writes each item's summary ("" = same model).
     # Any Console model id works: https://opencode.ai/inference/v1/models
-    # e.g. glm-5.3 (editor) + glm-5.3-flash (writer, cheaper) · kimi-k3 · claude-sonnet-5-5 · gpt-6.1-sol
+    # e.g. deepseek-v4.1-flash (editor + writer) · glm-5.3 · kimi-k3 · claude-sonnet-5-5
     # Env overrides: DIGEST_LLM_MODEL / DIGEST_LLM_SUMMARIZE_MODEL
-    model: str = "glm-5.3"
+    model: str = "deepseek-v4.1-flash"
     summarize_model: str = ""  # empty -> reuse `model`
     summarize: bool = True  # writer LLM on/off
     summary_max_words: int = 70
@@ -220,10 +220,27 @@ class StateCfg:
 
 
 @dataclass
+class MediaCfg:
+    """Best-effort article-image enrichment (real figures/OG only)."""
+
+    enabled: bool = True
+    max_images: int = 6
+    timeout_seconds: float = 8.0
+    max_bytes: int = 5_000_000
+    width: int = 1180
+    quality: int = 85
+    cache_dir: str = "output/media"
+    llm_review: bool = True
+    include_in_print: bool = False
+    max_total_bytes: int = 1_500_000
+
+
+@dataclass
 class Config:
     interests: InterestsCfg = field(default_factory=InterestsCfg)
     sources: SourcesCfg = field(default_factory=SourcesCfg)
     llm: LlmCfg = field(default_factory=LlmCfg)
+    media: MediaCfg = field(default_factory=MediaCfg)
     digest: DigestCfg = field(default_factory=DigestCfg)
     notify: NotifyCfg = field(default_factory=NotifyCfg)
     enrichment: EnrichmentCfg = field(default_factory=EnrichmentCfg)

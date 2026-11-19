@@ -169,7 +169,7 @@ def test_llm_client_defaults_to_editor_model(tmp_path):
     client = LlmClient(config, "test-key", "ses_test")
     client.chat([{"role": "user", "content": "hi"}])
     body = json.loads(route.calls.last.request.content)
-    assert body["model"] == "glm-5.3"  # the default editor model
+    assert body["model"] == "deepseek-v4.1-flash"  # the default editor model
 
 
 def test_get_summarize_client_reuses_editor_when_same_model(tmp_path):

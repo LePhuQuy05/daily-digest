@@ -19,6 +19,7 @@ def make_config(tmp_path: Path) -> Config:
     config.state_path = tmp_path / "state.json"
     config.log_dir = tmp_path / "logs"
     config.feedback_path = tmp_path / "feedback.jsonl"
+    config.media.enabled = False  # tests stay offline; media tests opt in
     config.template_path = PROJECT_ROOT / "templates" / "digest.html.j2"
     config.sources.arxiv.pause_seconds = 0.0
     return config

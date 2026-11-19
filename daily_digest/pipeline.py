@@ -33,6 +33,7 @@ from daily_digest.ranking.heuristic import (
     heuristic_overview,
     overview_label,
 )
+from daily_digest.media import collect_images
 from daily_digest.ranking.llm import LlmClient, summarize_with_llm
 from daily_digest.render import build_digest_data, render_digest, write_digest
 from daily_digest.rules import apply_mute, log_mute_summary
@@ -262,6 +263,14 @@ def run_day(
     ranked_uids = {r.item.id for r in ranked}
     pinned = [entry for entry in pinned if entry.get("uid") not in ranked_uids]
 
+    # 3d. Optional real article images for hero + section leads. Best-effort:
+    # failures only remove images; the LLM review uses the same app model.
+    media_chat = None
+    if config.media.enabled and config.media.llm_review:
+        vision_client = summary_client or llm_client
+        media_chat = vision_client.chat if vision_client else None
+    images = collect_images(ranked, config, chat=media_chat)
+
     # 4. Render + archive atomically. The digest_data blob embeds the item
     # snapshots + date so popup-process features (feedback, ask) are self-pairing.
     html = render_digest(
@@ -277,6 +286,7 @@ def run_day(
         pinned=pinned,
         pinned_overflow=pinned_overflow,
         digest_data=build_digest_data(ranked, pinned, date),
+        images=images,
     )
     digest_path = write_digest(html, config.output_dir, date)
 

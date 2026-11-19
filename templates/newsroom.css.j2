@@ -172,6 +172,15 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
                letter-spacing: -0.02em; }
 .story-title a { color: var(--ink); text-decoration: none; }
 .story-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.story-media { margin: 0 0 14px; }
+.story-media img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+                   background: var(--paper-warm); border: 1px solid var(--rule);
+                   padding: 10px 14px; }
+.story-media--og img { object-fit: cover; padding: 0; }
+.story-media figcaption { margin-top: 4px; font: 10.5px/1.4 var(--font-sans);
+                         color: var(--ink-3); letter-spacing: 0.02em; }
+[data-theme="dark"] .story-media img { background: #EAE6DD; filter: brightness(0.92); }
+[data-theme="dark"] .story-media--og img { filter: none; }
 .story--lead .story-title { font-size: 26px; }
 .story--secondary { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .story--secondary .story-title { font-size: 24px; }
@@ -373,7 +382,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     body { background: #FFFFFF; color: #111111; font-size: 9.5pt; line-height: 1.35; }
     .wrap { max-width: 100%; padding: 0; }
     .section-nav, .theme-toggle, .bridge-only, .ask, .actions, footer,
-    .most-read, .source-line { display: none !important; }
+    .most-read, .source-line, .story-media { display: none !important; }
     header.masthead { border-top: 3px double #111; padding: 0 0 4mm; text-align: center; }
     .wordmark { font-size: 24pt; }
     .dateline { border-bottom: 1px solid #999; font-size: 7pt; }

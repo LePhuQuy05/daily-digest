@@ -272,3 +272,24 @@ Resolver priority:
   (secondary text-only); skip tiny text-table figures (e.g. 22171).
 - **Final layout sign-off:** **ship** — hero + section leads, secondary text-only,
   dark mat `#EAE6DD`; the 4:3 letterbox is now a tasteful paper border.
+
+## 9. Phase 1 implemented (2026-11-19)
+
+- **App model:** default changed to `deepseek-v4.1-flash` (OpenCode Go); the
+  same vision-capable model now reviews image suitability.
+- **Code:** `daily_digest/media.py` (arXiv `<img>`, inline `<svg>`, `<object>`
+  SVG files, HN Algolia/OG, generic OG, cache, data URI, LLM review);
+  `pipeline.py` collects images after summaries; `render_digest(images=...)`
+  additive; `_story.html.j2` renders media only for hero/lead.
+- **Tests:** `uv run pytest` → **273 passed**.
+- **Live run (`run --force`, DeepSeek):** media **2/3 slots filled**:
+  - hero `arxiv:2611.15671` → first inline SVG figure;
+  - section lead `arxiv:2611.22238` → figure;
+  - third target (Tech News OG) **rejected by DeepSeek**:
+    *“Generic AI chip stock image; not specific to the audit trial and adds
+    little informational value.”* → no image, exactly the intended filter.
+- **Shipped artifact:** `output/latest.html` (302,333 bytes, 2 data-URI figures);
+  screenshots `output/newsroom-final-light-1120.png` /
+  `newsroom-final-dark-1120.png`; `open --web` exit 0.
+- **Explicitly rejected:** HF page-1 social thumbnails, auto GitHub banners,
+  LLM-generated images, images in brief columns.

@@ -55,14 +55,17 @@ Edit `config.yaml` (copy `config.example.yaml` to start):
 
 ```yaml
 llm:
-  model: glm-5.3            # the EDITOR: picks which items make the digest
+  model: deepseek-v4.1-flash  # the EDITOR: picks which items make the digest
   summarize_model: ""       # the WRITER: writes each summary ("" = same model)
 ```
 
 Any OpenCode Console model id works — `glm-5.3`, `glm-5.3-flash` (cheaper writer),
 `deepseek-v4.1-flash`, `kimi-k3`, `claude-sonnet-5-5`, `gpt-6.1-sol`, ...
 Full list: https://opencode.ai/inference/v1/models
-Popular setup: a strong editor (`glm-5.3`) + a cheap fast writer (`glm-5.3-flash`).
+Default: `deepseek-v4.1-flash` for both roles (vision-capable, also reviews
+article images). Any OpenCode Console model id works — `glm-5.3`,
+`glm-5.3-flash` (cheaper writer), `deepseek-v4.1-flash`, `kimi-k3`,
+`claude-sonnet-5-5`, `gpt-6.1-sol`, ...
 Or switch without editing: `set DIGEST_LLM_MODEL=...` / `set DIGEST_LLM_SUMMARIZE_MODEL=...`.
 Set `summarize: false` to skip the writer and show raw abstracts.
 Pay-as-you-go key instead of Go? Also change `base_url` to `https://opencode.ai/inference`.
@@ -97,7 +100,7 @@ See the effective config anytime: `uv run daily-digest print-config`.
   └─ merge:  same paper from several sources → one item (provenance: HF > alphaXiv > EM > arXiv)
   └─ enrich: OpenAlex citation counts (keyless, one batched request) → "N citations" evidence
   └─ filter: skip items already shown in the last 7 days (state.json seen-set)
-  └─ EDITOR LLM (glm-5.3): picks top ~12 + writes "why it matters"   ← heuristic fallback if down
+  └─ EDITOR LLM (deepseek-v4.1-flash): picks top ~12 + writes "why it matters"   ← heuristic fallback if down
   └─ WRITER LLM (summarize_model, same by default): writes a 2-3 sentence
      summary of every selected item                                  ← falls back to raw abstracts
   └─ render: output/digest-YYYY-MM-DD.html + latest.html — atomic writes

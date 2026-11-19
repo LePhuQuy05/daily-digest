@@ -9,7 +9,7 @@ from daily_digest.util import load_env_file
 
 def test_defaults_without_any_file(tmp_path):
     config = load_config(tmp_path / "missing.yaml")
-    assert config.llm.model == "glm-5.3"
+    assert config.llm.model == "deepseek-v4.1-flash"
     assert config.llm.base_url == "https://opencode.ai/inference/go"
     assert config.sources.arxiv.categories == ["cs.CL", "cs.LG", "cs.AI"]
     assert config.template_path.exists()
@@ -33,7 +33,7 @@ def test_unknown_keys_are_ignored(tmp_path):
     path = tmp_path / "config.yaml"
     path.write_text("bogus_top: 1\nllm:\n  not_a_key: 2\n", encoding="utf-8")
     config = load_config(path)  # must not raise
-    assert config.llm.model == "glm-5.3"
+    assert config.llm.model == "deepseek-v4.1-flash"
 
 
 def test_env_model_override(tmp_path, monkeypatch):
@@ -103,5 +103,5 @@ def test_cli_print_config_works_from_any_cwd():
         timeout=120,
     )
     assert proc.returncode == 0, proc.stderr
-    assert "glm-5.3" in proc.stdout
+    assert "deepseek-v4.1-flash" in proc.stdout
     assert "model:" in proc.stdout

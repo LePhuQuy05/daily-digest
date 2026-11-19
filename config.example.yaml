@@ -53,7 +53,7 @@ llm:
   #   glm-5.3 · glm-5.3-flash · deepseek-v4.1-flash · kimi-k3 · claude-sonnet-5-5 · gpt-6.1-sol
   # Popular: strong editor + cheap fast writer.
   # Env overrides: DIGEST_LLM_MODEL / DIGEST_LLM_SUMMARIZE_MODEL
-  model: glm-5.3
+  model: deepseek-v4.1-flash
   summarize_model: ""          # e.g. glm-5.3-flash for a cheaper writer; "" = same model
   summarize: true              # writer on/off (false -> show raw abstracts)
   summary_max_words: 70
@@ -75,6 +75,18 @@ feedback:
   temperature: 0.0
   top_n: 12                              # items in the digest
   max_pool: 80                           # candidates shown to the editor LLM
+
+media:
+  # Optional real article images (arXiv figures + custom article OG).
+  # Only hero + section leads; no HF page-1 cards, no auto GitHub banners,
+  # no LLM-generated images. Failures never block the digest.
+  enabled: true
+  max_images: 6
+  llm_review: true            # DeepSeek V4.1 Flash checks suitability (vision)
+  include_in_print: false     # keep the 3-page print broadsheet text-only
+  cache_dir: output/media
+  width: 1180
+  quality: 85
 
 digest:
   output_dir: output

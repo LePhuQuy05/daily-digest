@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
 from daily_digest.frontpage import build_front_page
+from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
 from daily_digest.util import atomic_write_text
@@ -81,6 +83,7 @@ def render_digest(
     digest_data: dict | None = None,
     pinned: list[dict] = (),
     pinned_overflow: int = 0,
+    images: Mapping[str, ImageAsset] | None = None,
 ) -> str:
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
@@ -100,6 +103,7 @@ def render_digest(
         pinned=list(pinned),
         pinned_overflow=pinned_overflow,
         front_page=front_page,
+        images=images or {},
         source_names=SOURCE_NAMES,
         total=len(ranked),
     )
