@@ -60,8 +60,10 @@
 
   {% if front_page.lead %}
   <div class="top-fold">
-    {{ story(front_page.lead, "hero") }}
-    {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
+    <div class="hero-col">
+      {{ story(front_page.lead, "hero") }}
+      {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
+    </div>
     {{ rail() }}
   </div>
   {% else %}
@@ -88,18 +90,20 @@
     <p class="section-note">Bài chính ở trên.</p>
     {% else %}
     <div class="section-body">
-      {{ story(section.lead, "lead") }}
+      <div class="lead-col">
+        {{ story(section.lead, "lead") }}
+        {% if section.briefs | length > 6 %}
+        <div class="more-list">
+          {% for r in section.briefs[6:] %}{{ story(r, "more") }}{% endfor %}
+        </div>
+        {% endif %}
+      </div>
       {% if section.briefs %}
       <div class="briefs">
         {% for r in section.briefs[:6] %}{{ story(r, "brief") }}{% endfor %}
       </div>
       {% endif %}
     </div>
-    {% if section.briefs | length > 6 %}
-    <div class="more-list">
-      {% for r in section.briefs[6:] %}{{ story(r, "more") }}{% endfor %}
-    </div>
-    {% endif %}
     {% endif %}
   </section>
   {% endfor %}
