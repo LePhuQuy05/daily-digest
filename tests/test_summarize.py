@@ -65,13 +65,26 @@ def test_summarize_returns_day_overview(tmp_path):
 
 def test_summarize_overview_truncated_and_cleaned(tmp_path):
     config = make_config(tmp_path)
-    long_overview = "word " * 300  # ~1500 chars
+    long_overview = "word " * 400  # ~2000 chars
     _, overview = summarize_with_llm(
         _ranked(1), FakeChat(_summary_json({0: "x"}, overview=long_overview)), config
     )
-    assert 0 < len(overview) <= 905
+    assert 0 < len(overview) <= 1605
     assert "  " not in overview  # whitespace collapsed
     assert overview.endswith("…")  # word-boundary ellipsis, never mid-word
+
+
+def test_overview_keeps_final_takeaway_under_budget(tmp_path):
+    config = make_config(tmp_path)
+    takeaway = "Điểm cần nhớ: ưu tiên đọc kỹ."
+    overview_text = "Phân tích " * 150 + takeaway
+    _, overview = summarize_with_llm(
+        _ranked(1),
+        FakeChat(_summary_json({0: "x"}, overview=overview_text)),
+        config,
+    )
+    assert overview.endswith(takeaway)
+    assert "…" not in overview
 
 
 def test_summarize_non_dict_overview_is_ignored(tmp_path):

@@ -56,13 +56,14 @@
   </div>
   {% endif %}
 
-  {% from "partials/_story.html.j2" import story, pinned_item, rail with context %}
+  {% from "partials/_story.html.j2" import story, pinned_item, rail, most_read with context %}
 
   {% if front_page.lead %}
   <div class="top-fold">
     <div class="hero-col">
       {{ story(front_page.lead, "hero") }}
       {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
+      {{ most_read() }}
     </div>
     {{ rail() }}
   </div>

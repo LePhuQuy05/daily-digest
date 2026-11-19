@@ -230,7 +230,8 @@ Một trang nhất không ảnh vẫn có thể đẹp nếu:
   thực tế 932px.
 - 12 cột, gap 24px.
 - Top fold: **hero 8/12 (~64%) + rail 4/12 (~36%)**; rail chứa briefing
-  "Trong ngày" + "Nhìn lại" (nếu có) + "Đọc nhiều" + nguồn.
+  "Trong ngày" + "Nhìn lại" (nếu có) + nguồn. **"Đọc nhiều" nằm dưới
+  hero/secondary trong cột trái** để lấp khoảng trống khi rail cao hơn.
 - Section front: `grid-template-columns: 5fr 7fr`; section chẵn đảo chiều
   (lead bên phải, briefs bên trái) để tạo nhịp.
 - **Quy tắc ≥280px:** không để cột text nào hẹp hơn 280px. Vì vậy brief grid
@@ -342,11 +343,11 @@ footer
 
 | Nội dung | Module | Ghi chú |
 |---|---|---|
-| `overview` | Briefing box "Trong ngày" trong rail | 3–4 điểm numbered; câu cuối "Đáng đọc nhất" có → |
+| `overview` | Briefing box "Trong ngày" trong rail | 3–4 điểm numbered; câu cuối "Điểm cần nhớ" có → và luôn được giữ |
 | `ranked[0]` | Hero "Câu chuyện chính" | Không lặp lại ở section front |
 | `ranked[1:]` theo section | Section front: lead + briefs | Section lead = item đầu tiên còn lại |
 | `pinned` | Rail "Nhìn lại" | Wrapper giữ `class="block pinned-block"` |
-| `ranked[1:4]` | Rail "Đọc nhiều" | Chỉ link anchor, **không render lại card** |
+| `ranked[2:5]` | Hero-col "Đọc nhiều" | Chỉ link anchor, **không render lại card** |
 | `counts`, `total` | Dateline + section headers | "12 câu chuyện · 3 chuyên mục" |
 | `degraded`, `sources_failed`, `notice` | Thin status strip dưới nav | Không chiếm hero |
 | `mode`, `model_name` | Footer/dateline nhỏ | "Biên tập: heuristic/LLM" |

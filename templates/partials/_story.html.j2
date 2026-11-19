@@ -53,6 +53,19 @@
 </article>
 {% endmacro %}
 
+{% macro most_read() %}
+{% if front_page.most_read %}
+<section class="most-read">
+  <h2>Đọc nhiều</h2>
+  <ol>
+    {% for r in front_page.most_read %}
+    <li><a href="#story-{{ r.item.id }}">{{ r.item.title }}</a></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+{% endmacro %}
+
 {% macro rail() %}
 <aside class="rail">
   {% if overview %}
@@ -62,7 +75,9 @@
       <div class="briefing-title">Trong ngày</div>
     </div>
     <ul class="overview-points">
-      {% for point in overview.split(". ")[:4] %}
+      {% set points = overview.split(". ") %}
+      {% set shown_points = points[:3] + points[-1:] if points | length > 3 else points %}
+      {% for point in shown_points %}
       <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
       {% endfor %}
     </ul>
@@ -73,17 +88,6 @@
   <section class="block pinned-block" id="pinned">
     <h2>Nhìn lại <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">+{{ pinned_overflow }} cũ hơn</span>{% endif %}</h2>
     {% for p in pinned %}{{ pinned_item(p) }}{% endfor %}
-  </section>
-  {% endif %}
-
-  {% if front_page.most_read %}
-  <section class="most-read">
-    <h2>Đọc nhiều</h2>
-    <ol>
-      {% for r in front_page.most_read %}
-      <li><a href="#story-{{ r.item.id }}">{{ r.item.title }}</a></li>
-      {% endfor %}
-    </ol>
   </section>
   {% endif %}
 

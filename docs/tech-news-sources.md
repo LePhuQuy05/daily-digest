@@ -97,7 +97,7 @@ Notes:
   **7 papers / 3 tech_news / 2 tools** (previous digest before this work:
   11 papers / 1 tech_news / 0 tools). Tech News: Hugging Face, Google DeepMind,
   Hugging Face; Tools: vLLM, Unsloth.
-- Full suite: **296 passed** (after the feed and section tests).
+- Full suite: **298 passed** (after the feed and section tests).
 - Repeated live probes tripped arXiv's 429 limit for alphaXiv's metadata call.
   alphaXiv now logs and skips on a metadata 429/timeout instead of marking the
   whole digest degraded; the feeds themselves delivered all 48 items.

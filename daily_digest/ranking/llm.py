@@ -192,9 +192,11 @@ SUMMARIZE_SYSTEM_PROMPT = (
     "Their interests: {topics}.\n"
     "{reader_context}"
     "Do two things:\n"
-    "1. OVERVIEW: write a 2-4 sentence synthesis of the whole day — the main themes "
-    "across ALL items, how they connect, and the single most important takeaway for "
-    "this reader. Write the overview in {language}. Plain text, no bullet characters.\n"
+    "1. OVERVIEW: write a compact 2-3 sentence synthesis of the whole day — the main "
+    "themes across ALL items, how they connect, and the single most important takeaway "
+    "for this reader. Keep it under ~1100 characters, and end with a short takeaway "
+    "sentence (the UI labels it 'Điểm cần nhớ'). Write the overview in {language}. "
+    "Plain text, no bullet characters.\n"
     "2. PER-ITEM SUMMARIES: for each numbered item, a compact summary in at most "
     "{max_words} words, 2-3 sentences, plain text (in English):\n"
     "- research papers: what the paper does, the key method or finding, and the "
@@ -209,7 +211,7 @@ SUMMARIZE_SYSTEM_PROMPT = (
 )
 
 MAX_SUMMARY_CHARS = 600
-MAX_OVERVIEW_CHARS = 900
+MAX_OVERVIEW_CHARS = 1600
 SUMMARY_INPUT_CHARS = 1200
 _LANGUAGE_NAME = {
     "vi": "Vietnamese",

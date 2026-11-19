@@ -62,6 +62,16 @@ def test_every_ranked_item_renders_once_with_feedback(tmp_path):
     assert html.count('data-ask="1"') == len(ranked)
 
 
+def test_overview_keeps_the_final_takeaway_when_it_has_many_points(tmp_path):
+    ranked = _real_mix()
+    overview = "Một. Hai. Ba. Bốn. Điểm cần nhớ: đọc kỹ."
+    html = _render(tmp_path, ranked, overview=overview)
+
+    assert "Điểm cần nhớ: đọc kỹ" in html
+    assert "Bốn" not in html  # middle point dropped, final takeaway kept
+    assert "overview-point spotlight" in html
+
+
 def test_most_read_links_point_to_existing_story_anchors(tmp_path):
     ranked = _real_mix()
     html = _render(tmp_path, ranked)

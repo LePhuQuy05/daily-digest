@@ -94,7 +94,7 @@ class TestNewsroomShell:
         assert ".overview-points" in html
         assert 'class="overview-point' in html
         partial = _partial()
-        assert 'overview.split(". ")[:4]' in partial  # one bullet per sentence, capped
+        assert "points[:3] + points[-1:]" in partial  # cap, but keep the takeaway
         assert "spotlight" in partial  # last (takeaway) bullet highlighted
 
     def test_briefing_is_news_box_not_gradient(self, tmp_path):
