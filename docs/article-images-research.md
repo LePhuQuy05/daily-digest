@@ -167,7 +167,7 @@ Resolver priority:
   ```yaml
   media:
     enabled: true
-    max_images: 6            # hero/secondary/section leads only
+    max_images: 6            # hero + section leads only
     timeout_seconds: 8
     max_bytes: 5000000
     width: 1180
@@ -180,11 +180,17 @@ Resolver priority:
 ### 3.4 Template / layout
 
 - Add an optional media block to `_story.html.j2` for:
-  - **hero**, **secondary**, **section lead** (papers/news/tools).
+  - **hero** and **section leads** (papers/news/tools);
+  - **not** the secondary lead by default: two full-width 16:9 mats stacked in
+    the top fold overpower the layout and outrun the rail. Secondary stays
+    text-only; an optional 120px side-thumb is a later polish.
   - **Not** briefs/more/rail: charts become illegible at 240–285px.
 - `figure.story-media`:
-  - figures: `object-fit: contain` on a 16:10 warm mat, caption/credit below.
+  - figures: `object-fit: contain` on a 16:10/16:9 warm mat, caption/credit below.
   - OG photos: 16:9 `cover`.
+  - light mat `#F4F1EA` + `mix-blend-mode: multiply`.
+  - night mat `#EAE6DD` + `filter: brightness(0.92)`; **do not** invert. Match
+    the mat to the dimmed figure white point to avoid letterbox seams.
 - No image → no slot; no placeholder fake image.
 - Print: include hero/section-lead images at small size; test A4 page count;
   config can disable.
@@ -225,8 +231,8 @@ Resolver priority:
 ## 6. Phases
 
 1. **P1 — arXiv figures + cache + layout**:
-   HTML `<img>` + inline SVG Edge rasterizer; cache/data URI; images on hero,
-   secondary, section leads; tests. *Shippable.*
+   HTML `<img>` + inline SVG Edge rasterizer; cache/data URI; images on **hero
+   and section leads** (secondary text-only); tests. *Shippable.*
 2. **P2 — HN / generic article OG + GitHub user preview**:
    Algolia target; OG filters; Tech News images; tests.
 3. **P3 — PDF raster fallback** (optional; PyMuPDF ~60MB) for arXiv without
@@ -236,8 +242,9 @@ Resolver priority:
 
 ## 7. Open questions
 
-- Images only hero/secondary/section leads (recommended, per vision) vs also
-  briefs? Charts at 240–285px are illegible; keep briefs text-only.
+- Images only hero + section leads (recommended, per vision); **secondary stays
+  text-only** by default (two full-width mats overpower the top fold). Briefs
+  text-only; charts at 240–285px are illegible.
 - Edge rasterization cost (~1–2s/figure) is acceptable once/day; if Edge is
   missing, fall back to no image.
 - PDF fallback worth the 60MB PyMuPDF dependency? Current HTML coverage 11/11
@@ -252,10 +259,14 @@ Resolver priority:
   (tight-cropped SVG after hiding captions).
 - `output/image-research/poc-contact-sheet.png` — includes rejected HF/GitHub
   candidates.
+- `output/newsroom-with-images-final.html` +
+  `newsroom-with-images-final-1120.png` / `-dark-1120.png` — **final layout
+  mockup**: hero + section lead images only; secondary text-only; dark mat
+  #EAE6DD.
 - `output/newsroom-with-images.html` + `newsroom-with-images-1120.png` /
-  `-980.png` — **layout mockup** with real figures on hero, secondary, and
-  section lead only.
+  `-dark-1120.png` — earlier stress-test mockup with hero + secondary + lead
+  (kept to show why two full-width mats are too much).
 - `output/image-research/*.jpg` — downloaded/rasterized candidates.
 - Vision verdict: arXiv figures = genuine/legible; HF page-1 thumbnails and
-  GitHub auto banners = reject; no LLM images; images only hero/secondary/
-  section leads; skip tiny text-table figures (e.g. 22171).
+  GitHub auto banners = reject; no LLM images; images only hero + section leads
+  (secondary text-only); skip tiny text-table figures (e.g. 22171).
