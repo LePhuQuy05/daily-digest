@@ -131,6 +131,11 @@
   </div>
 </div>
 
+<div id="undo-bar" class="undo-bar" role="status" aria-live="polite" hidden>
+  <span id="undo-text">Đã bỏ lưu.</span>
+  <button id="undo-btn" class="act" type="button">Hoàn tác</button>
+</div>
+
 {% if digest_data %}
 <script type="application/json" id="digest-data">{{ digest_data | tojson }}</script>
 {% endif %}
@@ -158,11 +163,47 @@
     }
 
     /* --- pywebview bridge: revealed only when the api really exists --- */
+    function setRating(button, action) {
+      var card = button.closest("[data-uid]");
+      if (!card) return;
+      card.querySelectorAll('[data-feedback$="|like"], [data-feedback$="|dislike"]')
+        .forEach(function (b) {
+          b.classList.remove("active");
+          b.removeAttribute("data-rating");
+        });
+      if (action === "like" || action === "dislike") {
+        var active = card.querySelector('[data-feedback$="|' + action + '"]');
+        if (active) {
+          active.classList.add("active");
+          active.setAttribute("data-rating", action);
+        }
+      }
+    }
+
+    function applyRatings() {
+      if (!document.body.classList.contains("bridged") ||
+          !window.pywebview.api.ratings) return;
+      pywebview.api.ratings().then(function (res) {
+        if (!res || !res.ok) return;
+        var ratings = res.ratings || {};
+        document.querySelectorAll("[data-uid]").forEach(function (card) {
+          var rating = ratings[card.getAttribute("data-uid")];
+          if (!rating) return;
+          var button = card.querySelector('[data-feedback$="|' + rating + '"]');
+          if (button) {
+            button.classList.add("active");
+            button.setAttribute("data-rating", rating);
+          }
+        });
+      }).catch(function () { /* ratings are decorative */ });
+    }
+
     function ready() {
       if (typeof window.pywebview !== "undefined" &&
           typeof window.pywebview.api !== "undefined" &&
           typeof window.pywebview.api.feedback === "function") {
         document.body.classList.add("bridged");
+        applyRatings();
       }
     }
     window.addEventListener("pywebviewready", ready);
@@ -171,12 +212,25 @@
       var btn = ev.target.closest("[data-feedback]");
       if (!btn || !document.body.classList.contains("bridged")) return;
       var parts = btn.getAttribute("data-feedback").split("|");
+      var action = parts[1];
+      var isRating = action === "like" || action === "dislike";
+      if (isRating) {
+        var current = btn.getAttribute("data-rating") ||
+          (btn.classList.contains("active") ? action : "");
+        if (current === action) {
+          action = action === "like" ? "unlike" : "undislike";
+        }
+      }
       btn.classList.remove("done", "failed");
-      pywebview.api.feedback(parts[0], parts[1]).then(function (res) {
+      pywebview.api.feedback(parts[0], action).then(function (res) {
         if (res && res.ok) {
-          btn.classList.add("done");
-          var savedCard = btn.closest(".saved-card");
-          if (savedCard) savedCard.remove();  /* modal is a live view; rail stays static */
+          if (isRating) setRating(btn, action);
+          else btn.classList.add("done");
+          if (action === "unsave") {
+            var savedCard = btn.closest(".saved-card");
+            if (savedCard) savedCard.remove();  /* modal is live; rail stays static */
+            showUndo(parts[0]);
+          }
         }
         else { btn.classList.add("failed"); }
       }).catch(function () { btn.classList.add("failed"); });
@@ -263,6 +317,55 @@
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape") closeSaved();
     });
+
+    /* --- undo an accidental unsave: snackbar backed by feedback.jsonl --- */
+    var undoBar = document.getElementById("undo-bar");
+    var undoText = document.getElementById("undo-text");
+    var undoBtn = document.getElementById("undo-btn");
+    var undoTimer = null;
+    var undoUid = null;
+
+    function hideUndo() {
+      if (!undoBar) return;
+      undoBar.hidden = true;
+      undoUid = null;
+      if (undoTimer) {
+        clearTimeout(undoTimer);
+        undoTimer = null;
+      }
+    }
+
+    function showUndo(uid) {
+      if (!undoBar || !undoBtn || !undoText) return;
+      undoUid = uid;
+      undoText.textContent = "Đã bỏ lưu.";
+      undoBtn.textContent = "Hoàn tác";
+      undoBtn.disabled = false;
+      undoBar.hidden = false;
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = setTimeout(hideUndo, 20000);
+    }
+
+    if (undoBtn) {
+      undoBtn.addEventListener("click", function () {
+        if (!undoUid || undoBtn.disabled ||
+            !window.pywebview.api.undo_unsave) return;
+        var uid = undoUid;
+        undoBtn.disabled = true;
+        pywebview.api.undo_unsave(uid).then(function (res) {
+          if (res && res.ok) {
+            hideUndo();
+            if (savedModal && !savedModal.hidden) openSaved();
+          } else {
+            undoText.textContent = "Không hoàn tác được.";
+            undoBtn.disabled = false;
+          }
+        }).catch(function () {
+          undoText.textContent = "Không hoàn tác được.";
+          undoBtn.disabled = false;
+        });
+      });
+    }
 
     /* --- find newer articles: detached run --force --new-only --- */
     var refreshBtn = document.getElementById("refresh-now");

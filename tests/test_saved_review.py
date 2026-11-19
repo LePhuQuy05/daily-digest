@@ -114,6 +114,74 @@ def test_saved_items_returns_source_label(tmp_path):
     assert item["source_label"] == "arXiv"
 
 
+def test_undo_unsave_restores_the_saved_item(tmp_path):
+    config = make_config(tmp_path)
+    append_feedback(
+        config.feedback_path,
+        "arxiv:old",
+        "save",
+        "2026-11-19",
+        _snap("Restored paper"),
+    )
+    bridge = _bridge(config)
+
+    assert bridge.feedback("arxiv:old", "unsave")["ok"] is True
+    assert bridge.saved_items()["items"] == []
+    assert bridge.undo_unsave("arxiv:old")["ok"] is True
+    items = bridge.saved_items()["items"]
+    assert [item["title"] for item in items] == ["Restored paper"]
+    assert read_feedback(config.feedback_path)[-1].action == "save"
+
+
+def test_undo_unsave_requires_an_unsave_and_is_exception_proof(tmp_path):
+    config = make_config(tmp_path)
+    bridge = _bridge(config)
+    assert bridge.undo_unsave("arxiv:none")["ok"] is False
+
+    append_feedback(config.feedback_path, "arxiv:1", "save", DATE, _snap("Still saved"))
+    already = bridge.undo_unsave("arxiv:1")
+    assert already["ok"] is False and "already" in already["error"]
+
+
+def test_undo_unsave_never_raises(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+
+    def boom(path):
+        raise RuntimeError("feedback exploded")
+
+    monkeypatch.setattr("daily_digest.popup_bridge.read_feedback", boom)
+    result = _bridge(config).undo_unsave("x:1")
+    assert result["ok"] is False and "feedback exploded" in result["error"]
+
+
+def test_ratings_returns_current_state(tmp_path):
+    config = make_config(tmp_path)
+    append_feedback(config.feedback_path, "a:1", "like", DATE, _snap("Liked"))
+    append_feedback(config.feedback_path, "a:2", "dislike", DATE, _snap("Disliked"))
+    bridge = DigestBridge(
+        config,
+        {"date": DATE, "items": {"a:1": _snap("Liked")}, "pinned": []},
+    )
+
+    assert bridge.ratings() == {
+        "ok": True,
+        "ratings": {"a:1": "like", "a:2": "dislike"},
+    }
+    assert bridge.feedback("a:1", "unlike")["ok"] is True
+    assert bridge.ratings()["ratings"] == {"a:2": "dislike"}
+
+
+def test_ratings_is_exception_proof(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+
+    def boom(path):
+        raise RuntimeError("ratings exploded")
+
+    monkeypatch.setattr("daily_digest.popup_bridge.read_feedback", boom)
+    result = _bridge(config).ratings()
+    assert result["ok"] is False and result["ratings"] == {}
+
+
 def test_refresh_spawns_new_only_and_guards_double_click(tmp_path):
     config = make_config(tmp_path)
     calls: list[list[str]] = []

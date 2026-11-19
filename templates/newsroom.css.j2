@@ -343,6 +343,15 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .saved-card .summary { margin: 6px 0 10px; font-size: 13.5px; }
 .saved-card button { margin-top: 8px; }
 
+/* ===================== undo snackbar ===================== */
+.undo-bar[hidden] { display: none; }
+.undo-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+            z-index: 120; display: flex; align-items: center; gap: 14px;
+            padding: 10px 14px; background: var(--ink); color: var(--paper);
+            font: 500 13px/1.4 var(--font-sans); }
+.undo-bar button { margin: 0; background: var(--paper); color: var(--ink);
+                 border-color: transparent; }
+
 /* ===================== bridge-only UI (feedback buttons, ask drawer) =====================
      Hidden by default; revealed ONLY when the pywebview api really exists. */
   .bridge-only { display: none; }
@@ -357,6 +366,8 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
   .act.done { background: var(--accent); border-color: var(--accent); color: #ffffff;
               font-weight: 600; }
   .act.done .icon { stroke: #ffffff; }
+  .act.active { background: var(--accent-soft); border-color: var(--accent);
+                color: var(--accent-strong); }
   .act.failed { border-color: var(--danger); color: var(--danger); }
   .icon { width: 17px; height: 17px; stroke: currentColor; fill: none;
           stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
@@ -412,7 +423,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     body { background: #FFFFFF; color: #111111; font-size: 9.5pt; line-height: 1.35; }
     .wrap { max-width: 100%; padding: 0; }
     .section-nav, .theme-toggle, .bridge-only, .ask, .actions, footer,
-    .saved-modal,
+    .saved-modal, .undo-bar,
     .most-read, .source-line, .story-media { display: none !important; }
     header.masthead { border-top: 3px double #111; padding: 0 0 4mm; text-align: center; }
     .wordmark { font-size: 24pt; }

@@ -143,11 +143,16 @@ def test_saved_review_ui_and_bridge_calls_are_present(tmp_path):
         'id="refresh-now"',
         'id="saved-modal"',
         'id="saved-list"',
+        'id="undo-bar"',
+        'id="undo-btn"',
         "pywebview.api.saved_items()",
         "pywebview.api.refresh()",
+        "pywebview.api.ratings()",
+        "pywebview.api.undo_unsave(uid)",
         "Đã lưu",
         "Tìm bài mới",
         "data-feedback",
+        ".act.active",
     ):
         assert needle in html
 

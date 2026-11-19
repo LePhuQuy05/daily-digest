@@ -97,6 +97,19 @@ class DigestBridge:
         except Exception:  # noqa: BLE001 — bridge must never raise
             return None
 
+    def ratings(self) -> dict:
+        """Current like/dislike state per uid, so the popup can mark buttons."""
+        try:
+            aggregate_now = aggregate(
+                read_feedback(self.config.feedback_path),
+                self.date or "",
+                self.config.feedback.window_days,
+            )
+            return {"ok": True, "ratings": dict(aggregate_now.ratings)}
+        except Exception as exc:  # noqa: BLE001 — Promise must never reject
+            LOG.error("ratings failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "ratings": {}, "error": str(exc)}
+
     def saved_items(self) -> dict:
         """Every currently-saved article, read live from feedback.jsonl.
 
@@ -122,6 +135,48 @@ class DigestBridge:
         except Exception as exc:  # noqa: BLE001 — Promise must never reject
             LOG.error("saved_items failed: %s: %s", type(exc).__name__, exc)
             return {"ok": False, "items": [], "error": str(exc)}
+
+    def undo_unsave(self, uid: str) -> dict:
+        """Restore the most recent unsave for `uid` from its captured snapshot.
+
+        The unsave signal in feedback.jsonl already carries the saved item's
+        snapshot, so this works even if the item is no longer in today's blob.
+        Never raises (bridge contract).
+        """
+        try:
+            if not self.date:
+                return {"ok": False, "error": "digest carries no date"}
+            with self._lock:
+                signals = read_feedback(self.config.feedback_path)
+                aggregate_now = aggregate(
+                    signals, self.date, self.config.feedback.window_days
+                )
+                if uid in aggregate_now.saved:
+                    return {"ok": False, "error": "item is already saved"}
+                previous = next(
+                    (
+                        signal
+                        for signal in reversed(signals)
+                        if signal.uid == uid
+                        and signal.action == "unsave"
+                        and signal.snapshot
+                    ),
+                    None,
+                )
+                if previous is None:
+                    return {"ok": False, "error": "nothing to undo"}
+                append_feedback(
+                    self.config.feedback_path,
+                    uid,
+                    "save",
+                    self.date,
+                    previous.snapshot,
+                )
+            LOG.info("feedback: undo unsave %s", uid)
+            return {"ok": True, "uid": uid}
+        except Exception as exc:  # noqa: BLE001 — Promise must never reject
+            LOG.error("undo_unsave failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc)}
 
     def refresh(self) -> dict:
         """Spawn a detached `run --force --new-only`; 60s single-flight guard."""

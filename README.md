@@ -19,8 +19,8 @@ And you can summon it **any time**:
 - 🔁 Right-click the tray → **"Làm mới ngay"** re-runs the whole pipeline on demand (fetch + both LLMs + toast + popup); the popup's **"Tìm bài mới"** button does the same with a new-only + backfill refresh
 
 The popup is **interactive**:
-- 👍/👎 — teach the editor what you want more/less of (persists in `feedback.jsonl`; the editor and writer prompts learn from your last 14 days; run `daily-digest feedback` to see the stats)
-- 🔖 Lưu — pin an item; it resurfaces in the **"Nhìn lại"** section of future digests until you click ✓ Đọc xong. The **"Đã lưu"** button opens the full saved list, not only the rail's five.
+- 👍/👎 — teach the editor what you want more/less of (persists in `feedback.jsonl`; the editor and writer prompts learn from your last 14 days; run `daily-digest feedback` to see the stats). Click the active thumb again to clear it, or the other thumb to switch.
+- 🔖 Lưu — pin an item; it resurfaces in the **"Nhìn lại"** section of future digests until you click ✓ Đọc xong. The **"Đã lưu"** button opens the full saved list, not only the rail's five; after unsaving, a **"Hoàn tác"** bar restores it.
 - 💬 **Hỏi** — ask any question about an item right in the drawer; the answer is grounded only in that item's abstract + digest summary (needs the API key; politely declines without it)
 
 Personalization:
