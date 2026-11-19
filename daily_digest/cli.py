@@ -58,7 +58,8 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
         http=httpx.Client(timeout=30.0, follow_redirects=True),
         llm_client=editor,
         summary_client=get_summarize_client(config, editor),
-        force=args.force,
+        force=args.force or args.new_only,
+        new_only=args.new_only,
         notify_enabled=not args.no_notify,
     )
     message = result.message or (
@@ -319,6 +320,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--force", action="store_true", help="redo today even if already delivered"
+    )
+    run.add_argument(
+        "--new-only",
+        action="store_true",
+        help="refresh with only unseen items (backfills from previous days if short)",
     )
     run.add_argument(
         "--no-notify", action="store_true", help="skip the toast (testing)"

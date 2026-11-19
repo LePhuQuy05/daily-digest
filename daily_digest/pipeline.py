@@ -6,6 +6,7 @@ zero items from healthy sources) · 2 fatal (config, all sources failed).
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -31,6 +32,7 @@ from daily_digest.profile import load_profile
 from daily_digest.ranking import select
 from daily_digest.ranking.heuristic import (
     balanced_pool,
+    heuristic_order,
     heuristic_overview,
     overview_label,
 )
@@ -103,6 +105,21 @@ def _prune_seen(seen: dict[str, str], today: str, window_days: int) -> dict[str,
     return {uid: date for uid, date in seen.items() if date >= cutoff}
 
 
+def _backup_morning_digest(output_dir: Path, date: str) -> Path | None:
+    """Copy the same-day digest once before a new-only refresh overwrites it."""
+    source = output_dir / f"digest-{date}.html"
+    backup = output_dir / f"digest-{date}-morning.html"
+    if not source.exists() or backup.exists():
+        return None
+    try:
+        shutil.copyfile(source, backup)
+    except OSError as exc:
+        LOG.warning("new-only: morning digest backup failed: %s", exc)
+        return None
+    LOG.info("new-only: morning digest backed up to %s", backup)
+    return backup
+
+
 def run_day(
     config: Config,
     date: str | None = None,
@@ -110,6 +127,7 @@ def run_day(
     http: httpx.Client | None = None,
     llm_client: LlmClient | None = None,
     force: bool = False,
+    new_only: bool = False,
     notify_enabled: bool = True,
     notify_fn: Callable[..., None] = notify,
     summary_client: LlmClient | None = None,
@@ -155,13 +173,32 @@ def run_day(
             message="no candidates today",
         )
 
-    # 2. Merge duplicates, then drop items already shown on previous days
+    # 2. Merge duplicates, then drop items already shown on previous days.
+    # `new_only` is stricter: it also drops same-day items already shown in the
+    # morning digest (the manual "Tìm bài mới" refresh).
     items = merge_items(items)
     seen: dict[str, str] = state.get("seen", {})
-    fresh = [item for item in items if seen.get(item_uid(item), date) == date]
+    if new_only:
+        fresh = [item for item in items if item_uid(item) not in seen]
+    else:
+        fresh = [item for item in items if seen.get(item_uid(item), date) == date]
     if len(fresh) < len(items):
         LOG.info(
-            "dropped %d items already shown on previous days", len(items) - len(fresh)
+            "dropped %d items already shown%s",
+            len(items) - len(fresh),
+            " (new-only)" if new_only else " on previous days",
+        )
+
+    # Nothing new since the last digest: leave state, artifacts and notifications
+    # untouched. A failed source is NOT "nothing new" — it keeps the degraded exit.
+    if new_only and not fresh:
+        LOG.info("new-only: no unseen items — leaving the current digest untouched")
+        return RunResult(
+            mode="nothing-new",
+            degraded=bool(failed),
+            sources_failed=failed,
+            exit_code=1 if failed else 0,
+            message="no new items since the last digest",
         )
 
     # 2a. F5 keyword rules: mute is a hard drop (beats always). Over-broad rules
@@ -189,6 +226,8 @@ def run_day(
             notice=notice,
             digest_data=build_digest_data([], [], date),
         )
+        if new_only:
+            _backup_morning_digest(config.output_dir, date)
         digest_path = write_digest(html, config.output_dir, date)
         days[date] = {
             "notified": False,
@@ -229,6 +268,27 @@ def run_day(
             type(exc).__name__,
             exc,
         )
+
+    # 2d. New-only backfill: when fewer than top_n unseen items exist, top up
+    # from notable items shown on PREVIOUS days only (never today's morning
+    # digest). Muted topics stay muted; heuristic order keeps the strongest.
+    if new_only and len(fresh) < config.llm.top_n:
+        previous = [
+            item
+            for item in items
+            if (shown := seen.get(item_uid(item))) and shown != date
+        ]
+        previous, _ = apply_mute(previous, config)
+        need = config.llm.top_n - len(fresh)
+        backfill = heuristic_order(previous, config, adjustments)[:need]
+        if backfill:
+            fresh = merge_items([*fresh, *backfill])
+            LOG.info(
+                "new-only: backfilled %d notable previous-day items (now %d/%d)",
+                len(backfill),
+                len(fresh),
+                config.llm.top_n,
+            )
 
     pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments)
 
@@ -298,6 +358,8 @@ def run_day(
         images=images,
         source_names=labels_for(config),
     )
+    if new_only:
+        _backup_morning_digest(config.output_dir, date)
     digest_path = write_digest(html, config.output_dir, date)
 
     # 5. Two-phase state: persisted as notified=false right after the digest exists

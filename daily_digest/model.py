@@ -50,7 +50,7 @@ class RankedItem:
 @dataclass
 class RunResult:
     digest_path: Path | None = None
-    mode: str = "skipped"  # "llm" | "heuristic" | "skipped"
+    mode: str = "skipped"  # "llm" | "heuristic" | "skipped" | "nothing-new"
     degraded: bool = False
     sources_failed: list[str] = field(default_factory=list)
     item_count: int = 0

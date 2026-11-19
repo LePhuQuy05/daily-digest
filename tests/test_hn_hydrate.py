@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import respx
 
@@ -42,11 +44,17 @@ def _page(description: str = DESCRIPTION) -> str:
     )
 
 
+def _config(tmp_path: Path):
+    config = make_config(tmp_path)
+    config.sources.hn.hydrate = True
+    return config
+
+
 @respx.mock
 def test_link_post_gets_meta_description(tmp_path, monkeypatch):
     monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
     respx.get("https://audit.example/trial").respond(200, text=_page())
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     items = [_hn()]
 
     with httpx.Client() as client:
@@ -58,7 +66,7 @@ def test_link_post_gets_meta_description(tmp_path, monkeypatch):
 
 
 def test_self_post_is_not_fetched(tmp_path):
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     items = [
         _hn(
             url="https://news.ycombinator.com/item?id=50547777",
@@ -70,7 +78,7 @@ def test_self_post_is_not_fetched(tmp_path):
 
 
 def test_off_topic_link_is_not_fetched(tmp_path):
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     items = [
         _hn(url="https://city.example/budget", title="City council budget hearing")
     ]
@@ -83,7 +91,7 @@ def test_limit_fetches_highest_points_first(tmp_path, monkeypatch):
     monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
     high = respx.get("https://audit.example/high").respond(200, text=_page())
     low = respx.get("https://audit.example/low").respond(500)
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     config.sources.hn.hydrate_limit = 1
     items = [
         _hn("hn:low", "https://audit.example/low", points=10),
@@ -103,7 +111,7 @@ def test_limit_fetches_highest_points_first(tmp_path, monkeypatch):
 def test_failed_page_keeps_item_and_never_raises(tmp_path, monkeypatch):
     monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
     respx.get("https://audit.example/trial").respond(500)
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     items = [_hn()]
 
     with httpx.Client() as client:
@@ -113,7 +121,7 @@ def test_failed_page_keeps_item_and_never_raises(tmp_path, monkeypatch):
 
 
 def test_hydrate_disabled_never_fetches(tmp_path):
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     config.sources.hn.hydrate = False
     items = [_hn()]
     out = hydrate_hn_links(items, config, _no_fetch_client())
@@ -124,7 +132,7 @@ def test_hydrate_disabled_never_fetches(tmp_path):
 def test_run_day_hydrates_before_balanced_pool(tmp_path, monkeypatch):
     monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
     respx.get("https://audit.example/trial").respond(200, text=_page())
-    config = make_config(tmp_path)
+    config = _config(tmp_path)
     items = [
         _hn(),
         make_item(
