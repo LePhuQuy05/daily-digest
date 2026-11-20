@@ -27,7 +27,11 @@ from daily_digest.feedback import (
 from daily_digest.model import Item, RunResult, SECTIONS
 from daily_digest.normalize import item_uid
 from daily_digest.notify import notify
-from daily_digest.overview import ensure_coverage, parse_overview
+from daily_digest.overview import (
+    ensure_coverage,
+    heuristic_overview_points,
+    parse_overview,
+)
 from daily_digest.popup import spawn_popup_detached
 from daily_digest.profile import load_profile
 from daily_digest.ranking import select
@@ -326,8 +330,10 @@ def run_day(
         )
     if overview:
         overview_points = ensure_coverage(parse_overview(overview, ranked), ranked)
-    if not overview:
-        overview = heuristic_overview(ranked, config)  # always have something
+    if not overview_points:
+        if not overview:
+            overview = heuristic_overview(ranked, config)  # always have something
+        overview_points = heuristic_overview_points(ranked, config)
 
     # 3c. "Nhìn lại": pinned saves (cap + overflow note), minus any uid that is
     # already in today's ranked (the fresher in-section card wins).

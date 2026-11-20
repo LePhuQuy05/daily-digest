@@ -334,8 +334,9 @@ def test_run_day_overview_falls_back_to_mechanical_when_writer_fails(
     assert result.exit_code == 0
     html = result.digest_path.read_text(encoding="utf-8")
     assert "Tổng hợp hôm nay" in html  # the card still renders
-    assert "4 mục hôm nay" in html  # ...with the mechanical Vietnamese overview
-    assert "Chủ đề nổi bật" in html
+    assert 'class="overview-point' in html  # structured fallback, not empty
+    assert 'class="oref"' in html  # coverage refs are present
+    assert "Research Papers" in html or "Tech News" in html
 
 
 def test_run_day_overview_without_summary_client_is_mechanical(tmp_path, monkeypatch):
@@ -355,7 +356,8 @@ def test_run_day_overview_without_summary_client_is_mechanical(tmp_path, monkeyp
 
     decoded = html_mod.unescape(html)  # autoescape renders ' as &#39;
     assert "Today's overview" in decoded  # language-aware label
-    assert "items today" in decoded
+    assert 'class="overview-point' in decoded
+    assert 'class="oref"' in decoded
 
 
 def test_heuristic_overview_counts_and_themes(tmp_path):
