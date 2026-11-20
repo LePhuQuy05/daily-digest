@@ -439,3 +439,25 @@ class TestStep1Tokens:
         assert "Cambria" in html and '"Times New Roman"' in html  # Vietnamese glyphs
         assert "Segoe UI Variable Text" in html
         assert "fonts.googleapis.com" not in html
+class TestStoryReferenceInteraction:
+    def test_story_cards_are_focusable_and_have_scroll_flash_js(self, tmp_path):
+        html = _html(tmp_path)
+        tpl = TestNewsroomShell._template()
+
+        assert 'tabindex="-1"' in html
+        for needle in (
+            'a[data-story-ref], a[href^="#story-"]',
+            "getElementById",
+            "scrollIntoView",
+            "is-flash",
+            "2500",
+            "history.replaceState",
+            "prefers-reduced-motion",
+        ):
+            assert needle in tpl
+
+        css = _css()
+        assert '[id^="story-"]' in css
+        assert "scroll-margin-top: 56px" in css
+        assert "@keyframes story-flash" in css
+        assert ".story.is-flash" in css

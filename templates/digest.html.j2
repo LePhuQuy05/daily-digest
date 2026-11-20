@@ -279,6 +279,60 @@
       }).catch(function () { btn.classList.add("failed"); });
     });
 
+    /* --- story references: smooth scroll + focus + 2.5s highlight --- */
+    function flashStory(target) {
+      if (!target) return;
+      target.classList.remove("is-flash");
+      void target.offsetWidth;
+      target.classList.add("is-flash");
+      clearTimeout(target._flashTimer);
+      target._flashTimer = setTimeout(function () {
+        target.classList.remove("is-flash");
+      }, 2500);
+    }
+
+    function focusStory(target) {
+      if (!target) return;
+      target.setAttribute("tabindex", "-1");
+      try { target.focus({ preventScroll: true }); }
+      catch (e) { target.focus(); }
+    }
+
+    document.addEventListener("click", function (ev) {
+      var link = ev.target.closest
+        ? ev.target.closest('a[data-story-ref], a[href^="#story-"]')
+        : null;
+      if (!link) return;
+      var href = link.getAttribute("href") || "";
+      if (href.indexOf("#story-") !== 0) return;
+      var id = href.slice(1);
+      var target = document.getElementById(id);
+      if (!target) return;  /* native fragment fallback if the card is absent */
+      ev.preventDefault();
+      var reduce = window.matchMedia &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "start",
+      });
+      focusStory(target);
+      flashStory(target);
+      try { history.replaceState(null, "", "#" + id); }
+      catch (e) { /* hash is best-effort in the pywebview string document */ }
+    });
+
+    window.addEventListener("load", function () {
+      try {
+        var hash = window.location.hash || "";
+        if (hash.indexOf("#story-") !== 0) return;
+        var target = document.getElementById(hash.slice(1));
+        if (!target) return;
+        target.scrollIntoView({ behavior: "auto", block: "start" });
+        focusStory(target);
+        flashStory(target);
+      } catch (e) { /* deep links are best-effort */ }
+    });
+
     /* --- saved articles modal: all saves, read live from the bridge --- */
     var savedModal = document.getElementById("saved-modal");
     var savedList = document.getElementById("saved-list");

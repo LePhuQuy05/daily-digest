@@ -3,7 +3,7 @@
 
 {% macro story(item, variant="brief") %}
 {% set img = images.get(item.item.id) if images and variant in ("hero", "lead") else none %}
-<article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}">
+<article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" tabindex="-1">
   {% if img %}
   <figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">
     <img src="{{ img.data_uri }}" alt="{{ img.alt }}" loading="lazy">
@@ -40,7 +40,7 @@
 {% endmacro %}
 
 {% macro pinned_item(p) %}
-<article class="story story--pinned" id="story-{{ p.uid }}" data-uid="{{ p.uid }}">
+<article class="story story--pinned" id="story-{{ p.uid }}" data-uid="{{ p.uid }}" tabindex="-1">
   <h3 class="story-title"><a href="{{ p.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a></h3>
   <div class="meta">
     <span>{{ source_names.get(p.source, p.source) }}</span>
