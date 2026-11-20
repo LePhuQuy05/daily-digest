@@ -168,6 +168,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .overview-point.spotlight::before { content: "→"; width: auto; background: none;
                                     box-shadow: none; color: var(--red); font-weight: 700; }
 .overview-body { flex: 1; min-width: 0; }
+.overview-rest { color: var(--ink-2); }
 .oref { color: var(--red); font-weight: 600; text-decoration: underline;
         text-decoration-thickness: 1px; text-underline-offset: 2px; }
 .oref:hover { color: var(--accent-strong); }
@@ -454,7 +455,9 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     .wrap { max-width: 100%; padding: 0; }
     .section-nav, .theme-toggle, .bridge-only, .ask, .actions, footer,
     .saved-modal, .undo-bar, .section-nav-indicator,
-    .most-read, .source-line, .story-media { display: none !important; }
+    .most-read, .source-line, .story-media, .oref, .overview-rest {
+      display: none !important;
+    }
     header.masthead { border-top: 3px double #111; padding: 0 0 4mm; text-align: center; }
     .wordmark { font-size: 24pt; }
     .dateline { border-bottom: 1px solid #999; font-size: 7pt; }

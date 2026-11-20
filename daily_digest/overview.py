@@ -58,6 +58,20 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"[ \t]+", " ", text)
 
 
+def _strip_duplicate_label(text: str, label: str, title: str) -> str:
+    """The writer sometimes repeats the title before its marker; drop it."""
+    stripped = text.rstrip()
+    for candidate in (label, title):
+        if len(candidate) < 3 or not stripped.lower().endswith(candidate.lower()):
+            continue
+        prefix = stripped[: -len(candidate)]
+        if prefix and prefix[-1].isalnum():
+            continue  # don't cut inside a longer word
+        prefix = prefix.rstrip()
+        return prefix + " " if prefix else ""
+    return text
+
+
 def _split_points(text: str) -> list[str]:
     text = (text or "").strip()
     if not text:
@@ -80,13 +94,18 @@ def _parse_point(
     position = 0
     for match in _MARKER_RE.finditer(raw):
         before = raw[position : match.start()]
-        if before:
-            segments.append(OverviewSegment(text=_normalize_text(before)))
         try:
             index = int(match.group(1))
         except ValueError:
             index = -1
-        if 0 <= index < len(ranked) and index not in seen:
+        valid = 0 <= index < len(ranked) and index not in seen
+        if valid:
+            item = ranked[index]
+            label = short_label(item.item.title, index + 1)
+            before = _strip_duplicate_label(before, label, item.item.title)
+        if before:
+            segments.append(OverviewSegment(text=_normalize_text(before)))
+        if valid:
             item = ranked[index]
             segments.append(
                 OverviewSegment(

@@ -102,6 +102,29 @@ def test_more_than_five_points_keeps_first_four_and_last():
     assert "Sixth" in "".join(segment.text for segment in points[-1].segments)
 
 
+def test_duplicate_title_before_marker_is_removed_once():
+    ranked = _ranked()
+    ranked = [
+        RankedItem(
+            item=make_item(
+                id="arxiv:2611.99999",
+                title="GUARD: Stabilizing Recursive Self-Improvement",
+                url="https://arxiv.org/abs/2611.99999",
+                source="arxiv",
+            ),
+            why="why",
+            section="papers",
+        )
+    ]
+    points = parse_overview("A GUARD [[0]] dùng directional regret.", ranked)
+
+    text = "".join(segment.text for segment in points[0].segments)
+    assert "GUARD" not in text  # the chip supplies the title
+    assert any(
+        segment.ref and segment.ref.label == "GUARD" for segment in points[0].segments
+    )
+
+
 def test_short_label_cases():
     assert short_label("QDA: Closed-Loop LLM Quantization", 1) == "QDA"
     assert short_label("", 7) == "Bài 7"

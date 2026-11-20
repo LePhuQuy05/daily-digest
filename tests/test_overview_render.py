@@ -103,3 +103,12 @@ def test_structured_overview_has_no_raw_markers_when_all_invalid(tmp_path):
     assert "[[" not in html
     assert "Bài" in html
     assert html.count('class="oref"') == len(ranked)  # rest covers all
+
+
+def test_print_hides_references_and_rest():
+    from daily_digest.util import PROJECT_ROOT
+
+    css = (PROJECT_ROOT / "templates" / "newsroom.css.j2").read_text(encoding="utf-8")
+    assert ".oref, .overview-rest" in css
+    print_block = css[css.index("@media print") :]
+    assert ".oref, .overview-rest" in print_block
