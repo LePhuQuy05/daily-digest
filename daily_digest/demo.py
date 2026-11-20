@@ -6,12 +6,17 @@ UI immediately after `uv sync` without creating an API key or waiting for a run.
 
 from __future__ import annotations
 
+import base64
+import io
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
+from PIL import Image, ImageDraw, ImageOps
+
 from daily_digest.config import Config
+from daily_digest.media import ImageAsset
 from daily_digest.model import Item, RankedItem, Section
 from daily_digest.overview import ensure_coverage, parse_overview
 from daily_digest.render import build_digest_data, render_digest
@@ -165,6 +170,41 @@ _DEMO_SPECS = (
 )
 
 
+def _demo_image_asset() -> ImageAsset:
+    """A deterministic abstract cover image, generated locally for the demo."""
+    width, height = 1200, 630
+    gradient = Image.linear_gradient("L").resize((width, height))
+    image = ImageOps.colorize(gradient, black="#0B1B2B", white="#1D4ED8")
+    draw = ImageDraw.Draw(image, "RGBA")
+    draw.ellipse((600, -80, 1260, 580), fill=(159, 34, 78, 155))
+    draw.ellipse((690, 80, 1110, 500), outline=(251, 250, 247, 180), width=3)
+    for index in range(6):
+        offset = index * 36
+        draw.arc(
+            (620, 40 + offset, 1180, 600 + offset),
+            start=200,
+            end=340,
+            fill=(96, 165, 250, 80),
+            width=2,
+        )
+    for x in range(80, 600, 80):
+        draw.line((x, 0, x, height), fill=(251, 250, 247, 18), width=1)
+    draw.rectangle((0, 0, 16, height), fill=(200, 16, 70, 220))
+    buffer = io.BytesIO()
+    image.save(buffer, "JPEG", quality=88)
+    data_uri = "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
+    return ImageAsset(
+        uid="demo:p1",
+        data_uri=data_uri,
+        alt="Abstract blue and crimson editorial illustration for the demo cover.",
+        credit="Ảnh: demo fixture",
+        source_url="https://example.com/demo/cover",
+        kind="og",
+        width=width,
+        height=height,
+    )
+
+
 def _demo_ranked() -> list[RankedItem]:
     published = datetime(2026, 11, 20, 6, 0, tzinfo=timezone.utc)
     ranked: list[RankedItem] = []
@@ -208,7 +248,7 @@ def render_demo(config: Config, *, open_browser: bool = True) -> Path:
         notice="Demo mode: bundled fixtures, no network or API key.",
         digest_data=build_digest_data(ranked, [], DEMO_DATE),
         pinned=[],
-        images={},
+        images={"demo:p1": _demo_image_asset()},
     )
     path = config.output_dir / "demo.html"
     path.parent.mkdir(parents=True, exist_ok=True)
