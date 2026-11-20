@@ -38,7 +38,7 @@
     <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
     <div class="dateline">
       <span>{{ date_long or date }} · {{ total }} câu chuyện</span>
-      <span>Biên tập: {% if mode == "llm" %}{{ model_name }}{% elif mode == "empty" %}empty digest{% else %}heuristic{% endif %}</span>
+      <span>Biên tập: {% if mode == "llm" %}{{ model_name }}{% elif mode == "demo" %}demo fixtures{% elif mode == "empty" %}empty digest{% else %}heuristic{% endif %}</span>
     </div>
   </header>
 

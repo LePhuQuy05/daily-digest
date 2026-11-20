@@ -1,4 +1,4 @@
-"""Command line interface: run | smoke | notify-test | install-task | uninstall-task | print-config | open."""
+"""Command line interface: run | demo | smoke | notify-test | install-task | uninstall-task | print-config | open."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from daily_digest.config import Config, ConfigError, load_config, redacted_config_dict
+from daily_digest.demo import render_demo
 from daily_digest.pipeline import run_day
 from daily_digest.util import LOG, load_json, save_json, setup_logging
 
@@ -78,6 +79,12 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
         else LOG.info
     )("run: %s", message)
     return result.exit_code
+
+
+def cmd_demo(config: Config, args: argparse.Namespace) -> int:
+    path = render_demo(config, open_browser=not args.no_open)
+    print(f"demo: {path}")
+    return 0
 
 
 def cmd_smoke(config: Config, args: argparse.Namespace) -> int:
@@ -333,6 +340,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--date", default=None, help="backfill a specific date (YYYY-MM-DD)"
     )
 
+    demo = sub.add_parser("demo", help="render a bundled, no-key demo digest")
+    demo.add_argument(
+        "--no-open",
+        action="store_true",
+        help="write the file without opening a browser",
+    )
     sub.add_parser("smoke", help="fetch all sources live and print counts")
     sub.add_parser("health", help="per-feed status for the curated feed source")
     sub.add_parser("notify-test", help="show a test toast that opens the digest")
@@ -371,6 +384,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         handlers = {
             "run": cmd_run,
+            "demo": cmd_demo,
             "smoke": cmd_smoke,
             "health": cmd_health,
             "notify-test": cmd_notify_test,
