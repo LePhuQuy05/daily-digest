@@ -6,7 +6,7 @@
 # Tôi là AI engineer đang xây dựng pipeline fine-tuning và evaluation cho mô
 # hình tiếng Việt. Tuần này tôi đang lo: chọn chiến lược RL (GRPO vs PPO) cho
 # agent tool-use, đo reward hacking, và hạ cost inference (quantization, vLLM).
-# Tôi quan tâm cơ chế (mechanistic interpretability) hơn benchmark гонка.
+# Tôi quan tâm cơ chế (mechanistic interpretability) hơn benchmark cuộc đua.
 # Tin practical/deployable ưu tiên hơn lý thuyết thuần.
 
 # Ghi chú: file này được nạp vào prompt của editor + writer (F4) và trợ lý
