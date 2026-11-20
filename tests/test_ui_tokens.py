@@ -97,6 +97,16 @@ class TestNewsroomShell:
         assert "points[:3] + points[-1:]" in partial  # cap, but keep the takeaway
         assert "spotlight" in partial  # last (takeaway) bullet highlighted
 
+    def test_overview_grid_does_not_stretch_rows(self, tmp_path):
+        html = _html(tmp_path)
+        for selector in (
+            r"\.rail \{",
+            r"\.overview\.briefing \{",
+            r"\.overview-points \{",
+        ):
+            rule = re.search(selector + r"[^}]*\}", html).group(0)
+            assert "align-content: start" in rule
+
     def test_briefing_is_news_box_not_gradient(self, tmp_path):
         html = _html(tmp_path)
         overview_rule = re.search(r"\.overview\.briefing \{[^}]*\}", html).group(0)

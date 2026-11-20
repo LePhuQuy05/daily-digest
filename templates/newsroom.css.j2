@@ -151,13 +151,13 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .overview.briefing { margin: 22px 0 0; padding: 16px 18px; background: var(--paper-warm);
                      border-top: 3px solid var(--red); border-bottom: 1px solid var(--rule);
                      display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-                     gap: 18px 24px; }
+                     gap: 18px 24px; align-content: start; }
 .briefing-head { min-width: 0; }
 .briefing .kicker { font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.12em;
                     text-transform: uppercase; color: var(--red); }
 .briefing-title { margin-top: 4px; font: 700 22px/1.15 var(--font-serif); color: var(--ink); }
 .overview-points { counter-reset: brief; list-style: none; margin: 0; padding: 0;
-                   display: grid; gap: 8px; }
+                   display: grid; gap: 8px; align-content: start; }
 .overview-point { display: flex; gap: 10px; color: var(--ink-2);
                   font: 14.5px/1.6 var(--font-sans); }
 .overview-point::before { counter-increment: brief; content: counter(brief, decimal-leading-zero);
@@ -219,7 +219,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .story .ask { margin-top: 8px; }
 
 /* ===================== rail ===================== */
-.rail { display: grid; gap: 16px; min-width: 0; align-self: stretch; }
+.rail { display: grid; gap: 16px; min-width: 0; align-self: stretch; align-content: start; }
 .rail .overview.briefing { grid-template-columns: 1fr; gap: 10px; margin: 0; padding: 14px 16px; }
 .rail .briefing-title { font-size: 20px; }
 .rail .overview-point { font-size: 13.5px; }
