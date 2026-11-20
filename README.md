@@ -15,20 +15,26 @@ Single-user and Windows-first by design — not a multi-tenant news platform or 
 
 ## Demo
 
-[![15-second demo: click a citation to jump to the source card, then switch themes](docs/demo.gif)](docs/demo.mp4)
+[![14-second demo: click a citation to jump to the source card, then switch themes](docs/demo.gif)](docs/demo.mp4)
 
-<sub>15-second real-browser tour. Click the GIF for the 1.5 MB MP4. Run <code>uv run daily-digest demo</code> for the zero-key version.</sub>
+<sub>14-second real-browser tour. Click the GIF for the 1.4 MB MP4. Run <code>uv run daily-digest demo</code> for the zero-key version.</sub>
 
 <details>
-<summary>Static screenshots (light / dark)</summary>
+<summary>Static screenshots (light / dark / cover)</summary>
 
 ![Daily AI Digest — light theme](docs/screenshots/digest-light.png)
 
 ![Daily AI Digest — dark theme](docs/screenshots/digest-dark.png)
 
+![Cover hero — bundled demo fixture](docs/screenshots/cover-hero.png)
+
+<sub>Cover hero with the bundled demo fixture. The live digest uses this treatment only for landscape OG leads; arXiv charts keep the figure plate.</sub>
+
 </details>
 
 The overview card cites articles **inline at the point of mention**. Clicking a reference scrolls to the matching card, focuses it, and highlights it for 2.5 seconds. Every selected item is guaranteed to appear at least once — a deterministic `Còn lại hôm nay` (“remaining today”) line covers anything the writer missed. Print hides the interactive references and keeps the broadsheet layout.
+
+**Cover hero:** when the lead has a landscape OG image, the lead becomes a magazine cover — a 16:9 photo with a 70% ink wash, serif display type, a crimson rule, and a print-visible credit. The treatment is gated to OG images for now; arXiv charts keep the current figure plate rather than being cropped.
 
 ## Why this exists
 
@@ -46,7 +52,7 @@ It is also a small reliability lab for LLM orchestration. Every model call has a
 | **Curation** | An **editor** LLM ranks ~12 items and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview (Vietnamese by default) |
 | **Interface** | Native `pywebview` window: inline citations, save/undo, thumbs feedback, grounded Q&A, light/dark themes, print layout |
 | **Reliability** | Source-level isolation, heuristic ranking without an API key, raw-abstract fallback when the writer fails, atomic digest writes |
-| **Quality** | **377 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
+| **Quality** | **384 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
 | **Stack** | Python 3.12 · `httpx` · `Jinja2` · `pywebview` · `pystray` · Pillow · `uv` |
 | **What it demonstrates** | LLM orchestration, failure isolation, product-minded UI, and test discipline |
 
@@ -112,7 +118,7 @@ uv run pytest -o addopts=''
 
 The suite is fully offline: HTTP and LLM calls are mocked with `respx` and fakes, and desktop integrations are isolated. It covers source adapters, ranking and fallbacks, rendering and XSS escaping, the JavaScript bridge, saved/feedback flows, overview coverage, and UI token/print invariants.
 
-- **377 tests**, currently green on Windows.
+- **384 tests**, currently green on Windows.
 - GitHub Actions runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are locked in `uv.lock`; CI installs with `uv sync --locked`.
 - The digest pipeline has explicit tests for LLM failure, missing keys, writer failure, `summarize: false`, and heuristic-only mode.
@@ -218,7 +224,7 @@ daily-digest/
 │  ├─ popup_bridge.py   # JS ↔ Python bridge
 │  └─ tray.py           # native tray, shortcuts, icon generation
 ├─ templates/           # HTML, CSS, and vanilla JS (no build step)
-├─ tests/               # 377 offline tests
+├─ tests/               # 384 offline tests
 ├─ docs/                # source catalog, UI research, implementation plans
 ├─ config.example.yaml
 └─ .github/workflows/ci.yml

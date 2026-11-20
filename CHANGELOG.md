@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses semantic versioning.
 
+## [Unreleased]
+
+### Added
+
+- Hero cover treatment for landscape OG leads: a 70% ink wash, inline print-visible credit, image-failure fallback, and regression coverage for the gate, contrast, and print styles.
+- The zero-key demo now includes a generated abstract cover fixture, so the treatment is visible without waiting for an OG-led day.
+
 ## [0.1.0] - 2026-11-20
 
 ### Added
