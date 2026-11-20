@@ -74,6 +74,25 @@ def test_summarize_overview_truncated_and_cleaned(tmp_path):
     assert overview.endswith("…")  # word-boundary ellipsis, never mid-word
 
 
+def test_overview_preserves_blank_lines_and_markers(tmp_path):
+    config = make_config(tmp_path)
+    text = "Hôm nay [[0]] dẫn đầu.\n\nĐiểm cần nhớ: [[1]] đáng đọc."
+    response = json.dumps({"overview": text, "items": [{"id": 0, "summary": "x"}]})
+    _, overview = summarize_with_llm(_ranked(2), FakeChat(response), config)
+    assert "\n\n" in overview
+    assert "[[0]]" in overview and "[[1]]" in overview
+
+
+def test_overview_truncation_never_leaves_partial_marker(tmp_path):
+    config = make_config(tmp_path)
+    text = "x" * 1598 + " [[0]]"
+    _, overview = summarize_with_llm(
+        _ranked(1), FakeChat(_summary_json({0: "x"}, overview=text)), config
+    )
+    assert len(overview) <= 1605
+    assert "[[0" not in overview  # incomplete marker removed at the cut
+
+
 def test_overview_keeps_final_takeaway_under_budget(tmp_path):
     config = make_config(tmp_path)
     takeaway = "Điểm cần nhớ: ưu tiên đọc kỹ."

@@ -193,11 +193,15 @@ SUMMARIZE_SYSTEM_PROMPT = (
     "Their interests: {topics}.\n"
     "{reader_context}"
     "Do two things:\n"
-    "1. OVERVIEW: write a compact 2-3 sentence synthesis of the whole day — the main "
-    "themes across ALL items, how they connect, and the single most important takeaway "
-    "for this reader. Keep it under ~1100 characters, and end with a short takeaway "
-    "sentence (the UI labels it 'Điểm cần nhớ'). Write the overview in {language}. "
-    "Plain text, no bullet characters.\n"
+    "1. OVERVIEW: write 3-5 short points about the whole day — the main themes "
+    "across ALL items, how they connect, and the single most important takeaway "
+    "for this reader. Separate points with blank lines. At every article mention, "
+    "write its candidate number as [[n]] IN PLACE OF the title; the item list is "
+    "0-based ([[0]] is the first item). Every numbered item must appear at least "
+    "once across the overview. End with a point starting with 'Điểm cần nhớ:'. "
+    "Keep it under ~1600 characters. Write the overview in {language}. Plain text, "
+    "no HTML, no markdown, no URLs, no bullet characters, and no other bracket "
+    "syntax.\n"
     "2. PER-ITEM SUMMARIES: for each numbered item, a compact summary in at most "
     "{max_words} words, 2-3 sentences, plain text (in English):\n"
     "- research papers: what the paper does, the key method or finding, and the "
@@ -255,18 +259,33 @@ def _validate_summaries(
 
 def _validate_overview(payload: dict) -> str:
     """Clean, cap and return the day overview ('' when absent/invalid).
-    Truncation is word-boundary + ellipsis — never cut mid-word (a truncated
-    Vietnamese sentence like "...cần đư" undermines trust)."""
+
+    Newlines and [[n]] markers are preserved; only spacing is normalized.
+    Truncation prefers a point/sentence boundary and never leaves a half marker.
+    """
     overview = payload.get("overview")
     if not isinstance(overview, str):
         return ""
-    cleaned = " ".join(overview.split())
+    cleaned = overview.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = re.sub(r"[ \t]+", " ", cleaned)
+    cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
     if len(cleaned) <= MAX_OVERVIEW_CHARS:
         return cleaned
+
     cut = cleaned[:MAX_OVERVIEW_CHARS]
-    last_space = cut.rfind(" ")
-    if last_space > MAX_OVERVIEW_CHARS // 2:
-        cut = cut[:last_space]
+    blank = cut.rfind("\n\n")
+    if blank > MAX_OVERVIEW_CHARS // 2:
+        cut = cut[:blank]
+    else:
+        sentence = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
+        if sentence > MAX_OVERVIEW_CHARS // 2:
+            cut = cut[: sentence + 1]
+        else:
+            last_space = cut.rfind(" ")
+            if last_space > MAX_OVERVIEW_CHARS // 2:
+                cut = cut[:last_space]
+    cut = re.sub(r"\[\[[^\]]*$", "", cut)  # incomplete marker at the cut
     return cut.rstrip(" ,;:.-") + "…"
 
 
