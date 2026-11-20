@@ -56,6 +56,11 @@
   --content-max: 1040px;
   --gutter: 24px;
   --radius-btn: 2px;
+
+  /* cover hero: a stable dark wash over a photographic lead */
+  --cover-bg: #141210;
+  --cover-text: #FBFAF7;
+  --cover-muted: #D8D2C8;
 }
 
 [data-theme="dark"] {
@@ -190,7 +195,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .story-title a { color: var(--ink); text-decoration: none; }
 .story-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .story-media { margin: 0 0 14px; }
-.story-media img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+.story-media img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain;
                    background: var(--paper-warm); border: 1px solid var(--rule);
                    padding: 10px 14px; }
 .story-media--og img { object-fit: cover; padding: 0; }
@@ -198,8 +203,49 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .story--hero .story-media--portrait img { max-width: 460px; margin-inline: auto; }
 .story-media figcaption { margin-top: 4px; font: 10.5px/1.4 var(--font-sans);
                          color: var(--ink-3); letter-spacing: 0.02em; }
+
+/* Cover hero: the photo stays visible; a 70% ink wash carries the type. */
+.story-lede, .story-head { min-width: 0; }
+.story--cover .story-lede { display: flow-root; }
+.story--cover .story-media { margin: 0; }
+.story--cover .story-media img {
+  display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+  border: 0; padding: 0; background: var(--cover-bg);
+}
+.story--cover .story-head {
+  position: relative; z-index: 1; margin: -72px 0 0; padding: 14px 16px 12px;
+  background: rgba(20, 18, 16, 0.70);
+  background: color-mix(in srgb, var(--cover-bg) 70%, transparent);
+  border-top: 3px solid var(--red);
+}
+.story--cover .story-head .kicker { color: var(--cover-text); }
+.story--cover .story-head .story-title {
+  color: var(--cover-text); font-size: clamp(30px, 7.2vw, 40px); line-height: 1.04;
+}
+.story--cover .story-head .story-title a { color: var(--cover-text); }
+.story--cover .story-head .story-title a:hover { text-decoration-color: var(--cover-text); }
+.story--cover .story-head .why { color: var(--cover-text); font-size: 16px; }
+.story--cover .story-head .story-credit {
+  margin: 10px 0 0; color: var(--cover-muted);
+  font: 500 10.5px/1.4 var(--font-sans); letter-spacing: 0.02em;
+}
+.story--cover .story-head a:focus-visible {
+  outline: 2px solid var(--cover-text); outline-offset: 3px;
+}
+.story--cover-failed .story-media { display: none; }
+
+@media (min-width: 760px) {
+  .story--cover .story-head { margin-top: -84px; padding: 18px 20px 14px; }
+  .story--cover .story-head .story-title { font-size: clamp(40px, 5.2vw, 48px); }
+  .story--cover .story-head .why { font-size: 17px; }
+}
+@media (min-width: 1100px) {
+  .story--cover .story-head { margin-top: -96px; padding: 20px 22px 16px; }
+  .story--cover .story-head .story-title { font-size: clamp(44px, 4.6vw, 52px); }
+}
 [data-theme="dark"] .story-media img { background: #EAE6DD; filter: brightness(0.92); }
 [data-theme="dark"] .story-media--og img { filter: none; }
+[data-theme="dark"] .story--cover .story-media img { background: var(--cover-bg); }
 .story--lead .story-title { font-size: 26px; }
 .story--secondary { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .story--secondary .story-title { font-size: 24px; }
@@ -475,6 +521,14 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     .story--hero .summary { -webkit-line-clamp: 5; }
     .story--lead .summary, .story--secondary .summary { -webkit-line-clamp: 4; }
     .why { color: #333; font-size: 8.5pt; line-height: 1.3; }
+    .story--cover .story-lede { display: block; }
+    .story--cover .story-head { position: static; margin: 0; padding: 0;
+                                background: none; border: 0; }
+    .story--cover .story-head .story-title { color: #111; font-size: 13pt; line-height: 1.15; }
+    .story--cover .story-head .story-title a { color: #111; }
+    .story--cover .story-head .why,
+    .story--cover .story-head .kicker { color: #111; }
+    .story--cover .story-head .story-credit { color: #333; font-size: 7.5pt; margin-top: 1mm; }
     .meta { color: #555; border-top: 1px solid #ddd; padding-top: 1mm; font-size: 7.5pt; }
     .section-front { margin-top: 5mm; break-inside: auto; }
     .section-head { border-top: 1px solid #111; border-left: 0; padding-left: 0;

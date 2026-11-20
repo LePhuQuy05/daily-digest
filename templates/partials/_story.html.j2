@@ -1,18 +1,30 @@
 {# Story variants for the newsroom front page. Imported with context so
    `source_names` and the current digest context are available. #}
 
-{% macro story(item, variant="brief") %}
-{% set img = images.get(item.item.id) if images and variant in ("hero", "lead") else none %}
-<article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" tabindex="-1">
-  {% if img %}
-  <figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">
-    <img src="{{ img.data_uri }}" alt="{{ img.alt }}" loading="lazy">
-    {% if img.credit %}<figcaption>{{ img.credit }}</figcaption>{% endif %}
-  </figure>
-  {% endif %}
+{% macro story_head(item, variant, cover=false, credit="") %}
   {% if variant == "hero" %}<div class="kicker">CÂU CHUYỆN CHÍNH</div>{% endif %}
   <h3 class="story-title"><a href="{{ item.item.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ item.item.title }}</a></h3>
   {% if variant != "more" and item.why %}<p class="why">{{ item.why }}</p>{% endif %}
+  {% if cover and credit %}<p class="story-credit">{{ credit }}</p>{% endif %}
+{% endmacro %}
+
+{% macro story(item, variant="brief") %}
+{% set img = images.get(item.item.id) if images and variant in ("hero", "lead") else none %}
+{% set cover = (variant == "hero" and img is not none and img.kind == "og" and img.credit != "" and img.height > 0 and img.width >= img.height * 1.25) %}
+<article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" tabindex="-1">
+  {% if variant == "hero" %}<div class="story-lede">{% endif %}
+  {% if img %}
+  <figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">
+    <img src="{{ img.data_uri }}" alt="{{ img.alt }}" width="{{ img.width }}" height="{{ img.height }}"{% if cover %} loading="eager" fetchpriority="high" onerror="this.closest('.story').classList.remove('story--cover');this.closest('.story').classList.add('story--cover-failed')"{% elif variant == "hero" %} loading="eager"{% else %} loading="lazy"{% endif %}>
+    {% if img.credit and not cover %}<figcaption>{{ img.credit }}</figcaption>{% endif %}
+  </figure>
+  {% endif %}
+  {% if variant == "hero" %}
+  <div class="story-head">{{ story_head(item, variant, cover, img.credit if img else "") }}</div>
+  </div>
+  {% else %}
+  {{ story_head(item, variant) }}
+  {% endif %}
   {% set summary_text = item.llm_summary or item.item.summary %}
   {% if variant != "more" and summary_text %}
   <p class="summary{% if item.llm_summary %} ai{% endif %}">{{ summary_text }}</p>
