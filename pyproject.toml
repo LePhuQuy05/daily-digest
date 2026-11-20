@@ -2,6 +2,21 @@
 name = "daily-digest"
 version = "0.1.0"
 description = "Daily AI & tech digest popup for Windows: HN + Hugging Face Daily Papers + arXiv, ranked by an LLM."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "LePhuQuy", email = "86889095+LePhuQuy05@users.noreply.github.com" },
+]
+keywords = ["ai", "llm", "arxiv", "hacker-news", "daily-digest", "pywebview"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "httpx>=0.27",
@@ -21,6 +36,12 @@ dev = [
 
 [project.scripts]
 daily-digest = "daily_digest.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/LePhuQuy05/daily-digest"
+Repository = "https://github.com/LePhuQuy05/daily-digest"
+Issues = "https://github.com/LePhuQuy05/daily-digest/issues"
+Changelog = "https://github.com/LePhuQuy05/daily-digest/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
