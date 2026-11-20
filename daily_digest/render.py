@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +12,7 @@ from daily_digest.frontpage import build_front_page
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
+from daily_digest.overview import OverviewPoint
 from daily_digest.source_labels import SOURCE_LABELS
 from daily_digest.util import atomic_write_text
 
@@ -74,6 +75,7 @@ def render_digest(
     template: Path,
     overview: str = "",
     overview_label: str = "Today's overview",
+    overview_points: Sequence[OverviewPoint] = (),
     notice: str = "",
     digest_data: dict | None = None,
     pinned: list[dict] = (),
@@ -94,6 +96,7 @@ def render_digest(
         sources_failed=sources_failed,
         overview=overview,
         overview_label=overview_label,
+        overview_points=overview_points,
         notice=notice,
         digest_data=digest_data,
         pinned=list(pinned),

@@ -27,6 +27,7 @@ from daily_digest.feedback import (
 from daily_digest.model import Item, RunResult, SECTIONS
 from daily_digest.normalize import item_uid
 from daily_digest.notify import notify
+from daily_digest.overview import ensure_coverage, parse_overview
 from daily_digest.popup import spawn_popup_detached
 from daily_digest.profile import load_profile
 from daily_digest.ranking import select
@@ -318,10 +319,13 @@ def run_day(
     # call). Cosmetic quality step — failure keeps the raw abstracts and falls back
     # to the mechanical overview; never affects delivery or the exit code.
     overview = ""
+    overview_points = ()
     if config.llm.summarize and summary_client is not None:
         ranked, overview = summarize_with_llm(
             ranked, summary_client.chat, config, reader_context
         )
+    if overview:
+        overview_points = ensure_coverage(parse_overview(overview, ranked), ranked)
     if not overview:
         overview = heuristic_overview(ranked, config)  # always have something
 
@@ -348,6 +352,7 @@ def run_day(
         mode=mode,
         overview=overview,
         overview_label=overview_label(config),
+        overview_points=overview_points,
         degraded=degraded,
         sources_failed=failed,
         model_name=config.llm.model,

@@ -75,11 +75,21 @@
       <div class="briefing-title">Trong ngày</div>
     </div>
     <ul class="overview-points">
+      {% if overview_points %}
+      {% for point in overview_points %}
+      <li class="overview-point{% if point.kind == 'takeaway' %} spotlight{% endif %}{% if point.kind == 'rest' %} overview-rest{% endif %}">
+        <span class="overview-body">
+          {% for seg in point.segments %}{{ seg.text }}{% if seg.ref %}<a class="oref" href="#story-{{ seg.ref.uid }}" data-story-ref="{{ seg.ref.uid }}" title="{{ seg.ref.title }}" aria-label="Chuyển đến bài: {{ seg.ref.title }}">{{ seg.ref.label }}</a>{% endif %}{% endfor %}
+        </span>
+      </li>
+      {% endfor %}
+      {% else %}
       {% set points = overview.split(". ") %}
       {% set shown_points = points[:3] + points[-1:] if points | length > 3 else points %}
       {% for point in shown_points %}
       <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
       {% endfor %}
+      {% endif %}
     </ul>
   </section>
   {% endif %}

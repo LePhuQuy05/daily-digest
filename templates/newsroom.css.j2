@@ -167,6 +167,10 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .overview-point.spotlight { color: var(--ink); font-weight: 600; }
 .overview-point.spotlight::before { content: "→"; width: auto; background: none;
                                     box-shadow: none; color: var(--red); font-weight: 700; }
+.overview-body { flex: 1; min-width: 0; }
+.oref { color: var(--red); font-weight: 600; text-decoration: underline;
+        text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.oref:hover { color: var(--accent-strong); }
 .briefing .spark, .briefing .pill { display: none; }
 @media (max-width: 760px) {
   .overview.briefing { grid-template-columns: 1fr; padding: 14px; }
