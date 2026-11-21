@@ -24,6 +24,7 @@ from daily_digest.i18n import (
     normalize_locale,
     t,
 )
+from daily_digest.lock import FileLock, LockError
 from daily_digest.model import RankedItem, RunResult
 from daily_digest.overview import (
     ensure_coverage,
@@ -184,7 +185,7 @@ def _notice_for(
     return " ".join(parts), edition.notice_key, dict(edition.notice_params)
 
 
-def localize_edition(
+def _localize_edition_unlocked(
     config: Config,
     date: str,
     locale: str,
@@ -286,8 +287,10 @@ def localize_edition(
         degraded=degraded or edition.degraded,
         images=images,
     )
+    if date != today_str():
+        return RunResult(exit_code=2, message="date changed during localization")
     html = render_edition(localized_edition, config)
-    digest_path = write_digest(html, config.output_dir, date)
+    digest_path = write_digest(html, config.output_dir, date, preferred_path=path)
     localized_edition = with_artifact(
         localized_edition, digest_path, html, config.output_dir
     )
@@ -315,3 +318,39 @@ def localize_edition(
         exit_code=1 if localized_edition.degraded else 0,
         message="localized current edition",
     )
+
+
+def localize_edition(
+    config: Config,
+    date: str,
+    locale: str,
+    *,
+    editor_client=None,
+    writer_client=None,
+    expect_count: int | None = None,
+    backup: bool = True,
+    open_popup: bool = False,
+    html_path: Path | None = None,
+    reader_context: str = "",
+) -> RunResult:
+    """Serialize the read-render-write transaction across processes."""
+    lock = FileLock(config.output_dir / ".localize.lock")
+    try:
+        lock.acquire()
+    except LockError as exc:
+        return RunResult(exit_code=2, message=str(exc))
+    try:
+        return _localize_edition_unlocked(
+            config,
+            date,
+            locale,
+            editor_client=editor_client,
+            writer_client=writer_client,
+            expect_count=expect_count,
+            backup=backup,
+            open_popup=open_popup,
+            html_path=html_path,
+            reader_context=reader_context,
+        )
+    finally:
+        lock.release()

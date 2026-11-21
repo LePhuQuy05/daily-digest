@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -79,11 +80,25 @@ def load_env_file(path: Path) -> dict[str, str]:
 
 
 def atomic_write_text(path: Path, text: str) -> None:
-    """Write via temp file + os.replace so readers never see a partial file."""
+    """Write via a unique temp file + os.replace so readers never see a partial file.
+
+    A fixed ``name.tmp`` is unsafe when a scheduled run and a popup action write
+    concurrently; every write gets its own temp name in the target directory.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=path.name + ".", suffix=".tmp", dir=path.parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def load_json(path: Path) -> dict:

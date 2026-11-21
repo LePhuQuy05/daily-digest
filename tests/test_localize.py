@@ -18,6 +18,7 @@ from daily_digest.edition import (
 )
 from daily_digest.cli import build_parser, cmd_localize
 from daily_digest.localize import localize_edition
+from daily_digest.lock import FileLock
 from daily_digest.model import RankedItem
 from daily_digest.overview import parse_overview
 from daily_digest.util import today_str
@@ -259,3 +260,15 @@ def test_localize_cli_accepts_locale_and_count_and_dispatches(tmp_path, monkeypa
     assert captured["expect_count"] == 3
     assert captured["backup"] is False
     assert captured["open_popup"] is False
+
+
+def test_localize_refuses_when_another_process_holds_lock(tmp_path):
+    config, date, _ = _setup(tmp_path)
+    lock = FileLock(config.output_dir / ".localize.lock")
+    lock.acquire()
+    try:
+        result = localize_edition(config, date, "en", backup=False)
+    finally:
+        lock.release()
+    assert result.exit_code == 2
+    assert "already in progress" in result.message

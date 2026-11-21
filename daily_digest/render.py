@@ -136,17 +136,35 @@ def render_digest(
 
 
 def write_digest(
-    html: str, output_dir: Path, date: str, *, update_latest: bool | None = None
+    html: str,
+    output_dir: Path,
+    date: str,
+    *,
+    update_latest: bool | None = None,
+    preferred_path: Path | None = None,
 ) -> Path:
-    """Archive digest-YYYY-MM-DD.html atomically; if the target is locked (open in a browser),
-    fall back to digest-YYYY-MM-DD-2.html. Refresh latest.html only for today."""
+    """Archive digest HTML atomically; refresh latest.html only for today.
+
+    ``preferred_path`` preserves the actual opened artifact (e.g. ``-2.html``).
+    If it is locked, fall back to a canonical/alternate file.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / f"digest-{date}.html"
-    try:
-        atomic_write_text(path, html)
-    except PermissionError:
-        path = output_dir / f"digest-{date}-2.html"
-        atomic_write_text(path, html)
+    if preferred_path is not None:
+        path = preferred_path
+        try:
+            atomic_write_text(path, html)
+        except PermissionError:
+            path = output_dir / f"digest-{date}.html"
+            if path == preferred_path:
+                path = output_dir / f"digest-{date}-2.html"
+            atomic_write_text(path, html)
+    else:
+        path = output_dir / f"digest-{date}.html"
+        try:
+            atomic_write_text(path, html)
+        except PermissionError:
+            path = output_dir / f"digest-{date}-2.html"
+            atomic_write_text(path, html)
     if update_latest is None:
         update_latest = date == today_str()
     if update_latest:

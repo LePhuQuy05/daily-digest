@@ -86,3 +86,16 @@ def test_write_digest_locked_target_falls_back(tmp_path, monkeypatch):
     assert path.name == "digest-2026-11-18-2.html"
     assert path.exists()
     assert (tmp_path / "latest.html").exists()
+
+
+def test_write_digest_preserves_preferred_artifact_path(tmp_path):
+    preferred = tmp_path / "digest-2026-11-18-2.html"
+    path = write_digest(
+        "<html>preferred</html>",
+        tmp_path,
+        "2026-11-18",
+        update_latest=False,
+        preferred_path=preferred,
+    )
+    assert path == preferred
+    assert preferred.read_text(encoding="utf-8") == "<html>preferred</html>"
