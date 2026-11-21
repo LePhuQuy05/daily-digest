@@ -190,6 +190,7 @@ def test_llm_client_uses_model_override_in_request(tmp_path):
     assert client.chat([{"role": "user", "content": "hi"}]) == "hi"
     body = json.loads(route.calls.last.request.content)
     assert body["model"] == "glm-5.3-flash"
+    assert body["max_tokens"] > 0
 
 
 @respx.mock

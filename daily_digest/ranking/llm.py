@@ -472,6 +472,7 @@ class LlmClient:
             "model": self.model,
             "messages": messages,
             "temperature": self.config.llm.temperature,
+            "max_tokens": MAX_OUTPUT_TOKENS,
         }
         backoffs = (2, 8)
         last_error: Exception | None = None
