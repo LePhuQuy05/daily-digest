@@ -15,6 +15,7 @@ import httpx
 
 from daily_digest.config import Config
 from daily_digest.article import hydrate_hn_links
+from daily_digest.digest_size import load_preferences, resolve_digest_size
 from daily_digest.enrich import enrich_citations
 from daily_digest.feedback import (
     FeedbackAggregate,
@@ -136,9 +137,13 @@ def run_day(
     notify_enabled: bool = True,
     notify_fn: Callable[..., None] = notify,
     summary_client: LlmClient | None = None,
+    target: int | None = None,
 ) -> RunResult:
     date = date or today_str()
     state = load_json(config.state_path)
+    target = resolve_digest_size(
+        config, load_preferences(config.preferences_path), target
+    )
     days: dict = state.setdefault("days", {})
 
     entry = days.get(date, {})
@@ -231,7 +236,7 @@ def run_day(
             notice=notice,
             digest_data=build_digest_data([], [], date),
         )
-        if new_only:
+        if new_only or force:
             _backup_morning_digest(config.output_dir, date)
         digest_path = write_digest(html, config.output_dir, date)
         days[date] = {
@@ -277,14 +282,14 @@ def run_day(
     # 2d. New-only backfill: when fewer than top_n unseen items exist, top up
     # from notable items shown on PREVIOUS days only (never today's morning
     # digest). Muted topics stay muted; heuristic order keeps the strongest.
-    if new_only and len(fresh) < config.llm.top_n:
+    if new_only and len(fresh) < target:
         previous = [
             item
             for item in items
             if (shown := seen.get(item_uid(item))) and shown != date
         ]
         previous, _ = apply_mute(previous, config)
-        need = config.llm.top_n - len(fresh)
+        need = target - len(fresh)
         backfill = heuristic_order(previous, config, adjustments)[:need]
         if backfill:
             fresh = merge_items([*fresh, *backfill])
@@ -292,7 +297,7 @@ def run_day(
                 "new-only: backfilled %d notable previous-day items (now %d/%d)",
                 len(backfill),
                 len(fresh),
-                config.llm.top_n,
+                target,
             )
 
     pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments)
@@ -316,7 +321,15 @@ def run_day(
             type(exc).__name__,
             exc,
         )
-    ranked, mode = select(pool, llm_client, config, reader_context, adjustments)
+    ranked, mode = select(
+        pool, llm_client, config, reader_context, adjustments, target=target
+    )
+    if len(ranked) < target:
+        LOG.info(
+            "digest size: requested %d, selected %d (candidate pool short)",
+            target,
+            len(ranked),
+        )
     degraded = bool(failed) or mode != "llm"
 
     # 3b. Summarize (writer LLM): per-item summaries + the day OVERVIEW (one batched
@@ -369,7 +382,7 @@ def run_day(
         images=images,
         source_names=labels_for(config),
     )
-    if new_only:
+    if new_only or force:
         _backup_morning_digest(config.output_dir, date)
     digest_path = write_digest(html, config.output_dir, date)
 

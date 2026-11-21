@@ -33,8 +33,7 @@ SYSTEM_PROMPT = (
     "{reader_context}"
     "{always_rule}"
     "From the numbered candidates, select the {top_n} most valuable items for this reader today. "
-    "Prefer real impact and novelty over hype. Aim for a 7-8 papers / 3 tech news / 1-2 "
-    "tools-releases mix when good candidates exist; never pad with low-value items. "
+    "Prefer real impact and novelty over hype. {mix_guidance} never pad with low-value items. "
     "Candidates marked [release] belong in tools_releases; keep them there. "
     "For tech_news, prefer first-party lab posts and established press/analysis; "
     "use HN when it adds a distinct technical signal rather than as the default. "
@@ -44,6 +43,32 @@ SYSTEM_PROMPT = (
     '"section": "papers|tech_news|tools_releases"}}]}}\n'
     "Order by importance. Use each candidate number at most once."
 )
+
+
+def mix_guidance(target: int) -> str:
+    """Section mix sentence; the 12-item rendering stays byte-identical."""
+    if target == 12:
+        return (
+            "Aim for a 7-8 papers / 3 tech news / 1-2 tools-releases mix "
+            "when good candidates exist;"
+        )
+    if target < 6:
+        return (
+            "Aim for a balanced papers / tech news / tools-releases mix "
+            "when good candidates exist;"
+        )
+    papers = max(1, round(target * 0.6))
+    news = max(1, round(target * 0.25))
+    tools = max(0, target - papers - news)
+    if tools:
+        return (
+            f"Aim for about {papers} papers / {news} tech news / {tools} "
+            "tools-releases when good candidates exist;"
+        )
+    return (
+        f"Aim for about {papers} papers / {news} tech news when good candidates exist;"
+    )
+
 
 _ALWAYS_RULE = (
     "Entries marked ★ALWAYS match the reader's must-see keywords; "
@@ -135,14 +160,21 @@ def _validate(payload: dict, index_map: dict[int, Item]) -> list[RankedItem]:
 
 
 def rank_with_llm(
-    items: list[Item], chat: ChatFn, config: Config, reader_context: str = ""
+    items: list[Item],
+    chat: ChatFn,
+    config: Config,
+    reader_context: str = "",
+    *,
+    target: int | None = None,
 ) -> list[RankedItem]:
     """Rank via the chat function. Raises LlmError if the model can't produce a usable selection."""
     index_map = {index: item for index, item in enumerate(items)}
     always_rule = _ALWAYS_RULE if config.interests.always else ""
+    limit = min(target or config.llm.top_n, len(items))
     system = SYSTEM_PROMPT.format(
         topics=", ".join(config.interests.topics),
-        top_n=min(config.llm.top_n, len(items)),
+        top_n=limit,
+        mix_guidance=mix_guidance(limit),
         reader_context=reader_context,
         always_rule=always_rule,
     )
@@ -181,10 +213,9 @@ def rank_with_llm(
                 f"LLM returned invalid JSON twice: {second_error}"
             ) from second_error
 
-    if len(ranked) < MIN_SELECTION:
-        raise LlmError(
-            f"LLM selected only {len(ranked)} valid items (need >= {MIN_SELECTION})"
-        )
+    if len(ranked) < min(MIN_SELECTION, limit, len(items)):
+        floor = min(MIN_SELECTION, limit, len(items))
+        raise LlmError(f"LLM selected only {len(ranked)} valid items (need >= {floor})")
     return ranked
 
 
@@ -199,7 +230,7 @@ SUMMARIZE_SYSTEM_PROMPT = (
     "write its candidate number as [[n]] IN PLACE OF the title; the item list is "
     "0-based ([[0]] is the first item). Every numbered item must appear at least "
     "once across the overview. End with a point starting with 'Điểm cần nhớ:'. "
-    "Keep it under ~1600 characters. Write the overview in {language}. Plain text, "
+    "Keep it under ~{overview_chars} characters. Write the overview in {language}. Plain text, "
     "no HTML, no markdown, no URLs, no bullet characters, and no other bracket "
     "syntax.\n"
     "2. PER-ITEM SUMMARIES: for each numbered item, a compact summary in at most "
@@ -212,12 +243,21 @@ SUMMARIZE_SYSTEM_PROMPT = (
     "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
     '{{"overview": "<the day overview>", "items": [{{"id": <item number>, '
     '"summary": "<your summary>"}}]}}\n'
-    "Cover every numbered item."
+    "Cover every numbered item.{density_hint}"
 )
 
 MAX_SUMMARY_CHARS = 600
 MAX_OVERVIEW_CHARS = 1600
 SUMMARY_INPUT_CHARS = 1200
+
+
+def overview_char_budget(item_count: int) -> int:
+    """Grow the overview budget with larger user-selected digests."""
+    if item_count <= 12:
+        return MAX_OVERVIEW_CHARS
+    return min(3000, MAX_OVERVIEW_CHARS + 60 * (item_count - 12))
+
+
 _LANGUAGE_NAME = {
     "vi": "Vietnamese",
     "en": "English",
@@ -257,7 +297,7 @@ def _validate_summaries(
     return summaries
 
 
-def _validate_overview(payload: dict) -> str:
+def _validate_overview(payload: dict, max_chars: int = MAX_OVERVIEW_CHARS) -> str:
     """Clean, cap and return the day overview ('' when absent/invalid).
 
     Newlines and [[n]] markers are preserved; only spacing is normalized.
@@ -270,20 +310,20 @@ def _validate_overview(payload: dict) -> str:
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
-    if len(cleaned) <= MAX_OVERVIEW_CHARS:
+    if len(cleaned) <= max_chars:
         return cleaned
 
-    cut = cleaned[:MAX_OVERVIEW_CHARS]
+    cut = cleaned[:max_chars]
     blank = cut.rfind("\n\n")
-    if blank > MAX_OVERVIEW_CHARS // 2:
+    if blank > max_chars // 2:
         cut = cut[:blank]
     else:
         sentence = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
-        if sentence > MAX_OVERVIEW_CHARS // 2:
+        if sentence > max_chars // 2:
             cut = cut[: sentence + 1]
         else:
             last_space = cut.rfind(" ")
-            if last_space > MAX_OVERVIEW_CHARS // 2:
+            if last_space > max_chars // 2:
                 cut = cut[:last_space]
     cut = re.sub(r"\[\[[^\]]*$", "", cut)  # incomplete marker at the cut
     return cut.rstrip(" ,;:.-") + "…"
@@ -304,6 +344,12 @@ def summarize_with_llm(
         language = config.llm.overview_language.strip() or "English"
     index_map = {index: item for index, item in enumerate(ranked)}
     labels = labels_for(config)
+    budget = overview_char_budget(len(ranked))
+    density_hint = (
+        " This is a dense digest: keep each summary tight so the JSON fits."
+        if len(ranked) > 16
+        else ""
+    )
     messages: list[dict] = [
         {
             "role": "system",
@@ -312,6 +358,8 @@ def summarize_with_llm(
                 max_words=config.llm.summary_max_words,
                 language=language,
                 reader_context=reader_context,
+                overview_chars=budget,
+                density_hint=density_hint,
             ),
         },
         {
@@ -327,7 +375,7 @@ def summarize_with_llm(
         try:
             payload = _extract_json(text)
             summaries = _validate_summaries(payload, index_map)
-            overview = _validate_overview(payload)
+            overview = _validate_overview(payload, budget)
         except ValueError as first_error:
             LOG.debug("summary JSON invalid (%s); asking for one repair", first_error)
             messages.extend(
@@ -343,7 +391,7 @@ def summarize_with_llm(
             text = chat(messages)
             payload = _extract_json(text)
             summaries = _validate_summaries(payload, index_map)
-            overview = _validate_overview(payload)
+            overview = _validate_overview(payload, budget)
     except (LlmError, ValueError) as exc:
         LOG.warning("LLM summarization failed (%s); keeping original abstracts", exc)
         return ranked, ""

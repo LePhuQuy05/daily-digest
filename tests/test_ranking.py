@@ -296,6 +296,70 @@ def test_select_uses_llm_when_available(tmp_path):
     assert mode == "llm" and len(ranked) == 4
 
 
+def _many_items(count: int):
+    return [
+        make_item(
+            id=f"arxiv:{i}",
+            title=f"Paper {i}",
+            url=f"https://arxiv.org/abs/{i}",
+            source="arxiv",
+            summary="a paper about language models",
+        )
+        for i in range(count)
+    ]
+
+
+def test_select_respects_target_30(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.top_n = 12
+    ranked, mode = select(
+        _many_items(40), FakeLlmClient(llm_ok_json(30)), config, target=30
+    )
+    assert mode == "llm"
+    assert len(ranked) == 30
+
+
+def test_select_target_short_pool_does_not_pad(tmp_path):
+    config = make_config(tmp_path)
+    ranked, mode = select(
+        _many_items(2), FakeLlmClient(llm_ok_json(2)), config, target=5
+    )
+    assert mode == "llm"
+    assert len(ranked) == 2
+
+
+def test_select_target_1_and_2_accept_small_selection(tmp_path):
+    config = make_config(tmp_path)
+    for target in (1, 2):
+        ranked, mode = select(
+            _many_items(4),
+            FakeLlmClient(llm_ok_json(target)),
+            config,
+            target=target,
+        )
+        assert mode == "llm"
+        assert len(ranked) == target
+
+
+def test_editor_prompt_scales_to_30(tmp_path):
+    config = make_config(tmp_path)
+    chat = FakeChat(llm_ok_json(30))
+    rank_with_llm(_many_items(40), chat, config, target=30)
+    system = chat.calls[0][0]["content"]
+    assert "select the 30" in system
+    assert "7-8 papers" not in system
+    assert "about 18 papers" in system
+
+
+def test_editor_prompt_uses_balanced_mix_below_six(tmp_path):
+    config = make_config(tmp_path)
+    chat = FakeChat(llm_ok_json(3))
+    rank_with_llm(_many_items(4), chat, config, target=3)
+    system = chat.calls[0][0]["content"]
+    assert "select the 3" in system
+    assert "balanced papers / tech news / tools-releases" in system
+
+
 def test_select_falls_back_to_heuristic_on_llm_error(tmp_path):
     config = make_config(tmp_path)
     ranked, mode = select(_items(config), FakeLlmClient(["garbage", "garbage"]), config)

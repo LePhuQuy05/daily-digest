@@ -10,6 +10,7 @@ from pathlib import Path
 
 from daily_digest.config import Config, ConfigError, load_config, redacted_config_dict
 from daily_digest.demo import render_demo
+from daily_digest.digest_size import MAX_DIGEST_SIZE, MIN_DIGEST_SIZE
 from daily_digest.pipeline import run_day
 from daily_digest.util import LOG, load_json, save_json, setup_logging
 
@@ -53,15 +54,17 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
     import httpx
 
     editor = get_llm_client(config)
+    count = getattr(args, "count", None)
     result = run_day(
         config,
         date=args.date,
         http=httpx.Client(timeout=30.0, follow_redirects=True),
         llm_client=editor,
         summary_client=get_summarize_client(config, editor),
-        force=args.force or args.new_only,
+        force=args.force or args.new_only or count is not None,
         new_only=args.new_only,
         notify_enabled=not args.no_notify,
+        target=count,
     )
     message = result.message or (
         f"{result.item_count} items ({result.mode}) -> {result.digest_path}"
@@ -310,6 +313,18 @@ def cmd_uninstall_tray(config: Config, args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _digest_count(value: str) -> int:
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("count must be an integer") from exc
+    if not MIN_DIGEST_SIZE <= count <= MAX_DIGEST_SIZE:
+        raise argparse.ArgumentTypeError(
+            f"count must be {MIN_DIGEST_SIZE}..{MAX_DIGEST_SIZE}"
+        )
+    return count
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="daily-digest", description="Daily AI & tech digest popup"
@@ -338,6 +353,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--date", default=None, help="backfill a specific date (YYYY-MM-DD)"
+    )
+    run.add_argument(
+        "--count",
+        type=_digest_count,
+        default=None,
+        metavar="N",
+        help=f"items in this digest ({MIN_DIGEST_SIZE}..{MAX_DIGEST_SIZE}); implies --force",
     )
 
     demo = sub.add_parser("demo", help="render a bundled, no-key demo digest")

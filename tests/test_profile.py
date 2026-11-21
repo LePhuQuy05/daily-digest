@@ -6,7 +6,11 @@ import daily_digest.pipeline as pipeline
 from daily_digest.config import Config, load_config
 from daily_digest.pipeline import run_day
 from daily_digest.profile import load_profile, profile_block
-from daily_digest.ranking.llm import SYSTEM_PROMPT, SUMMARIZE_SYSTEM_PROMPT
+from daily_digest.ranking.llm import (
+    SYSTEM_PROMPT,
+    SUMMARIZE_SYSTEM_PROMPT,
+    mix_guidance,
+)
 from helpers import FakeLlmClient, llm_ok_json, make_config, make_item
 
 # Golden: the EXACT rendered prompts as of the F4 change, captured before the
@@ -56,14 +60,23 @@ GOLDEN_WRITER = (
 
 def test_golden_editor_prompt_byte_identity_with_empty_inputs():
     rendered = SYSTEM_PROMPT.format(
-        topics="LLM, agents", top_n=12, reader_context="", always_rule=""
+        topics="LLM, agents",
+        top_n=12,
+        mix_guidance=mix_guidance(12),
+        reader_context="",
+        always_rule="",
     )
     assert rendered == GOLDEN_EDITOR
 
 
 def test_golden_writer_prompt_byte_identity_with_empty_inputs():
     rendered = SUMMARIZE_SYSTEM_PROMPT.format(
-        topics="LLM, agents", max_words=70, language="Vietnamese", reader_context=""
+        topics="LLM, agents",
+        max_words=70,
+        language="Vietnamese",
+        reader_context="",
+        overview_chars=1600,
+        density_hint="",
     )
     assert rendered == GOLDEN_WRITER
 
@@ -71,7 +84,11 @@ def test_golden_writer_prompt_byte_identity_with_empty_inputs():
 def test_prompt_with_context_inserts_after_interests_line():
     block = "About the reader's current work, in their own words: building a RAG eval tool\n"
     rendered = SYSTEM_PROMPT.format(
-        topics="LLM", top_n=12, reader_context=block, always_rule=""
+        topics="LLM",
+        top_n=12,
+        mix_guidance=mix_guidance(12),
+        reader_context=block,
+        always_rule="",
     )
     assert rendered.index("Their interests: LLM.\n") < rendered.index(block)
     assert rendered.index(block) < rendered.index("From the numbered candidates")
@@ -140,7 +157,11 @@ def test_profile_block_empty_and_content():
 def test_profile_with_braces_never_breaks_format():
     block = profile_block("uses {custom} templates")
     rendered = SYSTEM_PROMPT.format(
-        topics="LLM", top_n=5, reader_context=block, always_rule=""
+        topics="LLM",
+        top_n=5,
+        mix_guidance=mix_guidance(5),
+        reader_context=block,
+        always_rule="",
     )
     assert "{custom}" in rendered  # substituted value is not re-formatted
 
