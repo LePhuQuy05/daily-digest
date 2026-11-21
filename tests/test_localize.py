@@ -19,6 +19,7 @@ from daily_digest.edition import (
 from daily_digest.cli import build_parser, cmd_localize
 from daily_digest.localize import localize_edition
 from daily_digest.lock import FileLock
+from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.overview import parse_overview
 from daily_digest.util import today_str
@@ -31,7 +32,7 @@ WRITER_OK = (
 EDITOR_OK = '{"items": [{"id": 0, "why": "English why."}]}'
 
 
-def _setup(tmp_path, *, locale="vi"):
+def _setup(tmp_path, *, locale="vi", image=None):
     config = make_config(tmp_path)
     date = today_str()
     ranked = [
@@ -57,6 +58,7 @@ def _setup(tmp_path, *, locale="vi"):
         model_name="test-model",
         overview="Tổng quan cũ [[0]]",
         overview_points=tuple(points),
+        images={ranked[0].item.id: image} if image is not None else {},
     )
     html = render_edition(edition, config)
     output_dir = config.output_dir
@@ -272,3 +274,46 @@ def test_localize_refuses_when_another_process_holds_lock(tmp_path):
         lock.release()
     assert result.exit_code == 2
     assert "already in progress" in result.message
+
+
+def test_localize_preserves_cover_image_from_current_html(tmp_path):
+    config, date, _ = _setup(
+        tmp_path,
+        image=ImageAsset(
+            uid="arxiv:2611.00001",
+            data_uri="data:image/jpeg;base64,AAAA",
+            alt="Cover",
+            credit="Ảnh: test",
+            source_url="https://example.test/cover",
+            kind="og",
+            width=1200,
+            height=630,
+        ),
+    )
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert "story--cover" in html
+    assert "data:image/jpeg;base64,AAAA" in html
+
+
+def test_localize_refuses_stale_snapshot_hash(tmp_path):
+    config, date, _ = _setup(tmp_path)
+    path = config.output_dir / f"digest-{date}.html"
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\n<!-- changed -->",
+        encoding="utf-8",
+    )
+
+    result = localize_edition(config, date, "en", backup=False)
+
+    assert result.exit_code == 2
+    assert "does not match current HTML" in result.message

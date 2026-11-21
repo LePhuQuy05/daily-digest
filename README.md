@@ -54,7 +54,7 @@ It is also a small reliability lab for LLM orchestration. Every model call has a
 | **Curation** | An **editor** LLM ranks a user-selectable 1–30 items (default 12) and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview in Vietnamese, English, or Japanese (`vi` default) |
 | **Interface** | Native `pywebview` window: inline citations, save/undo, thumbs feedback, grounded Q&A, light/dark themes, print layout |
 | **Reliability** | Source-level isolation, heuristic ranking without an API key, raw-abstract fallback when the writer fails, atomic digest writes |
-| **Quality** | **449 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
+| **Quality** | **486 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
 | **Stack** | Python 3.12 · `httpx` · `Jinja2` · `pywebview` · `pystray` · Pillow · `uv` |
 | **What it demonstrates** | LLM orchestration, failure isolation, product-minded UI, and test discipline |
 
@@ -120,7 +120,7 @@ uv run pytest -o addopts=''
 
 The suite is fully offline: HTTP and LLM calls are mocked with `respx` and fakes, and desktop integrations are isolated. It covers source adapters, ranking and fallbacks, rendering and XSS escaping, the JavaScript bridge, saved/feedback flows, overview coverage, and UI token/print invariants.
 
-- **449 tests**, currently green on Windows.
+- **486 tests**, currently green on Windows.
 - GitHub Actions runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are locked in `uv.lock`; CI installs with `uv sync --locked`.
 - The digest pipeline has explicit tests for LLM failure, missing keys, writer failure, `summarize: false`, and heuristic-only mode.
@@ -164,7 +164,8 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 | `uv run daily-digest run` | Fetch → rank → render → popup + toast (idempotent per day) |
 | `uv run daily-digest run --force` | Rebuild today’s digest |
 | `uv run daily-digest run --force --count N` | Rebuild today with N items (1–30); implies `--force` |
-| `uv run daily-digest run --force --lang ja` | Rebuild today in Japanese; one-off, implies `--force` |
+| `uv run daily-digest run --force --lang ja` | Fresh rebuild in Japanese; implies `--force` |
+| `uv run daily-digest localize --lang ja` | Localize today's selected edition; no fetch/rank |
 | `uv run daily-digest run --force --new-only` | Refresh with unseen items only; backfills if short |
 | `uv run daily-digest health` | Per-feed status and item counts |
 | `uv run daily-digest smoke` | Live-check every source |
@@ -177,9 +178,11 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 
 The digest is complete in **Vietnamese (`vi`)**, **English (`en`)**, and **Japanese (`ja`)**. `vi` is the default.
 
-- In the popup, open **Cài đặt**, choose a language, then **Áp dụng**. One Apply saves size + language together, backs up the current edition first, and starts one rebuild.
-- The **masthead language selector** switches directly. In the desktop app it saves the preference and starts one rebuild (after the drift warning); in `daily-digest demo` it navigates between the pre-rendered `demo-vi.html`, `demo-en.html`, and `demo-ja.html` files.
-- `uv run daily-digest run --lang ja` is a one-off override. It implies `--force` and does not persist.
+- In the popup, open **Cài đặt**, choose a language, then **Áp dụng**. A language-only Apply keeps today's selected articles and localizes them; a size change reruns the pipeline.
+- The **masthead language selector** switches directly. In the desktop app it localizes the current edition without fetching/ranking; in `daily-digest demo` it navigates between the pre-rendered `demo-vi.html`, `demo-en.html`, and `demo-ja.html` files.
+- `uv run daily-digest localize --lang ja` is the CLI equivalent for today's current edition; it preserves item order, titles, paper dates, pinned items, and cover images.
+- `uv run daily-digest run --lang ja` remains a **fresh** run and may select different stories.
+- Language-only failure keeps the old HTML and restores the previous preference; deterministic fallbacks mark the digest degraded.
 - Precedence: `--lang` > `preferences.json.language` > legacy `llm.overview_language` > `vi`.
 - `ja-JP`, `JA`, and `ja_JP` normalize to `ja`; unknown values fail fast on the CLI and in settings.
 - Archived digests keep their baked locale and are read-only. Source titles, abstracts, URLs, product names, and source labels are never translated.
@@ -191,7 +194,7 @@ The digest shows **12 items by default**, and you can choose **1–30**:
 - In the popup, click **Đổi** next to the dateline count, choose a size, then **Áp dụng**. This saves the preference in `preferences.json` and reruns the editor + writer.
 - Or use `uv run daily-digest run --count 16` for a one-off rebuild without changing the stored preference.
 - **Đặt lại** removes the stored preference and returns to `config.llm.top_n` / 12.
-- A size change reruns the pipeline; the same-day morning digest is backed up as `digest-YYYY-MM-DD-morning.html`.
+- A size change reruns the pipeline and may select a different set of stories; the same-day digest is backed up as `digest-YYYY-MM-DD-morning[-N].html`.
 
 ![Digest size dialog — zero-key demo preview](docs/screenshots/size-dialog.png)
 
@@ -252,7 +255,7 @@ daily-digest/
 │  ├─ popup_bridge.py   # JS ↔ Python bridge
 │  └─ tray.py           # native tray, shortcuts, icon generation
 ├─ templates/           # HTML, CSS, and vanilla JS (no build step)
-├─ tests/               # 449 offline tests
+├─ tests/               # 486 offline tests
 ├─ docs/                # source catalog, UI research, implementation plans
 ├─ config.example.yaml
 ├─ preferences.json     # user size preference (git-ignored)

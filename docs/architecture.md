@@ -17,7 +17,9 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 
 - Precedence: `--lang` > `preferences.json.language` > legacy `llm.overview_language` > `vi`.
 - `vi` is the default. `ja-JP`, `JA`, and `ja_JP` normalize to `ja`; unknown CLI/settings values fail fast, while invalid stored/legacy values warn and fall back.
-- `--lang` is one-off and implies `--force`. The settings dialog persists size + language in one atomic write.
+- `--lang` is one-off and implies `--force` for a fresh run. The settings dialog persists size + language.
+- A language-only UI change calls `localize`, which keeps the ordered item set and regenerates only localized content. It never calls `fetch_all`, `select`, or `collect_images`.
+- `run --lang` and `run --count` remain fresh runs and may select different stories; the size warning says so explicitly.
 - Archived digests bake their locale into `<html lang>` and remain read-only.
 - Source titles, abstracts, URLs, authors, source labels, and product names are never translated.
 - The catalog falls back `locale → en → vi`; missing keys are logged once per locale/key. Translations are autoescaped or embedded with `tojson`, never `|safe`.
@@ -33,6 +35,13 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 6. **Summarize** — the writer LLM adds 2–3 sentence summaries and the day overview; raw abstracts and a heuristic overview are the fallback.
 7. **Render and deliver** — Jinja produces one self-contained HTML file; the popup and toast open it.
 
+### Localize vs fresh run
+
+- **Fresh run** (`run`, `run --count`, `run --lang`, refresh) fetches, filters, ranks, summarizes, and may select a different set.
+- **Localize** (`localize`, language selector) loads `output/editions/digest-YYYY-MM-DD.json`, reads images from the current HTML, regenerates `why`/summaries/overview/chrome in the target locale, and writes the same edition.
+- The sidecar stores ordered items, wall-clock `published` dates, overview points, pinned items, run metadata, actual `html_relpath`, and an exact-byte HTML hash. `digest_data` keeps its existing shape.
+- If the sidecar is missing/corrupt, a legacy edition is reconstructed from `digest_data` + HTML; if that cannot preserve the item set, localize refuses. It never silently re-ranks for language-only.
+
 ## Failure policy
 
 | Failure | Policy |
@@ -41,6 +50,8 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 | One source unavailable | Continue with the remaining sources; `health` reports per-feed status |
 | Editor timeout / 401 | Heuristic ranking; no empty digest |
 | Writer timeout / invalid JSON | Keep raw abstracts and a deterministic overview |
+| Localize failure | Keep the old HTML, restore the previous language preference, show a localized error |
+| Localize missing/corrupt snapshot | Reconstruct from digest_data + HTML or refuse; never re-rank |
 | Writer omits an item from the overview | `ensure_coverage` adds a `Còn lại hôm nay` reference line |
 | `latest.html` locked / process dies | Atomic write; keep the previous good file |
 | Feed text contains instructions | Treat as data; model output is parsed as JSON, never executed; HTML is escaped |
@@ -60,6 +71,9 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 | `daily_digest/ranking/llm.py` | Editor/writer prompts, JSON parsing, overview validation |
 | `daily_digest/overview.py` | Citation marker parsing, labels, coverage guarantee |
 | `daily_digest/i18n.py` | Locale catalogs, resolution, dates, JS messages, CJK splitting/truncation |
+| `daily_digest/edition.py` | Versioned render-complete edition snapshots and legacy recovery |
+| `daily_digest/localize.py` | Localize today's frozen edition without fetch/rank |
+| `daily_digest/lock.py` | Cross-process one-byte edition lock |
 | `daily_digest/backup.py` | Unique write-ahead morning backups |
 | `daily_digest/render.py` | Jinja context and digest data blob |
 | `daily_digest/popup_bridge.py` | Bridge for feedback, saved items, and Ask |

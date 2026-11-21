@@ -6,7 +6,7 @@
 uv run pytest -o addopts=''
 ```
 
-- **449 tests**, offline by default.
+- **486 tests**, offline by default.
 - CI runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are pinned in `uv.lock`; CI installs with `uv sync --locked`.
 
@@ -20,6 +20,7 @@ uv run pytest -o addopts=''
 | Digest size | 1–30 policy, preferences, CLI override, short pools, morning backup, archived bridge guard |
 | Rendering | Section fronts, paper metadata dates, XSS escaping, safe links, print/token invariants |
 | Locales | `vi`/`en`/`ja` catalog parity, precedence, `--lang`, dates, JS messages, Japanese splitting/truncation, prompts, settings and backups |
+| Edition localization | Snapshot round-trip, legacy HTML recovery, item-set identity, no fetch/rank, target-locale fallbacks, image preservation, one backup/spawn, lock/path/hash safety |
 | Cover hero | OG/landscape gate, 70% contrast, credit escaping, print reset, image-failure fallback |
 | Demo | Bundled fixture render, coverage, no network or key requirement |
 | Overview | Marker parsing, duplicate cleanup, coverage guarantee, every fallback mode |

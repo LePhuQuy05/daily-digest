@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `run --lang` and `demo --lang`; `ja-JP`, `JA`, and `ja_JP` normalize to `ja`. `--lang` is a one-off override and implies `--force`.
 - Combined size + language settings dialog. One Apply writes both preferences atomically, creates a unique morning backup first, and spawns one rebuild.
 - Masthead language selector for direct switching; demo mode navigates between pre-rendered vi/en/ja files.
+- `localize --lang` localizes today's selected edition without fetching or re-ranking; a versioned `output/editions/digest-YYYY-MM-DD.json` sidecar preserves ordered items, paper dates, overview points, pinned items, path, and HTML hash.
 - Japanese typography and print rules, localized AI-summary label, toast body, dates, section titles, and heuristic fallbacks.
 
 ### Changed
@@ -17,11 +18,17 @@ All notable changes to this project are documented here. The format follows [Kee
 - Full-locale output intentionally replaces the previous mixed vi/en behavior: `vi` now has Vietnamese summaries and `why` lines, and `en` has English chrome + content.
 - `latest.html` is refreshed only for today; `--date` backfills no longer clobber it.
 - Backups now use `-morning`, `-morning-2`, … and never overwrite an earlier copy.
+- Language-only changes keep the current ordered item set and regenerate localized content; size changes still rerun the pipeline and may select a different set.
+- Images are read from the current HTML data URIs; localize does not depend on the media cache.
 
 ### Fixed
 
 - Archived digests keep their baked locale and remain read-only; legacy size bridge methods still work.
 - Japanese overviews split on `。！？` plus closing quotes, protect versions/URLs from ASCII-dot splitting, normalize full-width markers, and remove partial `[[` artifacts.
+
+- Localize writes are serialized with a cross-process lock and unique temp files; writes preserve `-2.html` paths and refuse stale snapshot hashes.
+
+## [0.1.1] - 2026-11-21
 
 ### Added
 

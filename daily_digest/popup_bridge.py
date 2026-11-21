@@ -359,6 +359,13 @@ class DigestBridge:
                         "language": locale,
                         "message": "preference saved",
                     }
+                if not path.exists():
+                    return {
+                        "ok": False,
+                        "saved": False,
+                        "spawned": False,
+                        "error": f"current digest not found: {path}",
+                    }
                 now = time.monotonic()
                 if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
                     return {
