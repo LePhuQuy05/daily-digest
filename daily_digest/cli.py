@@ -101,6 +101,7 @@ def cmd_localize(config: Config, args: argparse.Namespace) -> int:
         backup=not args.no_backup,
         open_popup=not args.no_popup,
         html_path=Path(args.path) if getattr(args, "path", None) else None,
+        rollback_language=getattr(args, "previous_lang", None),
     )
     message = result.message or (
         f"{result.item_count} items ({result.mode}) -> {result.digest_path}"
@@ -477,6 +478,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the digest without opening a popup",
     )
     localize.add_argument("--path", default=None, help=argparse.SUPPRESS)
+    localize.add_argument(
+        "--previous-lang",
+        type=_locale_arg,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
 
     demo = sub.add_parser("demo", help="render a bundled, no-key demo digest")
     demo.add_argument(

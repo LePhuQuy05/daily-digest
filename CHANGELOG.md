@@ -27,6 +27,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Japanese overviews split on `。！？` plus closing quotes, protect versions/URLs from ASCII-dot splitting, normalize full-width markers, and remove partial `[[` artifacts.
 
 - Localize writes are serialized with a cross-process lock and unique temp files; writes preserve `-2.html` paths and refuse stale snapshot hashes.
+- Detached `localize` failures now restore the previous language preference and write a status file; the open window polls and surfaces the error.
 
 ## [0.1.1] - 2026-11-21
 

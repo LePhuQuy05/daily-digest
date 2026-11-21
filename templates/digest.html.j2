@@ -199,6 +199,33 @@
     /* --- language switch: bridge rebuild, or pre-rendered demo files --- */
     var langSwitch = document.getElementById("lang-switch");
     var langStatus = document.getElementById("lang-status");
+    function pollLocalization(api) {
+      var attempts = 0;
+      function tick() {
+        if (!langStatus) return;
+        attempts += 1;
+        if (attempts > 120) {
+          langStatus.textContent = mt("settings_error_save");
+          return;
+        }
+        if (!api.localization_status) return;
+        api.localization_status().then(function (st) {
+          if (!st || st.state === "running" || st.state === "idle") {
+            setTimeout(tick, 1500);
+          } else if (st.state === "error") {
+            langSwitch.value = document.documentElement.lang;
+            langStatus.textContent = st.message || mt("settings_error_save");
+          } else if (st.state === "degraded") {
+            langStatus.textContent = mt("localize_fallback");
+          } else if (st.state === "success") {
+            langStatus.textContent = mt("settings_updating");
+          }
+        }).catch(function () {
+          setTimeout(tick, 1500);
+        });
+      }
+      tick();
+    }
     if (langSwitch) {
       langSwitch.addEventListener("change", function () {
         var target = langSwitch.value;
@@ -222,7 +249,12 @@
                   (res && res.error) || mt("settings_error_save");
               }
             } else if (langStatus) {
-              langStatus.textContent = mt("settings_updating");
+              if (res.spawned) {
+                langStatus.textContent = mt("settings_updating");
+                pollLocalization(api);
+              } else {
+                langStatus.hidden = true;
+              }
             }
           }).catch(function () {
             langSwitch.disabled = false;

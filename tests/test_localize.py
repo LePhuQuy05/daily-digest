@@ -18,6 +18,7 @@ from daily_digest.edition import (
 )
 from daily_digest.cli import build_parser, cmd_localize
 from daily_digest.localize import localize_edition
+from daily_digest.edition import localize_status_path
 from daily_digest.lock import FileLock
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
@@ -317,3 +318,48 @@ def test_localize_refuses_stale_snapshot_hash(tmp_path):
 
     assert result.exit_code == 2
     assert "does not match current HTML" in result.message
+
+
+def test_localize_stale_hash_rolls_back_language_and_reports_error(tmp_path):
+    config, date, _ = _setup(tmp_path)
+    config.preferences_path.write_text(
+        json.dumps({"language": "ja"}), encoding="utf-8"
+    )
+    path = config.output_dir / f"digest-{date}.html"
+    path.write_text(path.read_text(encoding="utf-8") + "\n<!-- changed -->", encoding="utf-8")
+
+    result = localize_edition(
+        config,
+        date,
+        "ja",
+        backup=False,
+        rollback_language="vi",
+    )
+
+    assert result.exit_code == 2
+    stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
+    assert stored["language"] == "vi"
+    status = json.loads(localize_status_path(config.output_dir, date).read_text(encoding="utf-8"))
+    assert status["state"] == "error"
+    assert "does not match" in status["message"]
+
+
+def test_localize_count_mismatch_rolls_back_language(tmp_path):
+    config, date, _ = _setup(tmp_path)
+    config.preferences_path.write_text(
+        json.dumps({"language": "ja"}), encoding="utf-8"
+    )
+
+    result = localize_edition(
+        config,
+        date,
+        "ja",
+        expect_count=99,
+        backup=False,
+        rollback_language="vi",
+    )
+
+    assert result.exit_code == 2
+    assert "expected 99" in result.message
+    stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
+    assert stored["language"] == "vi"

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import daily_digest.popup_bridge as bridge_mod
+from daily_digest.edition import localize_status_path
 from daily_digest.popup_bridge import DigestBridge, extract_locale
 from daily_digest.render import write_digest
 from daily_digest.util import today_str
@@ -152,6 +153,8 @@ def test_set_language_spawns_localize_once_and_keeps_size(tmp_path):
             "--no-backup",
             "--path",
             str(source),
+            "--previous-lang",
+            "vi",
         ]
     ]
     stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
@@ -283,3 +286,22 @@ def test_write_digest_does_not_clobber_latest_on_backfill(tmp_path):
 
     assert latest.read_text(encoding="utf-8") == "TODAY"
     assert (tmp_path / "digest-2020-01-01.html").exists()
+
+
+def test_localization_status_reads_detached_job_error(tmp_path):
+    config = make_config(tmp_path)
+    path = localize_status_path(config.output_dir, today_str())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {"state": "error", "message": "snapshot does not match current HTML"}
+        ),
+        encoding="utf-8",
+    )
+    bridge = _bridge(config, items={"arxiv:1": {}})
+
+    status = bridge.localization_status()
+
+    assert status["ok"] is True
+    assert status["state"] == "error"
+    assert "does not match" in status["message"]

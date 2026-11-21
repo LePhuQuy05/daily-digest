@@ -36,6 +36,7 @@ from daily_digest.digest_size import (
     save_preferences,
     stored_digest_size,
 )
+from daily_digest.edition import localize_status_path
 from daily_digest.feedback import (
     ACTIONS,
     aggregate,
@@ -387,6 +388,12 @@ class DigestBridge:
                     }
                 save_preferences(self.config.preferences_path, language=locale)
                 saved = True
+                try:
+                    localize_status_path(self.config.output_dir, self.date).unlink(
+                        missing_ok=True
+                    )
+                except OSError:
+                    pass
                 spawn = self._spawn_fn
                 if spawn is None:
                     from daily_digest.popup import spawn_cli
@@ -404,6 +411,8 @@ class DigestBridge:
                         "--no-backup",
                         "--path",
                         str(path),
+                        "--previous-lang",
+                        previous_locale,
                     ]
                 )
                 if not spawned:
@@ -557,6 +566,22 @@ class DigestBridge:
                 "spawned": False,
                 "error": str(exc),
             }
+
+    def localization_status(self) -> dict:
+        """Best-effort status for the detached language-localization job."""
+        try:
+            if not self.date:
+                return {"ok": True, "state": "idle"}
+            path = localize_status_path(self.config.output_dir, self.date)
+            if not path.exists():
+                return {"ok": True, "state": "idle"}
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return {"ok": False, "state": "error", "message": "invalid status"}
+            return {"ok": True, **data}
+        except Exception as exc:  # noqa: BLE001 — bridge must never raise
+            LOG.warning("localization_status failed: %s", exc)
+            return {"ok": False, "state": "error", "message": str(exc)}
 
     def reset_settings(self) -> dict:
         """Remove stored size + language preferences."""

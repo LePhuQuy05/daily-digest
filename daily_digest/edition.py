@@ -80,6 +80,12 @@ def snapshot_path(output_dir: Path, date: str) -> Path:
     return output_dir / SNAPSHOT_DIR / f"digest-{date}.json"
 
 
+def localize_status_path(output_dir: Path, date: str) -> Path:
+    if not _valid_date(date):
+        raise EditionError(f"invalid edition date: {date!r}")
+    return output_dir / SNAPSHOT_DIR / f"localize-status-{date}.json"
+
+
 def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 

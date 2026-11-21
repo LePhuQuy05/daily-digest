@@ -9,11 +9,13 @@ from pathlib import Path
 
 from daily_digest.backup import backup_digest
 from daily_digest.config import Config
+from daily_digest.digest_size import load_preferences, save_preferences
 from daily_digest.edition import (
     Edition,
     edition_from_legacy_html,
     extract_images_from_html,
     load_edition,
+    localize_status_path,
     render_edition,
     save_edition,
     with_artifact,
@@ -33,7 +35,7 @@ from daily_digest.overview import (
 )
 from daily_digest.ranking.heuristic import heuristic_overview, heuristic_why
 from daily_digest.ranking.llm import _extract_json, summarize_with_llm
-from daily_digest.util import LOG, load_json, save_json, today_str
+from daily_digest.util import LOG, atomic_write_text, load_json, save_json, today_str
 from daily_digest.render import write_digest
 
 MAX_WHY = 140
@@ -320,6 +322,43 @@ def _localize_edition_unlocked(
     )
 
 
+def _write_localize_status(
+    config: Config,
+    date: str,
+    state: str,
+    message: str,
+    locale: str,
+    previous_language: str | None,
+) -> None:
+    try:
+        path = localize_status_path(config.output_dir, date)
+        payload = {
+            "state": state,
+            "date": date,
+            "locale": locale,
+            "previous_language": previous_language,
+            "message": message,
+        }
+        atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2))
+    except Exception as exc:  # noqa: BLE001 — status is best-effort
+        LOG.warning("localize status update failed: %s", exc)
+
+
+def _restore_previous_language(
+    config: Config, locale: str, previous_language: str | None
+) -> None:
+    if not previous_language:
+        return
+    try:
+        current = normalize_locale(
+            load_preferences(config.preferences_path).get("language")
+        )
+        if current == normalize_locale(locale):
+            save_preferences(config.preferences_path, language=previous_language)
+    except Exception as exc:  # noqa: BLE001 — bridge/CLI must not crash
+        LOG.warning("language preference rollback failed: %s", exc)
+
+
 def localize_edition(
     config: Config,
     date: str,
@@ -332,25 +371,57 @@ def localize_edition(
     open_popup: bool = False,
     html_path: Path | None = None,
     reader_context: str = "",
+    rollback_language: str | None = None,
 ) -> RunResult:
-    """Serialize the read-render-write transaction across processes."""
+    """Serialize the read-render-write transaction and roll back on failure."""
+    _write_localize_status(
+        config, date, "running", "localizing current edition", locale, rollback_language
+    )
     lock = FileLock(config.output_dir / ".localize.lock")
     try:
         lock.acquire()
     except LockError as exc:
+        _restore_previous_language(config, locale, rollback_language)
+        _write_localize_status(
+            config, date, "error", str(exc), locale, rollback_language
+        )
         return RunResult(exit_code=2, message=str(exc))
     try:
-        return _localize_edition_unlocked(
+        try:
+            result = _localize_edition_unlocked(
+                config,
+                date,
+                locale,
+                editor_client=editor_client,
+                writer_client=writer_client,
+                expect_count=expect_count,
+                backup=backup,
+                open_popup=open_popup,
+                html_path=html_path,
+                reader_context=reader_context,
+            )
+        except Exception as exc:  # noqa: BLE001 — detached job must report
+            LOG.exception("localize failed")
+            _restore_previous_language(config, locale, rollback_language)
+            _write_localize_status(
+                config, date, "error", str(exc), locale, rollback_language
+            )
+            return RunResult(exit_code=2, message=str(exc))
+        if result.exit_code == 2:
+            _restore_previous_language(config, locale, rollback_language)
+            state = "error"
+        elif result.exit_code == 1:
+            state = "degraded"
+        else:
+            state = "success"
+        _write_localize_status(
             config,
             date,
+            state,
+            result.message or state,
             locale,
-            editor_client=editor_client,
-            writer_client=writer_client,
-            expect_count=expect_count,
-            backup=backup,
-            open_popup=open_popup,
-            html_path=html_path,
-            reader_context=reader_context,
+            rollback_language,
         )
+        return result
     finally:
         lock.release()
