@@ -222,6 +222,7 @@ def rank_with_llm(
         ranked = _validate(_extract_json(text), index_map, loc)
     except ValueError as first_error:
         LOG.debug("LLM JSON invalid (%s); asking for one repair", first_error)
+        LOG.debug("editor response prefix: %.500r", text)
         messages.extend(
             [
                 {"role": "assistant", "content": text},
@@ -418,6 +419,7 @@ def summarize_with_llm(
             overview = _validate_overview(payload, budget, loc)
         except ValueError as first_error:
             LOG.debug("summary JSON invalid (%s); asking for one repair", first_error)
+            LOG.debug("writer response prefix: %.500r", text)
             messages.extend(
                 [
                     {"role": "assistant", "content": text},
@@ -494,7 +496,25 @@ class LlmClient:
                     )
                 response.raise_for_status()
                 data = response.json()
-                return str(data["choices"][0]["message"]["content"])
+                choice = data["choices"][0]
+                finish_reason = choice.get("finish_reason")
+                usage = data.get("usage") or {}
+                LOG.info(
+                    "LLM response model=%s finish_reason=%s prompt_tokens=%s "
+                    "completion_tokens=%s total_tokens=%s",
+                    self.model,
+                    finish_reason,
+                    usage.get("prompt_tokens") if isinstance(usage, dict) else None,
+                    usage.get("completion_tokens") if isinstance(usage, dict) else None,
+                    usage.get("total_tokens") if isinstance(usage, dict) else None,
+                )
+                if finish_reason == "length":
+                    LOG.warning(
+                        "LLM response was truncated (model=%s); increase the "
+                        "per-stage output budget before treating the JSON as valid",
+                        self.model,
+                    )
+                return str(choice["message"]["content"])
             except LlmError:
                 raise
             except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:

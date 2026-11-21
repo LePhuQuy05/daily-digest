@@ -1,6 +1,7 @@
 """Two-LLM digest: editor selects, writer summarizes. Contract, fallback, wiring."""
 
 import json
+import logging
 
 import httpx
 import respx
@@ -203,6 +204,35 @@ def test_llm_client_defaults_to_editor_model(tmp_path):
     client.chat([{"role": "user", "content": "hi"}])
     body = json.loads(route.calls.last.request.content)
     assert body["model"] == "deepseek-v4.1-flash"  # the default editor model
+
+
+@respx.mock
+def test_llm_client_logs_finish_reason_and_usage(tmp_path, caplog):
+    config = make_config(tmp_path)
+    respx.post(GO_CHAT_URL).respond(
+        200,
+        json={
+            "choices": [{"message": {"content": "hi"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 3, "completion_tokens": 7, "total_tokens": 10},
+        },
+    )
+    client = LlmClient(config, "test-key", "ses_test")
+    with caplog.at_level(logging.INFO, logger="daily_digest"):
+        assert client.chat([{"role": "user", "content": "hi"}]) == "hi"
+    assert "finish_reason=stop" in caplog.text
+    assert "completion_tokens=7" in caplog.text
+
+
+def test_writer_logs_response_prefix_on_parse_failure(tmp_path, caplog):
+    config = make_config(tmp_path)
+    with caplog.at_level(logging.DEBUG, logger="daily_digest"):
+        summarize_with_llm(
+            _ranked(1),
+            FakeChat(["garbage", "garbage"]),
+            config,
+        )
+    assert "writer response prefix" in caplog.text
+    assert "garbage" in caplog.text
 
 
 def test_get_summarize_client_reuses_editor_when_same_model(tmp_path):
