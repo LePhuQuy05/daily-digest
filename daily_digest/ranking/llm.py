@@ -13,6 +13,8 @@ import dataclasses
 import json
 import re
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Protocol
 
 import httpx
@@ -45,6 +47,18 @@ SUMMARY_INPUT_CHARS = 1200
 SUMMARY_INPUT_CHARS_JA = 400
 MAX_OUTPUT_TOKENS = 8192
 SUMMARY_BATCH_SIZE = 12
+_WRITER_DEADLINE: ContextVar[float | None] = ContextVar("writer_deadline", default=None)
+
+
+@contextmanager
+def writer_deadline(deadline: float | None):
+    """Bound writer stages without changing the public summarize signature."""
+    token = _WRITER_DEADLINE.set(deadline)
+    try:
+        yield
+    finally:
+        _WRITER_DEADLINE.reset(token)
+
 
 SYSTEM_PROMPT = (
     "You are the editor of a daily tech digest for an AI engineer and researcher. "
@@ -429,9 +443,18 @@ def write_item_summaries(
                 if start <= index < start + len(batch)
             }
 
+        text = ""
         try:
             text = chat(messages)
             batch_summaries = parse(text)
+        except LlmError as exc:
+            LOG.warning(
+                "writer v2 item batch %d call failed: %s; keeping raw abstracts",
+                start,
+                exc,
+            )
+            all_ok = False
+            continue
         except (ValueError, json.JSONDecodeError) as first_error:
             LOG.debug(
                 "writer v2 item batch %d invalid (%s); asking for one repair",
@@ -450,7 +473,16 @@ def write_item_summaries(
                 ]
             )
             try:
-                batch_summaries = parse(chat(messages))
+                text = chat(messages)
+                batch_summaries = parse(text)
+            except LlmError as exc:
+                LOG.warning(
+                    "writer v2 item batch %d repair call failed: %s; keeping raw abstracts",
+                    start,
+                    exc,
+                )
+                all_ok = False
+                continue
             except (ValueError, json.JSONDecodeError) as second_error:
                 LOG.warning(
                     "writer v2 item batch %d failed: %s; keeping raw abstracts",
@@ -517,9 +549,13 @@ def write_overview(
         payload = _extract_json(text)
         return _validate_overview(payload, budget, loc)
 
+    text = ""
     try:
         text = chat(messages)
         overview = parse(text)
+    except LlmError as exc:
+        LOG.warning("writer v2 overview call failed: %s", exc)
+        return ""
     except (ValueError, json.JSONDecodeError) as first_error:
         LOG.debug("writer v2 overview invalid (%s); asking for one repair", first_error)
         LOG.debug("writer v2 overview response prefix: %.500r", text)
@@ -534,7 +570,11 @@ def write_overview(
             ]
         )
         try:
-            overview = parse(chat(messages))
+            text = chat(messages)
+            overview = parse(text)
+        except LlmError as exc:
+            LOG.warning("writer v2 overview repair call failed: %s", exc)
+            return ""
         except (ValueError, json.JSONDecodeError) as second_error:
             LOG.warning("writer v2 overview failed: %s", second_error)
             return ""
@@ -549,8 +589,8 @@ def _summarize_v2(
     config: Config,
     reader_context: str,
     locale: str,
-    deadline: float | None,
 ) -> tuple[list[RankedItem], str]:
+    deadline = _WRITER_DEADLINE.get()
     localized, _ = write_item_summaries(
         ranked,
         chat,
@@ -576,8 +616,6 @@ def summarize_with_llm(
     config: Config,
     reader_context: str = "",
     locale: str = "vi",
-    *,
-    deadline: float | None = None,
 ) -> tuple[list[RankedItem], str]:
     """Write the day overview + reader-facing summaries.
 
@@ -587,7 +625,7 @@ def summarize_with_llm(
     if not ranked:
         return ranked, ""
     if config.llm.writer_v2:
-        return _summarize_v2(ranked, chat, config, reader_context, locale, deadline)
+        return _summarize_v2(ranked, chat, config, reader_context, locale)
     loc = normalize_locale(locale) or "vi"
     language = PROMPT_LANGUAGE[loc]
     summary_limit = (

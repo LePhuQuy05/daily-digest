@@ -46,7 +46,7 @@ from daily_digest.ranking.heuristic import (
     heuristic_overview,
 )
 from daily_digest.media import collect_images
-from daily_digest.ranking.llm import LlmClient, summarize_with_llm
+from daily_digest.ranking.llm import LlmClient, summarize_with_llm, writer_deadline
 from daily_digest.render import write_digest
 from daily_digest.rules import apply_mute, log_mute_summary
 from daily_digest.sources import SourceError, enabled_sources, fetch_all
@@ -357,14 +357,14 @@ def run_day(
     overview_points = ()
     if config.llm.summarize and summary_client is not None:
         if time.monotonic() < deadline:
-            ranked, overview = summarize_with_llm(
-                ranked,
-                summary_client.chat,
-                config,
-                reader_context,
-                locale,
-                deadline=deadline,
-            )
+            with writer_deadline(deadline):
+                ranked, overview = summarize_with_llm(
+                    ranked,
+                    summary_client.chat,
+                    config,
+                    reader_context,
+                    locale,
+                )
         else:
             LOG.warning("run budget exceeded before writer; keeping raw abstracts")
     if overview:
@@ -377,8 +377,19 @@ def run_day(
                 ranked, config, locale
             )  # always have something
         overview_points = heuristic_overview_points(ranked, config, locale)
-    if config.llm.writer_v2 and ranked and not all(item.llm_summary for item in ranked):
-        degraded = True
+    writer_notice_text = ""
+    writer_notice_key = ""
+    if config.llm.writer_v2 and ranked:
+        covered = sum(1 for item in ranked if item.llm_summary)
+        if covered < len(ranked):
+            degraded = True
+            writer_notice_key = "writer_partial"
+            writer_notice_text = t(locale, writer_notice_key)
+            LOG.warning(
+                "writer v2 wrote %d/%d summaries; digest is degraded",
+                covered,
+                len(ranked),
+            )
 
     # 3c. "Nhìn lại": pinned saves (cap + overflow note), minus any uid that is
     # already in today's ranked (the fresher in-section card wins).
@@ -407,6 +418,8 @@ def run_day(
         sources_failed=tuple(failed),
         overview=overview,
         overview_points=tuple(overview_points),
+        notice_text=writer_notice_text,
+        notice_key=writer_notice_key,
         pinned=tuple(pinned),
         pinned_overflow=pinned_overflow,
         images=images,

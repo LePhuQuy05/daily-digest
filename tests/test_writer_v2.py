@@ -7,9 +7,11 @@ import json
 import time
 
 import daily_digest.pipeline as pipeline
+from daily_digest.edition import load_edition
+from daily_digest.i18n import t
 from daily_digest.model import RankedItem
 from daily_digest.pipeline import run_day
-from daily_digest.ranking.llm import summarize_with_llm
+from daily_digest.ranking.llm import LlmError, summarize_with_llm, writer_deadline
 from helpers import FakeChat, FakeLlmClient, llm_ok_json, make_config, make_item
 
 
@@ -52,6 +54,21 @@ def _overview_payload() -> str:
     )
 
 
+class ScriptedChat:
+    """Return or raise the next scripted step; records each call."""
+
+    def __init__(self, steps):
+        self.steps = list(steps)
+        self.calls: list[list[dict]] = []
+
+    def __call__(self, messages: list[dict]) -> str:
+        self.calls.append(messages)
+        step = self.steps.pop(0)
+        if isinstance(step, Exception):
+            raise step
+        return step
+
+
 def test_writer_v2_splits_batches_with_absolute_indices(tmp_path):
     config = make_config(tmp_path)
     config.llm.writer_v2 = True
@@ -71,6 +88,52 @@ def test_writer_v2_splits_batches_with_absolute_indices(tmp_path):
     second_user = chat.calls[1][1]["content"]
     assert "[12]" in second_user
     assert "[0]" not in second_user
+
+
+def test_writer_v2_30_items_keep_absolute_index_identity(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.writer_v2 = True
+    chat = FakeChat(
+        [
+            _items_payload(0, 12),
+            _items_payload(12, 12),
+            _items_payload(24, 6),
+            _overview_payload(),
+        ]
+    )
+
+    ranked, overview = summarize_with_llm(_ranked(30), chat, config, locale="en")
+
+    assert len(chat.calls) == 4
+    assert [item.llm_summary for item in ranked] == [f"Summary {i}" for i in range(30)]
+    assert [item.item.id for item in ranked] == [f"arxiv:{i:05d}" for i in range(30)]
+    first = chat.calls[0][1]["content"]
+    second = chat.calls[1][1]["content"]
+    third = chat.calls[2][1]["content"]
+    assert "[0]" in first and "[11]" in first and "[12]" not in first
+    assert "[12]" in second and "[23]" in second
+    assert "[0]" not in second and "[24]" not in second
+    assert "[24]" in third and "[29]" in third and "[0]" not in third
+    assert "Two themes" in overview
+
+
+def test_writer_v2_ignores_index_outside_current_batch(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.writer_v2 = True
+    bleed = json.dumps(
+        {
+            "items": [
+                {"id": 0, "summary": "WRONG cross-batch summary"},
+                {"id": 12, "summary": "Summary 12"},
+            ]
+        }
+    )
+    chat = FakeChat([_items_payload(0, 12), bleed, _overview_payload()])
+
+    ranked, _ = summarize_with_llm(_ranked(13), chat, config, locale="en")
+
+    assert ranked[0].llm_summary == "Summary 0"
+    assert ranked[12].llm_summary == "Summary 12"
 
 
 def test_writer_v2_item_batch_failure_keeps_other_batches(tmp_path):
@@ -93,6 +156,35 @@ def test_writer_v2_item_batch_failure_keeps_other_batches(tmp_path):
     assert overview
 
 
+def test_writer_v2_transport_failure_isolated_to_batch(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.writer_v2 = True
+    chat = ScriptedChat(
+        [LlmError("endpoint down"), _items_payload(12, 1), _overview_payload()]
+    )
+
+    ranked, overview = summarize_with_llm(_ranked(13), chat, config, locale="en")
+
+    assert len(chat.calls) == 3
+    assert all(not item.llm_summary for item in ranked[:12])
+    assert ranked[12].llm_summary == "Summary 12"
+    assert "Two themes" in overview
+
+
+def test_writer_v2_overview_transport_failure_keeps_summaries(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.writer_v2 = True
+    chat = ScriptedChat(
+        [_items_payload(0, 12), _items_payload(12, 1), LlmError("endpoint down")]
+    )
+
+    ranked, overview = summarize_with_llm(_ranked(13), chat, config, locale="en")
+
+    assert len(chat.calls) == 3
+    assert all(item.llm_summary for item in ranked)
+    assert overview == ""
+
+
 def test_writer_v2_overview_failure_keeps_summaries(tmp_path):
     config = make_config(tmp_path)
     config.llm.writer_v2 = True
@@ -112,13 +204,8 @@ def test_writer_v2_deadline_stops_before_calls(tmp_path):
     config.llm.writer_v2 = True
     chat = FakeChat([_items_payload(0, 1), _overview_payload()])
 
-    ranked, overview = summarize_with_llm(
-        _ranked(1),
-        chat,
-        config,
-        locale="en",
-        deadline=time.monotonic() - 1,
-    )
+    with writer_deadline(time.monotonic() - 1):
+        ranked, overview = summarize_with_llm(_ranked(1), chat, config, locale="en")
 
     assert chat.calls == []
     assert ranked[0].llm_summary == ""
@@ -158,9 +245,7 @@ def test_run_day_writer_v2_partial_summaries_degraded(tmp_path, monkeypatch):
     ]
     monkeypatch.setattr(pipeline, "fetch_all", lambda client, cfg: (items, []))
 
-    def fake_summarize(
-        ranked, chat, config, reader_context="", locale="vi", deadline=None
-    ):
+    def fake_summarize(ranked, chat, config, reader_context="", locale="vi"):
         ranked = list(ranked)
         ranked[0] = dataclasses.replace(ranked[0], llm_summary="only one")
         ranked[1] = dataclasses.replace(ranked[1], llm_summary="")
@@ -177,3 +262,9 @@ def test_run_day_writer_v2_partial_summaries_degraded(tmp_path, monkeypatch):
 
     assert result.degraded is True
     assert result.exit_code == 1
+    saved = load_edition(config.output_dir, "2026-11-18")
+    assert saved is not None
+    assert saved.notice_key == "writer_partial"
+    assert saved.notice_text == t("vi", "writer_partial")
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert t("vi", "writer_partial") in html
