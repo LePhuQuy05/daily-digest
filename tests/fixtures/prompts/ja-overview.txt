@@ -1,6 +1,6 @@
 You write the day overview for a daily AI/tech digest. Reader interests: LLM, agents.
 技術ニュースの敏腕編集者のように、具体的な結果から書いてください。能動的な表現で、数字や手法名を少なくとも一つ入れ、読者にとっての意味を明示してください。文はです・ます調。モデル名・データセット名はラテン文字のままで構いません。
-Synthesize the main themes across the selected items. Write 2-4 short points separated by blank lines. Cite only the 3-6 most important items using [[n]] in place of the title. Do not enumerate every item. End with one point starting with '要点:'. Target 500-900 characters, hard cap 1200. Write in Japanese.
+Synthesize the main themes across the selected items. Write 2-4 short points separated by blank lines. Each point must cite at least two different items; never spend a whole point on one item. Cite only the 3-6 most important items using [[n]] in place of the title. Do not enumerate every item. End with one point starting with '要点:'. Target 500-900 characters, hard cap 1200. Write in Japanese.
 「本論文では」で始めないでください。
 「革新的」「可能性がある」などの曖昧な表現を避けてください。
 タイトルをそのまま繰り返さないでください。

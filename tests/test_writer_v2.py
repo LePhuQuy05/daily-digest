@@ -156,6 +156,21 @@ def test_writer_v2_item_batch_failure_keeps_other_batches(tmp_path):
     assert overview
 
 
+def test_writer_v2_ja_truncation_stops_at_sentence_boundary(tmp_path):
+    config = make_config(tmp_path)
+    config.llm.writer_v2 = True
+    long_text = "これは具体的な結果を示す文です。" * 20
+    payload = json.dumps({"items": [{"id": 0, "summary": long_text}]})
+    chat = FakeChat([payload, _overview_payload()])
+
+    ranked, _ = summarize_with_llm(_ranked(1), chat, config, locale="ja")
+
+    summary = ranked[0].llm_summary
+    assert len(summary) <= 240
+    assert summary.endswith("。")
+    assert len(summary) < len(long_text)
+
+
 def test_writer_v2_transport_failure_isolated_to_batch(tmp_path):
     config = make_config(tmp_path)
     config.llm.writer_v2 = True

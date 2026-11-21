@@ -328,8 +328,41 @@ def _summary_line(
     return f"[{index}] ({label}) {ranked.item.title}\n    {description}"
 
 
+def _truncate_summary(text: str, max_chars: int, locale: str, uid: str) -> str:
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars]
+    last_sentence = max((cut.rfind(ch) for ch in "\u3002\uff01\uff1f.!?"), default=-1)
+    if last_sentence >= max_chars // 2:
+        trimmed = cut[: last_sentence + 1].rstrip()
+        LOG.warning(
+            "summary for %s truncated at a sentence boundary (%d -> %d chars)",
+            uid,
+            len(text),
+            len(trimmed),
+        )
+        return trimmed
+    if locale != "ja":
+        last_space = cut.rfind(" ")
+        if last_space >= max_chars // 2:
+            trimmed = cut[:last_space].rstrip()
+            LOG.warning(
+                "summary for %s truncated at a word boundary (%d -> %d chars)",
+                uid,
+                len(text),
+                len(trimmed),
+            )
+            return trimmed
+    LOG.warning("summary for %s hard-truncated to %d chars", uid, max_chars)
+    return cut.rstrip()
+
+
 def _validate_summaries(
-    payload: dict, index_map: dict[int, RankedItem], locale: str = "vi"
+    payload: dict,
+    index_map: dict[int, RankedItem],
+    locale: str = "vi",
+    *,
+    sentence_aware: bool = False,
 ) -> dict[int, str]:
     loc = normalize_locale(locale) or "vi"
     max_chars = MAX_SUMMARY_CHARS_JA if loc == "ja" else MAX_SUMMARY_CHARS
@@ -346,7 +379,11 @@ def _validate_summaries(
             continue
         if index not in index_map:
             continue
-        text = " ".join(str(entry.get("summary", "")).split())[:max_chars]
+        text = " ".join(str(entry.get("summary", "")).split())
+        if sentence_aware:
+            text = _truncate_summary(text, max_chars, loc, index_map[index].item.id)
+        else:
+            text = text[:max_chars]
         if loc == "ja" and fails_kana_gate(text, loc):
             LOG.warning(
                 "ja summary for item %s dropped by kana gate",
@@ -436,7 +473,7 @@ def write_item_summaries(
 
         def parse(text: str) -> dict[int, str]:
             payload = _extract_json(text)
-            parsed = _validate_summaries(payload, index_map, loc)
+            parsed = _validate_summaries(payload, index_map, loc, sentence_aware=True)
             return {
                 index: value
                 for index, value in parsed.items()
