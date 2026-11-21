@@ -88,7 +88,11 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
 
 
 def cmd_demo(config: Config, args: argparse.Namespace) -> int:
-    path = render_demo(config, open_browser=not args.no_open)
+    path = render_demo(
+        config,
+        locale=getattr(args, "lang", None) or "vi",
+        open_browser=not args.no_open,
+    )
     print(f"demo: {path}")
     return 0
 
@@ -391,6 +395,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-open",
         action="store_true",
         help="write the file without opening a browser",
+    )
+    demo.add_argument(
+        "--lang",
+        type=_locale_arg,
+        default=None,
+        metavar="LOCALE",
+        help="demo language (vi, en, ja; ja-JP accepted)",
     )
     sub.add_parser("smoke", help="fetch all sources live and print counts")
     sub.add_parser("health", help="per-feed status for the curated feed source")

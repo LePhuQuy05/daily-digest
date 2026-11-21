@@ -97,3 +97,12 @@ def test_ai_summary_label_uses_css_custom_property(tmp_path):
     assert "--label-ai-summary:" in ja
     assert "AI要約" in ja
     assert 'content: var(--label-ai-summary, "AI SUMMARY")' in ja
+
+
+def test_japanese_typography_and_print_rules(tmp_path):
+    ja = _html(tmp_path / "ja", "ja")
+    assert 'html[lang="ja"]' in ja
+    assert "Yu Mincho" in ja
+    assert "line-break: strict" in ja
+    assert "overflow-wrap: break-word" in ja
+    assert 'html[lang="ja"] body { line-height: 1.45; }' in ja

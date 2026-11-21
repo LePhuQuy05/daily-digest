@@ -6,9 +6,11 @@ protocol activation is handled by the OS, so it still works after this process e
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from daily_digest.config import NotifyCfg
+from daily_digest.i18n import normalize_locale, t
 from daily_digest.model import SECTIONS
 from daily_digest.util import LOG
 
@@ -62,14 +64,18 @@ def send_toast(title: str, body: str, digest_path: Path | None, cfg: NotifyCfg) 
 
 
 def notify(counts: dict[str, int], digest_path: Path, cfg: NotifyCfg) -> None:
-    parts = [
-        f"{counts.get(section, 0)} {SECTION_SHORT[section]}"
-        for section in SECTIONS
-        if counts.get(section)
-    ]
-    body = (
-        " · ".join(parts) + " — click to open"
-        if parts
-        else "your digest is ready — click to open"
-    )
+    locale = "vi"
+    if digest_path is not None:
+        try:
+            match = re.search(
+                r'<html[^>]*\blang=["\']([^"\']+)["\']',
+                digest_path.read_text(encoding="utf-8"),
+                re.IGNORECASE,
+            )
+            if match:
+                locale = normalize_locale(match.group(1)) or "vi"
+        except OSError:
+            pass
+    total = sum(counts.values())
+    body = t(locale, "toast_body").format(n=total)
     send_toast("Daily AI Digest", body, digest_path, cfg)

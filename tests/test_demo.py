@@ -25,6 +25,19 @@ def test_demo_renders_offline_digest_with_coverage(tmp_path):
     assert "Ảnh: demo fixture" in html
 
 
+def test_demo_japanese_locale(tmp_path):
+    config = make_config(tmp_path)
+
+    path = render_demo(config, locale="ja", open_browser=False)
+
+    html = path.read_text(encoding="utf-8")
+    assert '<html lang="ja" dir="ltr">' in html
+    assert "AIニュース" in html
+    assert "論文" in html
+    assert "要点:" in html
+    assert "Chế độ demo" not in html
+
+
 def test_demo_does_not_need_network_or_a_key(tmp_path, monkeypatch):
     config = make_config(tmp_path)
 

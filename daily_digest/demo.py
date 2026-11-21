@@ -38,6 +38,34 @@ DEMO_OVERVIEW = (
     "bật KV eviction — đây là thay đổi ít rủi ro nhất trong danh sách."
 )
 
+DEMO_OVERVIEWS = {
+    "vi": DEMO_OVERVIEW,
+    "en": (
+        "Three directions stand out today. On inference, [[0]] uses a lightweight "
+        "scorer to decide which KV entries to evict, while [[1]] shows a narrow "
+        "draft model can still keep speculative decoding fast. [[2]] contributes a "
+        "small agent benchmark that runs in CI.\n\n"
+        "On infrastructure, [[3]] adds native tool calling, [[4]] explains the "
+        "falling inference-cost curve, and [[5]] brings vector search into Postgres.\n\n"
+        "On tooling, [[6]] standardizes reproducible evals, and [[7]] runs GGUF on "
+        "edge devices without Python.\n\n"
+        "Key takeaway: if you try one thing today, re-measure decode cost after "
+        "enabling KV eviction — it is the lowest-risk change on the list."
+    ),
+    "ja": (
+        "本日は三つの方向が注目されています。推論では、[[0]] が軽量スコアラでKV"
+        "キャッシュの破棄対象を決め、[[1]] は狭いドラフトモデルでも投機的デコー"
+        "ディングの速度を保てることを示しています。[[2]] はCIで動く小さなエージェ"
+        "ントbenchmarkを提供します。\n\n"
+        "基盤では、[[3]] がネイティブのツール呼び出しを追加し、[[4]] は推論コスト"
+        "低下の曲線を説明し、[[5]] はベクトル検索をPostgresに統合します。\n\n"
+        "ツールでは、[[6]] が再現可能な評価を標準化し、[[7]] はPythonなしでGGUF"
+        "をエッジ端末で動かします。\n\n"
+        "要点: 今日一つだけ試すなら、KV evictionを有効にした後のdecodeコストを"
+        "測り直すのが最もリスクの低い変更です。"
+    ),
+}
+
 _DEMO_SPECS = (
     {
         "id": "demo:p1",
@@ -237,7 +265,8 @@ def render_demo(
     """Render `output/demo.html` from bundled fixtures and optionally open it."""
     loc = normalize_locale(locale) or "vi"
     ranked = _demo_ranked()
-    points = ensure_coverage(parse_overview(DEMO_OVERVIEW, ranked, loc), ranked, loc)
+    overview = DEMO_OVERVIEWS[loc]
+    points = ensure_coverage(parse_overview(overview, ranked, loc), ranked, loc)
     html = render_digest(
         ranked,
         date=DEMO_DATE,
@@ -246,7 +275,7 @@ def render_demo(
         sources_failed=[],
         model_name="demo fixtures",
         template=config.template_path,
-        overview=DEMO_OVERVIEW,
+        overview=overview,
         overview_label=t(loc, "overview_label"),
         overview_points=points,
         notice=t(loc, "demo_notice"),

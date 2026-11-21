@@ -584,3 +584,50 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     .empty-note, .section-note { border-top: 1px solid #999; color: #555; }
     a { color: #111; text-decoration: none; }
   }
+
+  /* ===================== Japanese typography ===================== */
+  html[lang="ja"] {
+    --font-serif: "Yu Mincho", "YuMincho", "MS PMincho", "MS Mincho", "Noto Serif CJK JP", "Hiragino Mincho ProN", serif;
+    --font-sans: "Yu Gothic UI", "Yu Gothic", "YuGothic", "Meiryo", "MS PGothic", "Noto Sans CJK JP", "Hiragino Kaku Gothic ProN", sans-serif;
+  }
+  html[lang="ja"] body {
+    line-height: 1.7;
+    letter-spacing: 0.01em;
+    line-break: strict;
+  }
+  html[lang="ja"] .story-title,
+  html[lang="ja"] .saved-card h3,
+  html[lang="ja"] .section-head h2 {
+    line-height: 1.35;
+    letter-spacing: 0;
+    overflow-wrap: break-word;
+  }
+  html[lang="ja"] .story--cover .story-head .story-title { line-height: 1.32; }
+  html[lang="ja"] .kicker,
+  html[lang="ja"] .dateline,
+  html[lang="ja"] .section-nav a,
+  html[lang="ja"] .section-head .count,
+  html[lang="ja"] .most-read h2,
+  html[lang="ja"] .pinned-block h2,
+  html[lang="ja"] .masthead-top {
+    letter-spacing: 0.03em;
+    text-transform: none;
+  }
+  html[lang="ja"] .summary,
+  html[lang="ja"] .why,
+  html[lang="ja"] .overview-body {
+    line-height: 1.7;
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+  html[lang="ja"] .wordmark { letter-spacing: 0; }
+
+  @media print {
+    html[lang="ja"] body { line-height: 1.45; }
+    html[lang="ja"] .story-title,
+    html[lang="ja"] .section-head h2,
+    html[lang="ja"] .story--cover .story-head .story-title { line-height: 1.3; }
+    html[lang="ja"] .summary,
+    html[lang="ja"] .why,
+    html[lang="ja"] .overview-body { line-height: 1.45; }
+  }
