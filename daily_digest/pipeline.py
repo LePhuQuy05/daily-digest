@@ -358,7 +358,12 @@ def run_day(
     if config.llm.summarize and summary_client is not None:
         if time.monotonic() < deadline:
             ranked, overview = summarize_with_llm(
-                ranked, summary_client.chat, config, reader_context, locale
+                ranked,
+                summary_client.chat,
+                config,
+                reader_context,
+                locale,
+                deadline=deadline,
             )
         else:
             LOG.warning("run budget exceeded before writer; keeping raw abstracts")
@@ -372,6 +377,8 @@ def run_day(
                 ranked, config, locale
             )  # always have something
         overview_points = heuristic_overview_points(ranked, config, locale)
+    if config.llm.writer_v2 and ranked and not all(item.llm_summary for item in ranked):
+        degraded = True
 
     # 3c. "Nhìn lại": pinned saves (cap + overflow note), minus any uid that is
     # already in today's ranked (the fresher in-section card wins).
@@ -405,7 +412,7 @@ def run_day(
         images=images,
     )
     html = render_edition(edition, config)
-    if new_only or force:
+    if new_only or force or config.llm.writer_v2:
         _backup_morning_digest(config.output_dir, date)
     digest_path = write_digest(html, config.output_dir, date)
     _persist_edition(edition, html, digest_path, config.output_dir)

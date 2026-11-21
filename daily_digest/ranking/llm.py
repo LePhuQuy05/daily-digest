@@ -28,6 +28,12 @@ from daily_digest.i18n import (
 )
 from daily_digest.model import Item, RankedItem
 from daily_digest.ranking.heuristic import default_section
+from daily_digest.ranking.writer_prompts import (
+    item_summary_limit,
+    item_system_prompt,
+    overview_system_prompt,
+    overview_target_range,
+)
 from daily_digest.source_labels import SOURCE_LABELS, labels_for
 from daily_digest.util import LOG
 
@@ -38,6 +44,7 @@ SUMMARY_WORDS = 40
 SUMMARY_INPUT_CHARS = 1200
 SUMMARY_INPUT_CHARS_JA = 400
 MAX_OUTPUT_TOKENS = 4096
+SUMMARY_BATCH_SIZE = 12
 
 SYSTEM_PROMPT = (
     "You are the editor of a daily tech digest for an AI engineer and researcher. "
@@ -370,20 +377,217 @@ def _validate_overview(
     return truncate_overview(cleaned, max_chars, locale)
 
 
+def write_item_summaries(
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    config: Config,
+    *,
+    reader_context: str = "",
+    locale: str = "vi",
+    deadline: float | None = None,
+) -> tuple[list[RankedItem], bool]:
+    """Write per-item summaries in batches; absolute indices are global."""
+    if not ranked:
+        return ranked, True
+    loc = normalize_locale(locale) or "vi"
+    index_map = {index: item for index, item in enumerate(ranked)}
+    labels = labels_for(config)
+    limit = item_summary_limit(config.llm.summary_max_words, loc)
+    summaries: dict[int, str] = {}
+    all_ok = True
+    for start in range(0, len(ranked), SUMMARY_BATCH_SIZE):
+        if deadline is not None and time.monotonic() >= deadline:
+            LOG.warning("writer v2 deadline exceeded before item batch %d", start)
+            all_ok = False
+            break
+        batch = ranked[start : start + SUMMARY_BATCH_SIZE]
+        messages: list[dict] = [
+            {
+                "role": "system",
+                "content": item_system_prompt(
+                    loc,
+                    topics=", ".join(config.interests.topics),
+                    reader_context=reader_context,
+                    limit=limit,
+                ),
+            },
+            {
+                "role": "user",
+                "content": "\n".join(
+                    _summary_line(index, item, labels, loc)
+                    for index, item in enumerate(batch, start=start)
+                ),
+            },
+        ]
+
+        def parse(text: str) -> dict[int, str]:
+            payload = _extract_json(text)
+            parsed = _validate_summaries(payload, index_map, loc)
+            return {
+                index: value
+                for index, value in parsed.items()
+                if start <= index < start + len(batch)
+            }
+
+        try:
+            text = chat(messages)
+            batch_summaries = parse(text)
+        except (ValueError, json.JSONDecodeError) as first_error:
+            LOG.debug(
+                "writer v2 item batch %d invalid (%s); asking for one repair",
+                start,
+                first_error,
+            )
+            LOG.debug("writer v2 item response prefix: %.500r", text)
+            messages.extend(
+                [
+                    {"role": "assistant", "content": text},
+                    {
+                        "role": "user",
+                        "content": f"Your previous answer was not valid JSON ({first_error}). "
+                        "Respond again with ONLY the JSON object.",
+                    },
+                ]
+            )
+            try:
+                batch_summaries = parse(chat(messages))
+            except (ValueError, json.JSONDecodeError) as second_error:
+                LOG.warning(
+                    "writer v2 item batch %d failed: %s; keeping raw abstracts",
+                    start,
+                    second_error,
+                )
+                all_ok = False
+                continue
+        summaries.update(batch_summaries)
+        if len(batch_summaries) < len(batch):
+            all_ok = False
+    return (
+        [
+            dataclasses.replace(item, llm_summary=summaries.get(index, ""))
+            for index, item in enumerate(ranked)
+        ],
+        all_ok,
+    )
+
+
+def write_overview(
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    config: Config,
+    *,
+    reader_context: str = "",
+    locale: str = "vi",
+    deadline: float | None = None,
+) -> str:
+    """Write an independent synthesis overview; returns "" on failure."""
+    if not ranked:
+        return ""
+    if deadline is not None and time.monotonic() >= deadline:
+        LOG.warning("writer v2 deadline exceeded before overview")
+        return ""
+    loc = normalize_locale(locale) or "vi"
+    budget = overview_char_budget(len(ranked), loc)
+    target = overview_target_range(len(ranked), loc)
+    lines = []
+    for index, item in enumerate(ranked):
+        summary = item.llm_summary or item.item.summary
+        lines.append(
+            f"[{index}] ({item.section}) {item.item.title}\n"
+            f"    summary: {summary[:300]}\n"
+            f"    source: {item.item.summary[:300]}"
+        )
+    messages: list[dict] = [
+        {
+            "role": "system",
+            "content": overview_system_prompt(
+                loc,
+                topics=", ".join(config.interests.topics),
+                reader_context=reader_context,
+                target=target,
+                hard_cap=budget,
+                takeaway=takeaway_marker(loc),
+                item_count=len(ranked),
+            ),
+        },
+        {"role": "user", "content": "\n".join(lines)},
+    ]
+
+    def parse(text: str) -> str:
+        payload = _extract_json(text)
+        return _validate_overview(payload, budget, loc)
+
+    try:
+        text = chat(messages)
+        overview = parse(text)
+    except (ValueError, json.JSONDecodeError) as first_error:
+        LOG.debug("writer v2 overview invalid (%s); asking for one repair", first_error)
+        LOG.debug("writer v2 overview response prefix: %.500r", text)
+        messages.extend(
+            [
+                {"role": "assistant", "content": text},
+                {
+                    "role": "user",
+                    "content": f"Your previous answer was not valid JSON ({first_error}). "
+                    "Respond again with ONLY the JSON object.",
+                },
+            ]
+        )
+        try:
+            overview = parse(chat(messages))
+        except (ValueError, json.JSONDecodeError) as second_error:
+            LOG.warning("writer v2 overview failed: %s", second_error)
+            return ""
+    if not overview:
+        LOG.warning("writer v2 overview was empty")
+    return overview
+
+
+def _summarize_v2(
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    config: Config,
+    reader_context: str,
+    locale: str,
+    deadline: float | None,
+) -> tuple[list[RankedItem], str]:
+    localized, _ = write_item_summaries(
+        ranked,
+        chat,
+        config,
+        reader_context=reader_context,
+        locale=locale,
+        deadline=deadline,
+    )
+    overview = write_overview(
+        localized,
+        chat,
+        config,
+        reader_context=reader_context,
+        locale=locale,
+        deadline=deadline,
+    )
+    return localized, overview
+
+
 def summarize_with_llm(
     ranked: list[RankedItem],
     chat: ChatFn,
     config: Config,
     reader_context: str = "",
     locale: str = "vi",
+    *,
+    deadline: float | None = None,
 ) -> tuple[list[RankedItem], str]:
-    """Write the day overview + a reader-facing summary per item (one batched call).
+    """Write the day overview + reader-facing summaries.
 
-    Total function: on any failure it logs a warning and returns the input unchanged
-    with an empty overview (the digest then falls back to raw abstracts and the
-    mechanical overview)."""
+    ``writer_v2`` keeps the two outputs independent; the default path remains
+    the original single JSON call for rollback.
+    """
     if not ranked:
         return ranked, ""
+    if config.llm.writer_v2:
+        return _summarize_v2(ranked, chat, config, reader_context, locale, deadline)
     loc = normalize_locale(locale) or "vi"
     language = PROMPT_LANGUAGE[loc]
     summary_limit = (

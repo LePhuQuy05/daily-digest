@@ -266,7 +266,10 @@ def _localize_edition_unlocked(
     if not points and localized:
         degraded = True
         points = heuristic_overview_points(localized, config, loc)
-    if localized and not any(item.llm_summary for item in localized):
+    if localized and (
+        not any(item.llm_summary for item in localized)
+        or (config.llm.writer_v2 and not all(item.llm_summary for item in localized))
+    ):
         degraded = True
 
     if backup:

@@ -420,6 +420,7 @@ class LlmCfg:
     summarize_model: str = ""  # empty -> reuse `model`
     summarize: bool = True  # writer LLM on/off
     summary_max_words: int = 70
+    writer_v2: bool = False  # staged writer: separate item/overview calls
     overview_language: str = "vi"  # language of the day-overview card ("vi", "en", ...)
     # F4: free-text context about the reader's current work, injected into prompts.
     # Empty profile_file disables it. Missing/unreadable file -> warning + "".
@@ -659,6 +660,9 @@ def load_config(path: Path | None = None) -> Config:
         )
         raw_top_n = raw_max_pool
     config.llm.top_n = raw_top_n
+    if not isinstance(config.llm.writer_v2, bool):
+        LOG.warning("llm.writer_v2 must be a boolean; using false")
+        config.llm.writer_v2 = False
     config.llm.max_pool = raw_max_pool
 
     if not config.template_path.exists():
