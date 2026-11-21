@@ -116,7 +116,7 @@ def _prune_seen(seen: dict[str, str], today: str, window_days: int) -> dict[str,
 
 
 def _backup_morning_digest(output_dir: Path, date: str) -> Path | None:
-    """Copy the same-day digest once before a new-only refresh overwrites it."""
+    """Copy the same-day digest once before any refresh overwrites it."""
     source = output_dir / f"digest-{date}.html"
     backup = output_dir / f"digest-{date}-morning.html"
     if not source.exists() or backup.exists():
@@ -124,9 +124,9 @@ def _backup_morning_digest(output_dir: Path, date: str) -> Path | None:
     try:
         shutil.copyfile(source, backup)
     except OSError as exc:
-        LOG.warning("new-only: morning digest backup failed: %s", exc)
+        LOG.warning("morning digest backup failed: %s", exc)
         return None
-    LOG.info("new-only: morning digest backed up to %s", backup)
+    LOG.info("morning digest backed up to %s", backup)
     return backup
 
 
