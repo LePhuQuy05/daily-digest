@@ -94,7 +94,7 @@ feedback:
   chat_path: /openai/v1/chat/completions
   api_key_env: OPENCODE_API_KEY          # the key goes in .env, never here
   temperature: 0.0
-  top_n: 12                              # items in the digest
+  top_n: 12                              # default items; UI/--count can choose 1-30
   max_pool: 80                           # candidates shown to the editor LLM
 
 media:

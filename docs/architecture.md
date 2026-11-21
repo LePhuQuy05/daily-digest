@@ -9,7 +9,7 @@ Daily AI Digest is a local pipeline with a deliberately small surface area: fetc
 | External network | HN, HF Daily Papers, arXiv, Emergent Mind, alphaXiv, RSS/Atom, OpenAlex | Each source fails independently; errors are reported, not raised through the pipeline |
 | Probabilistic | Editor LLM, writer LLM, Ask | Structured outputs are parsed and validated; each has a deterministic fallback or a safe refusal |
 | Deterministic | Normalization, merge/dedupe, seen-set, ranking fallback, rendering, atomic writes | Reproducible and covered by the offline suite |
-| Local-only | `state.json`, `feedback.jsonl`, `output/`, `logs/` | Never uploaded by the app; API keys come from the environment |
+| Local-only | `state.json`, `feedback.jsonl`, `preferences.json`, `output/`, `logs/` | Never uploaded by the app; API keys come from the environment |
 
 ## Request lifecycle
 
@@ -17,7 +17,7 @@ Daily AI Digest is a local pipeline with a deliberately small surface area: fetc
 2. **Fetch** — source adapters run with bounded timeouts; failures are collected per source.
 3. **Normalize and merge** — items are canonicalized; the same paper from multiple sources becomes one item with provenance.
 4. **Filter and enrich** — the 7-day seen-set removes repeats; OpenAlex adds citation counts.
-5. **Rank** — the editor LLM selects ~12 items and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable.
+5. **Rank** — the editor LLM selects the requested 1–30 items (default 12) and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable. A user size change reruns this stage and the writer, with a morning-digest backup before overwriting today's edition.
 6. **Summarize** — the writer LLM adds 2–3 sentence summaries and the day overview; raw abstracts and a heuristic overview are the fallback.
 7. **Render and deliver** — Jinja produces one self-contained HTML file; the popup and toast open it.
 

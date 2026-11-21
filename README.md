@@ -51,10 +51,10 @@ It is also a small reliability lab for LLM orchestration. Every model call has a
 | | |
 |---|---|
 | **Sources** | 6 source families / 20 curated feeds: Hacker News, Hugging Face Daily Papers, arXiv, Emergent Mind, alphaXiv, AI-lab blogs, tech press, GitHub releases |
-| **Curation** | An **editor** LLM ranks ~12 items and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview (Vietnamese by default) |
+| **Curation** | An **editor** LLM ranks a user-selectable 1–30 items (default 12) and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview (Vietnamese by default) |
 | **Interface** | Native `pywebview` window: inline citations, save/undo, thumbs feedback, grounded Q&A, light/dark themes, print layout |
 | **Reliability** | Source-level isolation, heuristic ranking without an API key, raw-abstract fallback when the writer fails, atomic digest writes |
-| **Quality** | **384 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
+| **Quality** | **416 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
 | **Stack** | Python 3.12 · `httpx` · `Jinja2` · `pywebview` · `pystray` · Pillow · `uv` |
 | **What it demonstrates** | LLM orchestration, failure isolation, product-minded UI, and test discipline |
 
@@ -66,7 +66,7 @@ flowchart LR
     B --> C[Normalize, merge, dedupe]
     C --> D[Enrich: OpenAlex citations]
     D --> E{Editor LLM}
-    E -->|ok| F[~12 ranked items + why]
+    E -->|ok| F[requested 1–30 items + why]
     E -->|offline| G[Heuristic ranker]
     F --> H{Writer LLM}
     G --> H
@@ -120,7 +120,7 @@ uv run pytest -o addopts=''
 
 The suite is fully offline: HTTP and LLM calls are mocked with `respx` and fakes, and desktop integrations are isolated. It covers source adapters, ranking and fallbacks, rendering and XSS escaping, the JavaScript bridge, saved/feedback flows, overview coverage, and UI token/print invariants.
 
-- **384 tests**, currently green on Windows.
+- **416 tests**, currently green on Windows.
 - GitHub Actions runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are locked in `uv.lock`; CI installs with `uv sync --locked`.
 - The digest pipeline has explicit tests for LLM failure, missing keys, writer failure, `summarize: false`, and heuristic-only mode.
@@ -163,6 +163,7 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 | `uv run daily-digest demo` | Render a bundled offline digest in the browser (`--no-open` to only write it) |
 | `uv run daily-digest run` | Fetch → rank → render → popup + toast (idempotent per day) |
 | `uv run daily-digest run --force` | Rebuild today’s digest |
+| `uv run daily-digest run --force --count N` | Rebuild today with N items (1–30); implies `--force` |
 | `uv run daily-digest run --force --new-only` | Refresh with unseen items only; backfills if short |
 | `uv run daily-digest health` | Per-feed status and item counts |
 | `uv run daily-digest smoke` | Live-check every source |
@@ -170,6 +171,17 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 | `uv run daily-digest print-config` | Show effective config, secrets redacted |
 | `uv run daily-digest open [latest\|YYYY-MM-DD]` | Open a digest manually (`--web` for a browser) |
 | `uv run daily-digest install-task` / `uninstall-task` | Manage the 09:00 scheduled task |
+
+### Digest size
+
+The digest shows **12 items by default**, and you can choose **1–30**:
+
+- In the popup, click **Đổi** next to the dateline count, choose a size, then **Áp dụng**. This saves the preference in `preferences.json` and reruns the editor + writer.
+- Or use `uv run daily-digest run --count 16` for a one-off rebuild without changing the stored preference.
+- **Đặt lại** removes the stored preference and returns to `config.llm.top_n` / 12.
+- A size change reruns the pipeline; the same-day morning digest is backed up as `digest-YYYY-MM-DD-morning.html`.
+
+![Digest size dialog — zero-key demo preview](docs/screenshots/size-dialog.png)
 
 ### Troubleshooting
 
@@ -188,7 +200,8 @@ Copy `config.example.yaml` to `config.yaml` (git-ignored), then edit only what y
 - `interests.mute` / `interests.always` — deterministic keyword rules; mute wins
 - `sources.*.enabled` / `sources.arxiv.categories` — add `cs.CV`, `stat.ML`, …
 - `sources.feeds.entries` — override the 20 curated RSS/Atom feeds
-- `llm.top_n` — digest size (default `12`)
+- `llm.top_n` — default digest size (`12`; user can choose 1–30 in the popup or with `--count`)
+- `llm.max_pool` — editor candidate pool; effective size is capped by this
 - `llm.model` / `llm.summarize_model` — editor and writer models
 - `llm.overview_language` — `vi`, `en`, …
 - `notify.popup` / `notify.enabled` — delivery channels
@@ -203,10 +216,10 @@ The editor and writer also read `profile.md` (a short “about my current work�
 | Feed requests (URLs, titles, abstracts) | Yes, as HTTP requests | The source sites | Fetch the day’s items | Not stored by the app |
 | Selected titles, abstracts, `profile.md`, recent feedback | Yes | The configured LLM provider | Rank, summarize, answer questions | Provider policy |
 | API key | Yes, for authentication | The configured LLM provider | Authorize model calls | Never logged or written to the digest |
-| Digest, state, feedback, saved items | No | Local disk | Run the app and remember preferences | Until you delete them |
+| Digest, state, feedback, saved items, preferences | No | Local disk | Run the app and remember preferences | Until you delete them |
 
 - API keys are read from environment variables or `.env`; `print-config` never prints them.
-- `.env`, `config.yaml`, runtime state, feedback, logs, and generated digests are git-ignored.
+- `.env`, `config.yaml`, `preferences.json`, runtime state, feedback, logs, and generated digests are git-ignored.
 - No analytics, telemetry, or third-party UI scripts. The digest is a single local HTML file.
 - Feed content is treated as **data, not instructions**. Model output is parsed and validated as JSON; it never becomes a shell command or tool call, and rendered HTML is autoescaped.
 - Desktop actions are explicit CLI commands (`install-task`, `install-tray`, `notify-test`). Ask is read-only and grounded in one item; there is no arbitrary shell or file access.
@@ -221,14 +234,16 @@ daily-digest/
 │  ├─ ranking/          # editor prompt, heuristic fallback, diversity
 │  ├─ pipeline.py       # orchestration, idempotency, fallback policy
 │  ├─ overview.py       # citation parsing + coverage guarantees
+│  ├─ digest_size.py    # size policy + local preference
 │  ├─ demo.py           # zero-key fixture digest
 │  ├─ render.py         # Jinja → single-file HTML
 │  ├─ popup_bridge.py   # JS ↔ Python bridge
 │  └─ tray.py           # native tray, shortcuts, icon generation
 ├─ templates/           # HTML, CSS, and vanilla JS (no build step)
-├─ tests/               # 384 offline tests
+├─ tests/               # 416 offline tests
 ├─ docs/                # source catalog, UI research, implementation plans
 ├─ config.example.yaml
+├─ preferences.json     # user size preference (git-ignored)
 └─ .github/workflows/ci.yml
 ```
 

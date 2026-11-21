@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Hero cover treatment for landscape OG leads: a 70% ink wash, inline print-visible credit, image-failure fallback, and regression coverage for the gate, contrast, and print styles.
 - Paper cards now show the publication date (`DD.MM.YYYY`) in the metadata line.
+- Configurable digest size: 1–30 items, default 12; `preferences.json`, `run --count`, and a popup size dialog. Size changes rerun the pipeline and back up the morning edition.
 - The zero-key demo now includes a generated abstract cover fixture, so the treatment is visible without waiting for an OG-led day.
 
 ## [0.1.0] - 2026-11-20
