@@ -62,12 +62,21 @@ def test_set_size_is_idempotent_without_spawning(tmp_path):
     save_digest_size(config.preferences_path, 12)
     calls: list[list[str]] = []
     bridge = _bridge(config, spawn=lambda args: calls.append(args) or True)
+    bridge.items = {f"item:{i}": {} for i in range(12)}
 
     result = bridge.set_digest_size(12)
 
     assert result["ok"] is True
     assert result["spawned"] is False
     assert calls == []
+
+    # Stored preference is already 12, but the visible digest has 9 items:
+    # applying 12 must rebuild it.
+    bridge.items = {f"item:{i}": {} for i in range(9)}
+    rerun = bridge.set_digest_size(12)
+    assert rerun["ok"] is True
+    assert rerun["spawned"] is True
+    assert calls == [["run", "--force", "--count", "12"]]
 
 
 def test_archived_digest_refuses_size_change(tmp_path):

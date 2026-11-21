@@ -308,13 +308,22 @@ class DigestBridge:
                 )
                 save_digest_size(self.config.preferences_path, normalized)
                 saved = True
-                if normalized == previous:
+                current = len(self.items)
+                if normalized == previous and normalized == current:
                     return {
                         "ok": True,
                         "saved": True,
                         "spawned": False,
                         "size": normalized,
                         "message": "already using this size",
+                    }
+                if normalized == current:
+                    return {
+                        "ok": True,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "message": "preference saved",
                     }
                 now = time.monotonic()
                 if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:

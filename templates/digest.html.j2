@@ -464,8 +464,9 @@
       busy: false,
     };
 
-    function sizeBaseline() {
-      return sizeState.stored === null ? sizeState.current : sizeState.stored;
+    function isSizeUnchanged() {
+      return sizeState.value === sizeState.current &&
+        (sizeState.stored === null || sizeState.stored === sizeState.value);
     }
 
     function sizeApi() {
@@ -485,7 +486,7 @@
       if (sizeMinus) sizeMinus.disabled = disabled || sizeState.value <= sizeState.min;
       if (sizePlus) sizePlus.disabled = disabled || sizeState.value >= sizeState.max;
       if (sizeApply) {
-        sizeApply.disabled = disabled || sizeState.value === sizeBaseline();
+        sizeApply.disabled = disabled || isSizeUnchanged();
       }
       if (sizeReset) sizeReset.disabled = disabled;
       if (sizeWarning) {
