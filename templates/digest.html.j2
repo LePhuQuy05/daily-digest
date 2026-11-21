@@ -37,7 +37,7 @@
     </div>
     <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
     <div class="dateline">
-      <span>{{ date_long or date }} · {{ total }} câu chuyện</span>
+      <span>{{ date_long or date }} · {{ total }} câu chuyện <button id="size-open" class="size-trigger bridge-only" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="size-modal" title="Đổi số bài trong bản tin">Đổi</button></span>
       <span>Biên tập: {% if mode == "llm" %}{{ model_name }}{% elif mode == "demo" %}demo fixtures{% elif mode == "empty" %}empty digest{% else %}heuristic{% endif %}</span>
     </div>
   </header>
@@ -129,6 +129,28 @@
     </div>
     <div id="saved-list" class="saved-list"></div>
     <p id="saved-empty" class="empty-note" hidden>Chưa có bài nào được lưu.</p>
+  </div>
+</div>
+
+<div id="size-modal" class="size-modal" role="dialog" aria-modal="true" aria-labelledby="size-title" hidden>
+  <div class="size-modal__panel">
+    <div class="size-modal__head">
+      <h2 id="size-title">Số bài trong bản tin</h2>
+      <button id="size-close" class="act" type="button" aria-label="Đóng">×</button>
+    </div>
+    <p id="size-help" class="size-note">Chọn từ 1 đến 30 bài. Mặc định là 12.</p>
+    <div class="size-stepper" role="group" aria-label="Số bài">
+      <button id="size-minus" class="act" type="button" aria-label="Giảm số bài">−</button>
+      <output id="size-value" class="size-value" aria-live="polite">12</output>
+      <button id="size-plus" class="act" type="button" aria-label="Tăng số bài">+</button>
+    </div>
+    <p id="size-current" class="size-note">Bản này: 12 câu chuyện.</p>
+    <p id="size-warning" class="size-note size-warning" hidden></p>
+    <p id="size-status" class="size-status" role="status" aria-live="polite"></p>
+    <div class="size-actions">
+      <button id="size-apply" class="act size-apply" type="button">Áp dụng</button>
+      <button id="size-reset" class="act" type="button">Đặt lại</button>
+    </div>
   </div>
 </div>
 
@@ -414,6 +436,206 @@
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape") closeSaved();
     });
+
+    /* --- digest-size dialog: one preference, rebuild on apply --- */
+    var sizeModal = document.getElementById("size-modal");
+    var sizeOpen = document.getElementById("size-open");
+    var sizeValue = document.getElementById("size-value");
+    var sizeMinus = document.getElementById("size-minus");
+    var sizePlus = document.getElementById("size-plus");
+    var sizeApply = document.getElementById("size-apply");
+    var sizeReset = document.getElementById("size-reset");
+    var sizeClose = document.getElementById("size-close");
+    var sizeHelp = document.getElementById("size-help");
+    var sizeCurrent = document.getElementById("size-current");
+    var sizeWarning = document.getElementById("size-warning");
+    var sizeStatus = document.getElementById("size-status");
+    var sizeReturnFocus = null;
+    var sizeState = {
+      value: 12,
+      min: 1,
+      max: 30,
+      default: 12,
+      current: 0,
+      stored: null,
+      can_change: false,
+      has_key: false,
+      archived: false,
+      busy: false,
+    };
+
+    function sizeBaseline() {
+      return sizeState.stored === null ? sizeState.current : sizeState.stored;
+    }
+
+    function sizeApi() {
+      return window.pywebview && window.pywebview.api ? window.pywebview.api : null;
+    }
+
+    function updateSize() {
+      if (sizeValue) sizeValue.textContent = String(sizeState.value);
+      if (sizeHelp) {
+        sizeHelp.textContent = "Chọn từ " + sizeState.min + " đến " + sizeState.max +
+          " bài. Mặc định là " + sizeState.default + ".";
+      }
+      if (sizeCurrent) {
+        sizeCurrent.textContent = "Bản này: " + sizeState.current + " câu chuyện.";
+      }
+      var disabled = sizeState.busy || !sizeState.can_change;
+      if (sizeMinus) sizeMinus.disabled = disabled || sizeState.value <= sizeState.min;
+      if (sizePlus) sizePlus.disabled = disabled || sizeState.value >= sizeState.max;
+      if (sizeApply) {
+        sizeApply.disabled = disabled || sizeState.value === sizeBaseline();
+      }
+      if (sizeReset) sizeReset.disabled = disabled;
+      if (sizeWarning) {
+        var warning = "";
+        if (sizeState.archived) {
+          warning = "Bản lưu trữ chỉ xem; không thể đổi số bài.";
+        } else if (!sizeState.has_key) {
+          warning = "Không có API key — lần chạy lại sẽ dùng xếp hạng heuristic.";
+        }
+        sizeWarning.textContent = warning;
+        sizeWarning.hidden = !warning;
+      }
+    }
+
+    function closeSize() {
+      if (!sizeModal) return;
+      sizeModal.hidden = true;
+      if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "false");
+      if (sizeReturnFocus && sizeReturnFocus.focus) sizeReturnFocus.focus();
+      sizeReturnFocus = null;
+    }
+
+    function openSize() {
+      var api = sizeApi();
+      if (!api || !api.digest_size || !sizeModal) return;
+      sizeReturnFocus = document.activeElement;
+      api.digest_size().then(function (res) {
+        if (!res || !res.ok) {
+          sizeStatus.textContent = "Không đọc được cấu hình số bài.";
+          sizeModal.hidden = false;
+          if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
+          return;
+        }
+        sizeState.value = res.size;
+        sizeState.min = res.min;
+        sizeState.max = res.max;
+        sizeState.default = res.default;
+        sizeState.current = res.current;
+        sizeState.stored = res.stored;
+        sizeState.can_change = res.can_change;
+        sizeState.has_key = res.has_key;
+        sizeState.archived = res.archived;
+        sizeState.busy = false;
+        sizeStatus.textContent = "";
+        updateSize();
+        sizeModal.hidden = false;
+        if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
+        if (sizeMinus && !sizeMinus.disabled) sizeMinus.focus();
+        else if (sizeClose) sizeClose.focus();
+      }).catch(function () {
+        sizeStatus.textContent = "Không đọc được cấu hình số bài.";
+        sizeModal.hidden = false;
+        if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
+      });
+    }
+
+    function stepSize(delta) {
+      if (sizeState.busy || !sizeState.can_change) return;
+      var next = sizeState.value + delta;
+      if (next < sizeState.min) next = sizeState.min;
+      if (next > sizeState.max) next = sizeState.max;
+      sizeState.value = next;
+      updateSize();
+    }
+
+    function applySize() {
+      var api = sizeApi();
+      if (!api || !api.set_digest_size || sizeState.busy || !sizeState.can_change) return;
+      sizeState.busy = true;
+      if (sizeStatus) sizeStatus.textContent = "Đang lưu…";
+      updateSize();
+      api.set_digest_size(sizeState.value).then(function (res) {
+        sizeState.busy = false;
+        if (res && res.ok) {
+          sizeState.stored = res.size;
+          if (res.spawned) {
+            sizeStatus.textContent = "Đang cập nhật…";
+            updateSize();
+            setTimeout(closeSize, 1400);
+          } else {
+            sizeStatus.textContent = "Đã lưu. Lần chạy tới sẽ dùng " + res.size + " bài.";
+            updateSize();
+          }
+        } else {
+          sizeStatus.textContent = (res && res.error) || "Không lưu được số bài.";
+          updateSize();
+        }
+      }).catch(function () {
+        sizeState.busy = false;
+        sizeStatus.textContent = "Không lưu được số bài.";
+        updateSize();
+      });
+    }
+
+    function resetSize() {
+      var api = sizeApi();
+      if (!api || !api.reset_digest_size || sizeState.busy || !sizeState.can_change) return;
+      sizeState.busy = true;
+      if (sizeStatus) sizeStatus.textContent = "Đang đặt lại…";
+      updateSize();
+      api.reset_digest_size().then(function (res) {
+        sizeState.busy = false;
+        if (res && res.ok) {
+          sizeState.value = res.size;
+          sizeState.stored = res.stored;
+          sizeStatus.textContent = "Đã đặt lại về " + res.size + " bài.";
+        } else {
+          sizeStatus.textContent = (res && res.error) || "Không đặt lại được.";
+        }
+        updateSize();
+      }).catch(function () {
+        sizeState.busy = false;
+        sizeStatus.textContent = "Không đặt lại được.";
+        updateSize();
+      });
+    }
+
+    if (sizeOpen) sizeOpen.addEventListener("click", openSize);
+    if (sizeMinus) sizeMinus.addEventListener("click", function () { stepSize(-1); });
+    if (sizePlus) sizePlus.addEventListener("click", function () { stepSize(1); });
+    if (sizeApply) sizeApply.addEventListener("click", applySize);
+    if (sizeReset) sizeReset.addEventListener("click", resetSize);
+    if (sizeClose) sizeClose.addEventListener("click", closeSize);
+    if (sizeModal) {
+      sizeModal.addEventListener("click", function (ev) {
+        if (ev.target === sizeModal) closeSize();
+      });
+      sizeModal.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") {
+          ev.preventDefault();
+          closeSize();
+          return;
+        }
+        if (ev.key !== "Tab") return;
+        var focusable = Array.prototype.filter.call(
+          sizeModal.querySelectorAll("button:not([disabled]), [href], input:not([disabled])"),
+          function (el) { return el.offsetParent !== null; }
+        );
+        if (!focusable.length) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (ev.shiftKey && document.activeElement === first) {
+          ev.preventDefault();
+          last.focus();
+        } else if (!ev.shiftKey && document.activeElement === last) {
+          ev.preventDefault();
+          first.focus();
+        }
+      });
+    }
 
     /* --- undo an accidental unsave: snackbar backed by feedback.jsonl --- */
     var undoBar = document.getElementById("undo-bar");

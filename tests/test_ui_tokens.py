@@ -7,6 +7,7 @@ import re
 
 from daily_digest.model import RankedItem
 from daily_digest.render import render_digest
+from daily_digest.util import PROJECT_ROOT
 from helpers import make_config, make_item
 
 
@@ -439,6 +440,48 @@ class TestStep1Tokens:
         assert "Cambria" in html and '"Times New Roman"' in html  # Vietnamese glyphs
         assert "Segoe UI Variable Text" in html
         assert "fonts.googleapis.com" not in html
+
+
+class TestDigestSizeDialog:
+    def test_trigger_and_dialog_contract(self, tmp_path):
+        html = _html(tmp_path)
+        for needle in (
+            'id="size-open"',
+            'aria-haspopup="dialog"',
+            'aria-controls="size-modal"',
+            'id="size-modal"',
+            'role="dialog"',
+            'aria-modal="true"',
+            'id="size-minus"',
+            'id="size-plus"',
+            'id="size-value"',
+            'id="size-apply"',
+            'id="size-reset"',
+            'id="size-close"',
+            'id="size-status"',
+            'aria-live="polite"',
+        ):
+            assert needle in html
+
+        tpl = (PROJECT_ROOT / "templates" / "digest.html.j2").read_text(
+            encoding="utf-8"
+        )
+        assert "api.digest_size()" in tpl
+        assert "api.set_digest_size(" in tpl
+        assert "api.reset_digest_size()" in tpl
+
+    def test_css_and_print_hide_the_control(self):
+        css = _css()
+        assert ".size-trigger" in css
+        assert ".size-modal" in css
+        assert ".size-modal[hidden]" in css
+        assert "size-modal__panel" in css
+
+        print_block = css.split("@media print", 1)[1]
+        assert ".size-modal" in print_block
+        assert ".size-trigger" in print_block
+
+
 class TestStoryReferenceInteraction:
     def test_story_cards_are_focusable_and_have_scroll_flash_js(self, tmp_path):
         html = _html(tmp_path)
