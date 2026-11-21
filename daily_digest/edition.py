@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import html as html_lib
 import json
+import re
 import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from daily_digest.config import Config
@@ -296,3 +298,188 @@ def load_edition(output_dir: Path, date: str) -> Edition | None:
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
         LOG.warning("edition snapshot %s unreadable (%s); ignoring", date, exc)
         return None
+
+
+_ARTICLE_RE = re.compile(r"<article\b([^>]*)>(.*?)</article>", re.S | re.I)
+_DATE_JA_RE = re.compile(r"(\d{4})年(\d{1,2})月(\d{1,2})日")
+_DATE_DOTS_RE = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})")
+
+
+def _attr(attrs: str, name: str) -> str:
+    match = re.search(rf'\b{name}="([^"]*)"', attrs, re.I | re.S)
+    return html_lib.unescape(match.group(1)) if match else ""
+
+
+def _parse_display_date(text: str) -> datetime | None:
+    cleaned = html_lib.unescape(text or "").strip()
+    match = _DATE_JA_RE.search(cleaned)
+    if match:
+        year, month, day = (int(value) for value in match.groups())
+        try:
+            return datetime(year, month, day, tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    match = _DATE_DOTS_RE.search(cleaned)
+    if match:
+        day, month, year = (int(value) for value in match.groups())
+        try:
+            return datetime(year, month, day, tzinfo=timezone.utc)
+        except ValueError:
+            return None
+    return None
+
+
+def _article_dates(html_text: str) -> dict[str, datetime]:
+    dates: dict[str, datetime] = {}
+    for match in _ARTICLE_RE.finditer(html_text):
+        uid = _attr(match.group(1), "data-uid")
+        if not uid:
+            continue
+        date_match = re.search(
+            r'<span[^>]*class="paper-date"[^>]*>(.*?)</span>',
+            match.group(2),
+            re.S | re.I,
+        )
+        if date_match:
+            parsed = _parse_display_date(date_match.group(1))
+            if parsed is not None:
+                dates[uid] = parsed
+    return dates
+
+
+def extract_images_from_html(html_text: str) -> dict[str, ImageAsset]:
+    """Read the current page's embedded images by story uid.
+
+    This is deliberately HTML-based: the current artifact is the media source,
+    so cache eviction and backup moves cannot drop the cover.
+    """
+    images: dict[str, ImageAsset] = {}
+    for match in _ARTICLE_RE.finditer(html_text):
+        attrs, body = match.group(1), match.group(2)
+        uid = _attr(attrs, "data-uid")
+        if not uid:
+            continue
+        img_match = re.search(r"<img\b([^>]*)>", body, re.S | re.I)
+        if not img_match:
+            continue
+        img_attrs = img_match.group(1)
+        src = _attr(img_attrs, "src")
+        if not src.startswith("data:"):
+            continue
+        credit_match = re.search(
+            r"<figcaption[^>]*>(.*?)</figcaption>", body, re.S | re.I
+        ) or re.search(r'<p[^>]*class="story-credit"[^>]*>(.*?)</p>', body, re.S | re.I)
+        credit = ""
+        if credit_match:
+            credit = re.sub(r"<[^>]+>", " ", credit_match.group(1))
+            credit = " ".join(html_lib.unescape(credit).split())
+        try:
+            width = int(_attr(img_attrs, "width") or 0)
+            height = int(_attr(img_attrs, "height") or 0)
+        except ValueError:
+            width = height = 0
+        images[uid] = ImageAsset(
+            uid=uid,
+            data_uri=src,
+            alt=_attr(img_attrs, "alt"),
+            credit=credit,
+            source_url="",
+            kind="og" if "story--cover" in attrs else "arxiv_img",
+            width=width,
+            height=height,
+        )
+    return images
+
+
+def _legacy_model_name(html_text: str, config: Config) -> str:
+    match = re.search(r"(?:Biên tập:|Edited by:|編集:)\s*([^<]+)", html_text, re.I)
+    return match.group(1).strip() if match else config.llm.model
+
+
+def edition_from_legacy_html(
+    html_text: str,
+    path: Path,
+    config: Config,
+    output_dir: Path | None = None,
+) -> Edition | None:
+    """Best-effort Edition for a digest created before sidecars existed.
+
+    The item set/order comes from the embedded digest_data; paper dates and
+    images come from the rendered HTML. Generated overview/notice text is
+    intentionally discarded because it is in the old locale.
+    """
+    from daily_digest.popup_bridge import extract_digest_data
+
+    data = extract_digest_data(html_text)
+    if not isinstance(data, dict):
+        return None
+    raw_items = data.get("items")
+    if not isinstance(raw_items, dict):
+        return None
+    date = str(data.get("date", ""))
+    if not _valid_date(date):
+        return None
+
+    locale_match = re.search(r'<html[^>]*\blang="([^"]+)"', html_text, re.I)
+    locale = normalize_locale(locale_match.group(1)) if locale_match else "vi"
+    if locale is None:
+        return None
+
+    dates = _article_dates(html_text)
+    ranked: list[RankedItem] = []
+    for uid, snapshot in raw_items.items():
+        if not isinstance(snapshot, dict):
+            continue
+        section = snapshot.get("section")
+        if section not in ("papers", "tech_news", "tools_releases"):
+            section = "papers"
+        ranked.append(
+            RankedItem(
+                item=Item(
+                    id=str(uid),
+                    title=str(snapshot.get("title", "")),
+                    url=str(snapshot.get("url", "")),
+                    source=str(snapshot.get("source", "")),
+                    points=snapshot.get("points"),
+                    published=dates.get(str(uid)),
+                    summary=str(snapshot.get("summary", "")),
+                    citations=snapshot.get("citations"),
+                    section_hint=None,
+                ),
+                why=str(snapshot.get("why", "")),
+                section=section,
+                llm_summary=str(snapshot.get("llm_summary", "")),
+            )
+        )
+
+    pinned = tuple(
+        dict(entry) for entry in data.get("pinned", []) if isinstance(entry, dict)
+    )
+    try:
+        relpath = (
+            path.relative_to(output_dir).as_posix()
+            if output_dir is not None
+            else path.name
+        )
+    except ValueError:
+        relpath = path.name
+    digest_sha = _sha256(html_text)
+    mode = "empty" if not ranked and "empty-note" in html_text else "llm"
+    return Edition(
+        date=date,
+        locale=locale,
+        ranked=tuple(ranked),
+        mode=mode,
+        model_name=_legacy_model_name(html_text, config),
+        degraded="status-strip degraded" in html_text,
+        sources_failed=(),
+        overview="",
+        overview_points=(),
+        notice_text="",
+        pinned=pinned,
+        pinned_overflow=0,
+        images=extract_images_from_html(html_text),
+        html_relpath=relpath,
+        html_sha256=digest_sha,
+        edition_id=f"legacy-{digest_sha[:16]}",
+    )

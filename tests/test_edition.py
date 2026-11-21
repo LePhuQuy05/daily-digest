@@ -8,6 +8,8 @@ from pathlib import Path
 import daily_digest.pipeline as pipeline
 from daily_digest.edition import (
     Edition,
+    edition_from_legacy_html,
+    extract_images_from_html,
     load_edition,
     render_edition,
     save_edition,
@@ -15,6 +17,7 @@ from daily_digest.edition import (
     with_artifact,
 )
 from daily_digest.i18n import locale_strings
+from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.overview import OverviewPoint, OverviewRef, OverviewSegment
 from helpers import FakeLlmClient, llm_ok_json, make_config, make_item
@@ -206,3 +209,75 @@ def test_run_day_writes_empty_snapshot(tmp_path, monkeypatch):
     assert loaded is not None
     assert loaded.ranked == ()
     assert loaded.mode == "empty"
+
+
+def _legacy_html(tmp_path, *, locale="vi"):
+    config = make_config(tmp_path)
+    ranked = _ranked()
+    image = ImageAsset(
+        uid=ranked.item.id,
+        data_uri="data:image/jpeg;base64,AAAA",
+        alt="Cover alt",
+        credit="Ảnh: test",
+        source_url="https://example.test/image",
+        kind="og",
+        width=1200,
+        height=630,
+    )
+    edition = Edition(
+        date="2026-11-21",
+        locale=locale,
+        ranked=(ranked,),
+        mode="llm",
+        model_name="test-model",
+        overview="Điểm chính: [[0]]",
+        overview_points=(),
+        images={ranked.item.id: image},
+    )
+    html = render_edition(edition, config)
+    output_dir = tmp_path / "output"
+    path = output_dir / f"digest-{edition.date}.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html, encoding="utf-8")
+    return html, path, output_dir, config, ranked
+
+
+def test_legacy_edition_preserves_order_date_and_cover_image(tmp_path):
+    html, path, output_dir, config, ranked = _legacy_html(tmp_path)
+    assert "story--cover" in html  # fixture must exercise the cover image
+
+    legacy = edition_from_legacy_html(html, path, config, output_dir)
+    assert legacy is not None
+    assert legacy.locale == "vi"
+    assert len(legacy.ranked) == 1
+    assert legacy.ranked[0].item.id == ranked.item.id
+    assert legacy.ranked[0].why == ranked.why
+    assert legacy.ranked[0].section == "papers"
+    assert legacy.ranked[0].item.published is not None
+    assert legacy.ranked[0].item.published.year == 2026
+    assert legacy.ranked[0].item.published.month == 11
+    assert legacy.ranked[0].item.published.day == 18
+    assert legacy.images[ranked.item.id].data_uri.startswith("data:image/")
+    assert legacy.html_relpath == "digest-2026-11-21.html"
+    assert legacy.html_sha256
+
+
+def test_legacy_edition_reads_japanese_paper_date(tmp_path):
+    html, path, output_dir, config, _ = _legacy_html(tmp_path, locale="ja")
+
+    legacy = edition_from_legacy_html(html, path, config, output_dir)
+    assert legacy is not None
+    assert legacy.locale == "ja"
+    published = legacy.ranked[0].item.published
+    assert published is not None
+    assert (published.year, published.month, published.day) == (2026, 11, 18)
+
+
+def test_legacy_extraction_requires_digest_data(tmp_path):
+    config = make_config(tmp_path)
+    path = tmp_path / "output" / "digest-2026-11-21.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("<html><body>old digest</body></html>", encoding="utf-8")
+    assert (
+        edition_from_legacy_html(path.read_text(encoding="utf-8"), path, config) is None
+    )
