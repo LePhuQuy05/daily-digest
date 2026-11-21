@@ -2,7 +2,10 @@
   "locale": "en",
   "ranked": [
     {
-      "item": {"title": "A generic paper"},
+      "item": {
+        "title": "A generic paper",
+        "summary": "The method cuts decode latency by 23% and keeps accuracy within 0.4 points."
+      },
       "why": "why",
       "llm_summary": "This paper proposes a novel approach that may be significant for future work."
     }

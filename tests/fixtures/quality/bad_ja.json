@@ -2,7 +2,10 @@
   "locale": "ja",
   "ranked": [
     {
-      "item": {"title": "A generic paper"},
+      "item": {
+        "title": "A generic paper",
+        "summary": "この手法は長文プロンプトでデコード遅延を23%削減し、精度を0.4ポイント以内に保ちます。"
+      },
       "why": "why",
       "llm_summary": "This paper proposes a novel approach that may be significant for future work."
     }

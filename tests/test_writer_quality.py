@@ -11,7 +11,9 @@ from daily_digest.writer_quality import (
     generic_hits,
     is_specific,
     locale_match,
+    retains_source_fact,
     score_payload,
+    source_facts,
     summarize_items,
 )
 
@@ -50,7 +52,26 @@ def test_good_and_bad_fixtures_discriminate():
     assert bad["passes"] is False
     assert good["specificity_ratio"] > bad["specificity_ratio"]
     assert good["generic_ratio"] < bad["generic_ratio"]
+    assert good["fact_recall_ratio"] == 1.0
+    assert bad["fact_recall_ratio"] == 0.0
     assert good["points"] > bad["points"]
+
+
+def test_fact_recall_uses_source_numbers_and_names():
+    assert retains_source_fact(
+        "Cuts latency by 23% with a 0.4 point loss.",
+        "23% faster with 0.4 points lost.",
+    )
+    assert not retains_source_fact(
+        "Cuts latency by 23% with a 0.4 point loss.",
+        "This paper proposes a novel approach.",
+    )
+    assert retains_source_fact(
+        "Qwen2.5-7B improves tool use.",
+        "Qwen2.5-7B scores higher on tool use.",
+    )
+    assert retains_source_fact("A qualitative study.", "A qualitative study.")
+    assert source_facts("A 2026 survey.") == set()  # years alone are too weak
 
 
 def test_ja_fixture_requires_kana_and_japanese():

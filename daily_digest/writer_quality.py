@@ -54,6 +54,23 @@ TECH_TOKEN = re.compile(
 )
 NUMBER = re.compile(r"\d")
 KANA = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff]")
+NUMBER_FACT = re.compile(r"\d+(?:[.,]\d+)?\s*(?:%|x|\u00d7|B|M|K|GB|ms|s)?")
+NAME_FACT = re.compile(r"\b(?:[A-Z]{2,}[A-Za-z0-9-]*|[A-Za-z]+\d[A-Za-z0-9.-]*)\b")
+FACT_STOPWORDS = {
+    "THE",
+    "THIS",
+    "THAT",
+    "THESE",
+    "THOSE",
+    "AND",
+    "FOR",
+    "WITH",
+    "FROM",
+    "FIGURE",
+    "TABLE",
+    "SECTION",
+    "APPENDIX",
+}
 
 
 @dataclass(frozen=True)
@@ -66,6 +83,7 @@ class SummaryMetrics:
     generic_ratio: float
     locale_match_ratio: float
     visible_fit_ratio: float
+    fact_recall_ratio: float
 
 
 def _text(value: object) -> str:
@@ -105,10 +123,54 @@ def fits_visible(text: str, locale: str, lines: int | None = None) -> bool:
     return len(_text(text)) <= visible_char_budget(locale, lines)
 
 
+def _number_fact(token: str) -> str:
+    raw = token.replace(" ", "").lower().replace(",", ".")
+    match = re.match(r"\d+(?:\.\d+)?", raw)
+    if match is None:
+        return ""
+    core = match.group(0)
+    unit = raw[match.end() :]
+    # Years and lone digits are too weak to prove the summary kept a fact.
+    if core.isdigit() and len(core) == 4 and 1900 <= int(core) <= 2100:
+        return ""
+    if len(core.replace(".", "")) < 2 and not unit:
+        return ""
+    return core
+
+
+def source_facts(text: str) -> set[str]:
+    """Extract must-mention numbers, or named methods when no numbers exist."""
+    value = _text(text)
+    numbers = {
+        fact
+        for match in NUMBER_FACT.finditer(value)
+        if (fact := _number_fact(match.group(0)))
+    }
+    if numbers:
+        return numbers
+    return {
+        match.group(0).lower()
+        for match in NAME_FACT.finditer(value)
+        if match.group(0).upper() not in FACT_STOPWORDS and len(match.group(0)) >= 3
+    }
+
+
+def retains_source_fact(source: str, summary: str) -> bool:
+    facts = source_facts(source)
+    if not facts:
+        return True
+    compact = _text(summary).lower().replace(" ", "")
+    return any(fact in compact for fact in facts)
+
+
 def summarize_items(items: list[dict[str, Any]], locale: str) -> SummaryMetrics:
     loc = normalize_locale(locale) or "vi"
-    summaries = [_text(item.get("llm_summary")) for item in items]
-    present = [text for text in summaries if text]
+    present_pairs = [
+        (_text(item.get("summary")), _text(item.get("llm_summary")))
+        for item in items
+        if _text(item.get("llm_summary"))
+    ]
+    present = [summary for _, summary in present_pairs]
     count = len(items)
     return SummaryMetrics(
         locale=loc,
@@ -132,6 +194,15 @@ def summarize_items(items: list[dict[str, Any]], locale: str) -> SummaryMetrics:
             sum(fits_visible(text, loc) for text in present) / len(present)
         )
         if present
+        else 0.0,
+        fact_recall_ratio=(
+            sum(
+                retains_source_fact(source, summary)
+                for source, summary in present_pairs
+            )
+            / len(present_pairs)
+        )
+        if present_pairs
         else 0.0,
     )
 
@@ -203,10 +274,13 @@ def score_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "generic_ratio": round(summary.generic_ratio, 3),
         "locale_match_ratio": round(summary.locale_match_ratio, 3),
         "visible_fit_ratio": round(summary.visible_fit_ratio, 3),
+        "fact_recall_ratio": round(summary.fact_recall_ratio, 3),
         **overview,
     }
     score["passes"] = bool(
         score["points"] > 0
+        and score["with_summary"] == score["items"]
+        and score["fact_recall_ratio"] >= 0.8
         and score["locale_match_ratio"] >= 0.9
         and score["specificity_ratio"] >= 0.8
         and score["generic_ratio"] <= 0.2
@@ -232,6 +306,7 @@ def format_score(score: dict[str, Any]) -> str:
         f"avg={score['average_chars']} "
         f"specific={score['specificity_ratio']} "
         f"generic={score['generic_ratio']} "
+        f"fact={score['fact_recall_ratio']} "
         f"locale={score['locale_match_ratio']} "
         f"visible={score['visible_fit_ratio']} "
         f"points={score['points']} rest={score['max_rest_refs']} "
@@ -243,6 +318,7 @@ def compare_scores(
     current: dict[str, Any], baseline: dict[str, Any]
 ) -> dict[str, float]:
     keys = (
+        "fact_recall_ratio",
         "specificity_ratio",
         "generic_ratio",
         "locale_match_ratio",
