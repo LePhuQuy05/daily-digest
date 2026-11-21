@@ -176,3 +176,17 @@ def test_heuristic_overview_covers_every_section_item(tmp_path):
     assert "Research Papers" in text
     assert "Tech News" in text
     assert "Tools & Releases" in text
+
+
+def test_thirty_item_overview_keeps_full_coverage_and_scales_budget():
+    from daily_digest.ranking.llm import overview_char_budget
+
+    ranked = _ranked(30)
+    points = ensure_coverage(
+        parse_overview(" ".join(f"[[{i}]]" for i in range(20)), ranked),
+        ranked,
+    )
+
+    assert _uids(points) == {r.item.id for r in ranked}
+    assert any(point.kind == "rest" for point in points)
+    assert overview_char_budget(30) == 2680

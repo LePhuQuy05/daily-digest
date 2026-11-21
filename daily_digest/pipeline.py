@@ -7,6 +7,7 @@ zero items from healthy sources) · 2 fatal (config, all sources failed).
 from __future__ import annotations
 
 import shutil
+import time
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -49,6 +50,9 @@ from daily_digest.rules import apply_mute, log_mute_summary
 from daily_digest.sources import SourceError, enabled_sources, fetch_all
 from daily_digest.source_labels import labels_for
 from daily_digest.util import LOG, load_json, save_json, today_str
+
+
+RUN_BUDGET_SECONDS = 12 * 60
 
 
 def merge_items(items: list[Item]) -> list[Item]:
@@ -144,6 +148,7 @@ def run_day(
     target = resolve_digest_size(
         config, load_preferences(config.preferences_path), target
     )
+    deadline = time.monotonic() + RUN_BUDGET_SECONDS
     days: dict = state.setdefault("days", {})
 
     entry = days.get(date, {})
@@ -338,9 +343,12 @@ def run_day(
     overview = ""
     overview_points = ()
     if config.llm.summarize and summary_client is not None:
-        ranked, overview = summarize_with_llm(
-            ranked, summary_client.chat, config, reader_context
-        )
+        if time.monotonic() < deadline:
+            ranked, overview = summarize_with_llm(
+                ranked, summary_client.chat, config, reader_context
+            )
+        else:
+            LOG.warning("run budget exceeded before writer; keeping raw abstracts")
     if overview:
         overview_points = ensure_coverage(parse_overview(overview, ranked), ranked)
     if not overview_points:

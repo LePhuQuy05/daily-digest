@@ -29,6 +29,28 @@ def test_yaml_override(tmp_path):
     assert config.schedule.time == "07:30"
 
 
+def test_digest_size_config_is_clamped_not_fatal(tmp_path):
+    path = tmp_path / "config.yaml"
+    path.write_text("llm:\n  top_n: 31\n", encoding="utf-8")
+    assert load_config(path).llm.top_n == 30
+
+    path.write_text("llm:\n  top_n: 0\n", encoding="utf-8")
+    assert load_config(path).llm.top_n == 1
+
+    path.write_text("llm:\n  top_n: 5\n  max_pool: 3\n", encoding="utf-8")
+    assert load_config(path).llm.top_n == 3
+
+    path.write_text("llm:\n  top_n: '12'\n", encoding="utf-8")
+    assert load_config(path).llm.top_n == 12
+
+
+def test_redacted_config_reports_effective_digest_size(tmp_path):
+    config = load_config(tmp_path / "missing.yaml")
+    data = redacted_config_dict(config)
+    assert data["digest_size"]["config"] == 12
+    assert data["digest_size"]["effective"] >= 1
+
+
 def test_unknown_keys_are_ignored(tmp_path):
     path = tmp_path / "config.yaml"
     path.write_text("bogus_top: 1\nllm:\n  not_a_key: 2\n", encoding="utf-8")

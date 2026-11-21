@@ -122,3 +122,25 @@ def test_default_remains_12(tmp_path, monkeypatch):
     result = _run(config, target=None)
 
     assert result.item_count == 12
+
+
+def test_run_budget_skips_writer_and_still_ships(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    _patch(monkeypatch, _items(20))
+    monkeypatch.setattr(pipeline, "RUN_BUDGET_SECONDS", 0)
+    writer = FakeLlmClient('{"overview": "should not run", "items": []}')
+
+    result = pipeline.run_day(
+        config,
+        DATE,
+        llm_client=FakeLlmClient(llm_ok_json(12)),
+        summary_client=writer,
+        force=True,
+        notify_fn=lambda *a, **k: None,
+        target=12,
+    )
+
+    assert result.exit_code == 0
+    assert writer.chat.calls == []
+    assert result.digest_path.exists()
+    assert "Paper 0" in result.digest_path.read_text(encoding="utf-8")
