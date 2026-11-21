@@ -1,6 +1,6 @@
 [project]
 name = "daily-digest"
-version = "0.1.0"
+version = "0.1.1"
 description = "Daily AI & tech digest popup for Windows: HN + Hugging Face Daily Papers + arXiv, ranked by an LLM."
 readme = "README.md"
 license = { text = "MIT" }
