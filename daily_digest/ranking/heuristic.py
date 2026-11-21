@@ -141,6 +141,13 @@ def _why_line(
     return " · ".join(bits) if bits else t(loc, "heuristic_top")
 
 
+def heuristic_why(item: Item, config: Config, locale: str = "vi") -> str:
+    """Expose the deterministic why line for localization fallbacks."""
+    loc = normalize_locale(locale) or "vi"
+    limit = 80 if loc == "ja" else 140
+    return _why_line(item, config.interests.topics, labels_for(config), loc)[:limit]
+
+
 def rank_heuristic(
     items: list[Item],
     config: Config,
