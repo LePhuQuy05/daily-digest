@@ -36,6 +36,8 @@ The overview card cites articles **inline at the point of mention**. Clicking a 
 
 **Cover hero:** when the lead has a landscape OG image, the lead becomes a magazine cover — a 16:9 photo with a 70% ink wash, serif display type, a crimson rule, and a print-visible credit. The treatment is gated to OG images for now; arXiv charts keep the current figure plate rather than being cropped.
 
+Paper cards show their publication date (`DD.MM.YYYY`) in the metadata line.
+
 ## Why this exists
 
 Most news aggregators optimize for clicks. This one optimizes for a single reader: it pulls from primary sources, removes what you have already seen, explains why each item matters, and gets out of the way.

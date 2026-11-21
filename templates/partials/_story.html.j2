@@ -31,6 +31,7 @@
   {% endif %}
   <div class="meta">
     <span>{{ source_names.get(item.item.source, item.item.source) }}</span>
+    {% if item.section == "papers" and item.item.published %}<span class="paper-date">{{ item.item.published | short_date }}</span>{% endif %}
     {% if item.item.points %}<span>{{ item.item.points }} points</span>{% endif %}
     {% if item.item.citations %}<span>{{ item.item.citations }} citations</span>{% endif %}
     {% if item.item.source == 'arxiv' %}<span class="tag-new">MỚI</span>{% endif %}

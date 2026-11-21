@@ -38,6 +38,13 @@ def _format_date_long(date: str) -> str:
     return f"{_VI_WEEKDAYS[parsed.weekday()]}, {parsed:%d.%m.%Y}"
 
 
+def _short_date(value: datetime | None) -> str:
+    """Paper metadata date, e.g. 18.11.2026; empty when unknown."""
+    if not isinstance(value, datetime):
+        return ""
+    return value.strftime("%d.%m.%Y")
+
+
 def build_digest_data(ranked: list[RankedItem], pinned: list[dict], date: str) -> dict:
     """The data blob embedded in every digest HTML (consumed by the popup bridge).
 
@@ -85,6 +92,7 @@ def render_digest(
 ) -> str:
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
+    env.filters["short_date"] = _short_date
     tpl = env.get_template(template.name)
     front_page = build_front_page(ranked)
     return tpl.render(

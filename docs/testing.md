@@ -17,7 +17,7 @@ uv run pytest -o addopts=''
 | Sources and normalization | HN hydration, HF/arXiv parsing, feed health, merge/dedupe provenance |
 | Ranking | LLM selection, heuristic fallback, diversity, mute/always rules |
 | Pipeline | Idempotency, `--new-only`, backfill, degraded exit codes, atomic writes |
-| Rendering | Section fronts, XSS escaping, safe links, print/token invariants |
+| Rendering | Section fronts, paper metadata dates, XSS escaping, safe links, print/token invariants |
 | Cover hero | OG/landscape gate, 70% contrast, credit escaping, print reset, image-failure fallback |
 | Demo | Bundled fixture render, coverage, no network or key requirement |
 | Overview | Marker parsing, duplicate cleanup, coverage guarantee, every fallback mode |

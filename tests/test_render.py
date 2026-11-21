@@ -39,6 +39,8 @@ def test_render_escapes_titles_whys_and_filters_hrefs(tmp_path):
     assert 'href="#"' in html  # javascript: url filtered
     assert "Good paper about LLMs" in html
     assert 'href="https://arxiv.org/abs/2"' in html
+    assert '<span class="paper-date">18.11.2026</span>' in html
+    assert html.count('<span class="paper-date">') == 1  # paper only
     assert "glm-5.3" in html  # model badge
     assert "Research Papers" in html and "Tech News" in html
 
