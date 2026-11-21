@@ -19,6 +19,7 @@ def make_config(tmp_path: Path) -> Config:
     config.state_path = tmp_path / "state.json"
     config.log_dir = tmp_path / "logs"
     config.feedback_path = tmp_path / "feedback.jsonl"
+    config.preferences_path = tmp_path / "preferences.json"
     config.media.enabled = False  # tests stay offline; media tests opt in
     config.sources.feeds.enabled = False  # feed tests opt in explicitly
     config.sources.hn.hydrate = False  # HN hydration tests opt in explicitly

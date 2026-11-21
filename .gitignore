@@ -1,6 +1,7 @@
 # Secrets — never commit
 .env
 config.yaml
+preferences.json
 
 # Runtime artifacts
 output/

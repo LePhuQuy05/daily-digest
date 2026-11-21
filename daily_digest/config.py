@@ -8,6 +8,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from daily_digest.digest_size import (
+    DEFAULT_DIGEST_SIZE,
+    MAX_DIGEST_SIZE,
+    MIN_DIGEST_SIZE,
+    load_preferences,
+    resolve_digest_size,
+    stored_digest_size,
+)
 from daily_digest.model import Section
 from daily_digest.util import LOG, PROJECT_ROOT, load_env_file
 
@@ -511,6 +519,9 @@ class Config:
     feedback_path: Path = field(
         default_factory=lambda: PROJECT_ROOT / "feedback.jsonl", init=False
     )
+    preferences_path: Path = field(
+        default_factory=lambda: PROJECT_ROOT / "preferences.json", init=False
+    )
 
 
 def _merge_obj(obj: object, data: dict) -> None:
@@ -610,6 +621,45 @@ def load_config(path: Path | None = None) -> Config:
     config.log_dir = PROJECT_ROOT / config.log.dir
     config.state_path = PROJECT_ROOT / config.state.path
     config.feedback_path = PROJECT_ROOT / config.feedback.path
+    config.preferences_path = PROJECT_ROOT / "preferences.json"
+
+    # Digest size policy: legacy config values are warn/clamp, never fatal.
+    raw_top_n = config.llm.top_n
+    if isinstance(raw_top_n, bool) or not isinstance(raw_top_n, (int, str)):
+        LOG.warning(
+            "llm.top_n must be an integer; using default %d", DEFAULT_DIGEST_SIZE
+        )
+        raw_top_n = DEFAULT_DIGEST_SIZE
+    elif isinstance(raw_top_n, str):
+        if raw_top_n.strip().isdigit():
+            raw_top_n = int(raw_top_n.strip())
+        else:
+            LOG.warning(
+                "llm.top_n must be an integer; using default %d", DEFAULT_DIGEST_SIZE
+            )
+            raw_top_n = DEFAULT_DIGEST_SIZE
+    if raw_top_n < MIN_DIGEST_SIZE:
+        LOG.warning("llm.top_n %d is below %d; clamping", raw_top_n, MIN_DIGEST_SIZE)
+        raw_top_n = MIN_DIGEST_SIZE
+    if raw_top_n > MAX_DIGEST_SIZE:
+        LOG.warning("llm.top_n %d is above %d; clamping", raw_top_n, MAX_DIGEST_SIZE)
+        raw_top_n = MAX_DIGEST_SIZE
+
+    raw_max_pool = config.llm.max_pool
+    if (
+        isinstance(raw_max_pool, bool)
+        or not isinstance(raw_max_pool, int)
+        or raw_max_pool < 1
+    ):
+        raise ConfigError(f"llm.max_pool must be an integer >= 1, got {raw_max_pool!r}")
+    if raw_top_n > raw_max_pool:
+        LOG.warning(
+            "llm.top_n %d exceeds llm.max_pool %d; clamping", raw_top_n, raw_max_pool
+        )
+        raw_top_n = raw_max_pool
+    config.llm.top_n = raw_top_n
+    config.llm.max_pool = raw_max_pool
+
     if not config.template_path.exists():
         raise ConfigError(f"digest template not found: {config.template_path}")
     return config
@@ -630,4 +680,10 @@ def redacted_config_dict(config: Config) -> dict:
     data = _stringify(dataclasses.asdict(config))  # type: ignore[arg-type]
     api_key = os.environ.get(config.llm.api_key_env)
     data["llm"]["api_key"] = "set" if api_key else "not set"
+    preferences = load_preferences(config.preferences_path)
+    data["digest_size"] = {
+        "config": config.llm.top_n,
+        "stored": stored_digest_size(preferences),
+        "effective": resolve_digest_size(config, preferences),
+    }
     return data
