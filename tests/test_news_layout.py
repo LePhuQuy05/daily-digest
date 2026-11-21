@@ -124,9 +124,9 @@ def test_content_aware_section_variants(tmp_path):
     assert "section-front--grid" in papers
     assert "section-front--band" in tech
     assert "section-front--empty" in tools
-    assert "11 stories" in papers
+    assert "11 bài" in papers
     assert "2 ở trên" in papers
-    assert "hôm nay không có mục nào" in tools
+    assert "Hôm nay không có mục nào" in tools
     assert 'id="papers"' in html
     assert 'id="tech-news"' in html
     assert 'id="tools-releases"' in html

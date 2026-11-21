@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from daily_digest.i18n import normalize_locale
 from daily_digest.util import LOG, load_json, save_json
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -111,11 +112,33 @@ def load_preferences(path: Path) -> dict:
     return load_json(path)
 
 
+def save_preferences(path: Path, **updates: object) -> None:
+    """Atomically merge preferences, preserving unknown keys."""
+    preferences = load_json(path)
+    preferences.update(updates)
+    save_json(path, preferences)
+
+
 def save_digest_size(path: Path, size: int) -> None:
     """Save one preference atomically, preserving unknown keys."""
     value = normalize_digest_size(size)
+    save_preferences(path, digest_size=value)
+
+
+def set_language(path: Path, locale: str) -> None:
+    """Persist an explicit locale preference."""
+    normalized = normalize_locale(locale)
+    if normalized is None:
+        raise ValueError(f"unsupported locale: {locale!r}")
+    save_preferences(path, language=normalized)
+
+
+def clear_language(path: Path) -> None:
+    """Remove the stored locale preference, preserving other keys."""
     preferences = load_json(path)
-    preferences["digest_size"] = value
+    if "language" not in preferences:
+        return
+    preferences.pop("language", None)
     save_json(path, preferences)
 
 

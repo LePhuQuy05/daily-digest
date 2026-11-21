@@ -216,9 +216,9 @@ class TestStep4IconsStates:
         assert '<use href="#i-thumb-up"/>' in tpl
         assert '<use href="#i-thumb-down"/>' in tpl
         assert '<use href="#i-bookmark"/>' in tpl
-        assert 'aria-label="Thích mục này"' in tpl
-        assert 'aria-label="Lưu mục này vào Nhìn lại"' in tpl
-        assert 'aria-label="Hỏi về mục này"' in tpl
+        assert 'aria-label="{{ t.story_like_aria }}"' in tpl
+        assert 'aria-label="{{ t.story_save_aria }}"' in tpl
+        assert 'aria-label="{{ t.story_ask_question_aria }}"' in tpl
         assert 'aria-live="polite"' in tpl  # ask answers announced politely
 
     def test_act_buttons_have_cursor_pointer_and_min_size(self, tmp_path):
@@ -254,7 +254,7 @@ class TestStep4IconsStates:
     def test_ask_is_native_details(self):
         partial = _partial()
         assert '<details class="ask">' in partial
-        assert "<summary>Hỏi biên tập</summary>" in partial
+        assert "<summary>{{ t.story_ask_summary }}</summary>" in partial
 
     def test_nav_active_observer(self):
         tpl = self._template()
@@ -324,7 +324,7 @@ class TestStep5PrintPolish:
 
     def test_empty_state_renders_for_empty_sections(self, tmp_path):
         html = _html(tmp_path)  # 1 tech_news item -> papers/tools empty
-        assert "hôm nay không có mục nào" in html
+        assert "Hôm nay không có mục nào" in html
         assert html.count("empty") >= 2  # two empty sections
 
     # ---------- contrast audit (WCAG 2.1 relative luminance, >= 4.5:1) ----------

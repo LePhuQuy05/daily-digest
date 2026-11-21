@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 
 from daily_digest.config import Config
+from daily_digest.i18n import t
 from daily_digest.model import Item, RankedItem, Section
 from daily_digest.relevance import matches_topics
 from daily_digest.source_labels import labels_for
@@ -228,10 +229,8 @@ _OVERVIEW_TEMPLATES = {
 }
 
 
-def overview_label(config: Config) -> str:
-    return _OVERVIEW_LABELS.get(
-        config.llm.overview_language.strip().lower(), "Today's overview"
-    )
+def overview_label(locale: str = "vi") -> str:
+    return t(locale, "overview_label")
 
 
 def heuristic_overview(ranked: list[RankedItem], config: Config) -> str:

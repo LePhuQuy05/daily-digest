@@ -26,6 +26,7 @@ from daily_digest.feedback import (
     reader_context_block,
     topic_adjustments,
 )
+from daily_digest.i18n import resolve_locale, t
 from daily_digest.model import Item, RunResult, SECTIONS
 from daily_digest.normalize import item_uid
 from daily_digest.notify import notify
@@ -142,12 +143,13 @@ def run_day(
     notify_fn: Callable[..., None] = notify,
     summary_client: LlmClient | None = None,
     target: int | None = None,
+    language: str | None = None,
 ) -> RunResult:
     date = date or today_str()
     state = load_json(config.state_path)
-    target = resolve_digest_size(
-        config, load_preferences(config.preferences_path), target
-    )
+    preferences = load_preferences(config.preferences_path)
+    target = resolve_digest_size(config, preferences, target)
+    locale = resolve_locale(config, preferences, language)
     deadline = time.monotonic() + RUN_BUDGET_SECONDS
     days: dict = state.setdefault("days", {})
 
@@ -233,13 +235,14 @@ def run_day(
             date=date,
             mode="empty",
             overview=heuristic_overview([], config),
-            overview_label=overview_label(config),
+            overview_label=overview_label(locale),
             degraded=bool(failed),
             sources_failed=failed,
             model_name=config.llm.model,
             template=config.template_path,
             notice=notice,
             digest_data=build_digest_data([], [], date),
+            locale=locale,
         )
         if new_only or force:
             _backup_morning_digest(config.output_dir, date)
@@ -378,7 +381,7 @@ def run_day(
         date=date,
         mode=mode,
         overview=overview,
-        overview_label=overview_label(config),
+        overview_label=overview_label(locale),
         overview_points=overview_points,
         degraded=degraded,
         sources_failed=failed,
@@ -389,6 +392,7 @@ def run_day(
         digest_data=build_digest_data(ranked, pinned, date),
         images=images,
         source_names=labels_for(config),
+        locale=locale,
     )
     if new_only or force:
         _backup_morning_digest(config.output_dir, date)

@@ -16,6 +16,7 @@ from daily_digest.digest_size import (
     resolve_digest_size,
     stored_digest_size,
 )
+from daily_digest.i18n import resolve_locale
 from daily_digest.model import Section
 from daily_digest.util import LOG, PROJECT_ROOT, load_env_file
 
@@ -685,5 +686,10 @@ def redacted_config_dict(config: Config) -> dict:
         "config": config.llm.top_n,
         "stored": stored_digest_size(preferences),
         "effective": resolve_digest_size(config, preferences),
+    }
+    data["language"] = {
+        "config": config.llm.overview_language,
+        "stored": preferences.get("language"),
+        "effective": resolve_locale(config, preferences),
     }
     return data

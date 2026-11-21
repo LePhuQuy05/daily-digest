@@ -42,7 +42,7 @@ def test_render_escapes_titles_whys_and_filters_hrefs(tmp_path):
     assert '<span class="paper-date">18.11.2026</span>' in html
     assert html.count('<span class="paper-date">') == 1  # paper only
     assert "glm-5.3" in html  # model badge
-    assert "Research Papers" in html and "Tech News" in html
+    assert "Nghiên cứu" in html and "Công nghệ" in html
 
 
 def test_render_degraded_banner(tmp_path):

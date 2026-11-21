@@ -100,6 +100,40 @@ def test_cli_count_rejects_out_of_range():
         build_parser().parse_args(["run", "--count", "abc"])
 
 
+def test_cli_lang_is_one_off_and_implies_force(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    save_digest_size(config.preferences_path, 16)
+    captured: dict = {}
+
+    def fake_run(*a, **kwargs):
+        captured.update(kwargs)
+        return RunResult(exit_code=0)
+
+    monkeypatch.setattr("daily_digest.cli.run_day", fake_run)
+    args = argparse.Namespace(
+        date=None,
+        force=False,
+        new_only=False,
+        no_notify=True,
+        count=None,
+        lang="ja",
+    )
+
+    assert cmd_run(config, args) == 0
+    assert captured["language"] == "ja"
+    assert captured["force"] is True
+    stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
+    assert "language" not in stored  # --lang is one-off
+
+
+def test_cli_lang_accepts_common_forms_and_rejects_unknown():
+    assert build_parser().parse_args(["run", "--lang", "ja-JP"]).lang == "ja"
+    assert build_parser().parse_args(["run", "--lang", "JA"]).lang == "ja"
+    assert build_parser().parse_args(["run", "--lang", "ja_JP"]).lang == "ja"
+    with pytest.raises(SystemExit):
+        build_parser().parse_args(["run", "--lang", "xx"])
+
+
 def test_forced_rebuild_backs_up_morning_edition(tmp_path, monkeypatch):
     config = make_config(tmp_path)
     config.output_dir.mkdir(parents=True, exist_ok=True)

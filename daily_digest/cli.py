@@ -11,6 +11,7 @@ from pathlib import Path
 from daily_digest.config import Config, ConfigError, load_config, redacted_config_dict
 from daily_digest.demo import render_demo
 from daily_digest.digest_size import MAX_DIGEST_SIZE, MIN_DIGEST_SIZE
+from daily_digest.i18n import LocaleError, require_locale
 from daily_digest.pipeline import run_day
 from daily_digest.util import LOG, load_json, save_json, setup_logging
 
@@ -55,16 +56,18 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
 
     editor = get_llm_client(config)
     count = getattr(args, "count", None)
+    language = getattr(args, "lang", None)
     result = run_day(
         config,
         date=args.date,
         http=httpx.Client(timeout=30.0, follow_redirects=True),
         llm_client=editor,
         summary_client=get_summarize_client(config, editor),
-        force=args.force or args.new_only or count is not None,
+        force=args.force or args.new_only or count is not None or language is not None,
         new_only=args.new_only,
         notify_enabled=not args.no_notify,
         target=count,
+        language=language,
     )
     message = result.message or (
         f"{result.item_count} items ({result.mode}) -> {result.digest_path}"
@@ -325,6 +328,13 @@ def _digest_count(value: str) -> int:
     return count
 
 
+def _locale_arg(value: str) -> str:
+    try:
+        return require_locale(value)
+    except LocaleError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="daily-digest", description="Daily AI & tech digest popup"
@@ -360,6 +370,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         metavar="N",
         help=f"items in this digest ({MIN_DIGEST_SIZE}..{MAX_DIGEST_SIZE}); implies --force",
+    )
+    run.add_argument(
+        "--lang",
+        type=_locale_arg,
+        default=None,
+        metavar="LOCALE",
+        help="content/UI language (vi, en, ja; ja-JP accepted); implies --force",
     )
 
     demo = sub.add_parser("demo", help="render a bundled, no-key demo digest")

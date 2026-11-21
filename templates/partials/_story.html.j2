@@ -2,7 +2,7 @@
    `source_names` and the current digest context are available. #}
 
 {% macro story_head(item, variant, cover=false, credit="") %}
-  {% if variant == "hero" %}<div class="kicker">CÂU CHUYỆN CHÍNH</div>{% endif %}
+  {% if variant == "hero" %}<div class="kicker">{{ t.story_kicker }}</div>{% endif %}
   <h3 class="story-title"><a href="{{ item.item.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ item.item.title }}</a></h3>
   {% if variant != "more" and item.why %}<p class="why">{{ item.why }}</p>{% endif %}
   {% if cover and credit %}<p class="story-credit">{{ credit }}</p>{% endif %}
@@ -32,20 +32,20 @@
   <div class="meta">
     <span>{{ source_names.get(item.item.source, item.item.source) }}</span>
     {% if item.section == "papers" and item.item.published %}<span class="paper-date">{{ item.item.published | short_date }}</span>{% endif %}
-    {% if item.item.points %}<span>{{ item.item.points }} points</span>{% endif %}
-    {% if item.item.citations %}<span>{{ item.item.citations }} citations</span>{% endif %}
-    {% if item.item.source == 'arxiv' %}<span class="tag-new">MỚI</span>{% endif %}
+    {% if item.item.points %}<span>{{ t.story_points.format(n=item.item.points) }}</span>{% endif %}
+    {% if item.item.citations %}<span>{{ t.story_citations.format(n=item.item.citations) }}</span>{% endif %}
+    {% if item.item.source == 'arxiv' %}<span class="tag-new">{{ t.story_new }}</span>{% endif %}
   </div>
   <div class="actions bridge-only">
-    <button class="act" data-feedback="{{ item.item.id }}|like" title="Digest này nên có nhiều bài thế này hơn" aria-label="Thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-up"/></svg></button>
-    <button class="act" data-feedback="{{ item.item.id }}|dislike" title="Bớt loại này ra" aria-label="Không thích mục này"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>
-    <button class="act" data-feedback="{{ item.item.id }}|save" title="Giữ lại trong mục Nhìn lại" aria-label="Lưu mục này vào Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Lưu</span></button>
+    <button class="act" data-feedback="{{ item.item.id }}|like" title="{{ t.story_like_title }}" aria-label="{{ t.story_like_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-thumb-up"/></svg></button>
+    <button class="act" data-feedback="{{ item.item.id }}|dislike" title="{{ t.story_dislike_title }}" aria-label="{{ t.story_dislike_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>
+    <button class="act" data-feedback="{{ item.item.id }}|save" title="{{ t.story_save_title }}" aria-label="{{ t.story_save_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-bookmark"/></svg><span>{{ t.story_save }}</span></button>
   </div>
   <details class="ask">
-    <summary>Hỏi biên tập</summary>
+    <summary>{{ t.story_ask_summary }}</summary>
     <div class="ask-row">
-      <input class="ask-input" type="text" placeholder="Hỏi thêm về mục này… (Ctrl+Enter)" aria-label="Nhập câu hỏi về mục này">
-      <button class="act ask-btn" data-ask="1" aria-label="Hỏi về mục này"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>Hỏi</button>
+      <input class="ask-input" type="text" placeholder="{{ t.story_ask_placeholder }}" aria-label="{{ t.story_ask_aria }}">
+      <button class="act ask-btn" data-ask="1" aria-label="{{ t.story_ask_question_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg>{{ t.story_ask_button }}</button>
     </div>
     <div class="ask-answer" aria-live="polite"></div>
   </details>
@@ -57,11 +57,11 @@
   <h3 class="story-title"><a href="{{ p.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ p.title }}</a></h3>
   <div class="meta">
     <span>{{ source_names.get(p.source, p.source) }}</span>
-    {% if p.points %}<span>{{ p.points }} points</span>{% endif %}
-    {% if p.citations %}<span>{{ p.citations }} citations</span>{% endif %}
+    {% if p.points %}<span>{{ t.story_points.format(n=p.points) }}</span>{% endif %}
+    {% if p.citations %}<span>{{ t.story_citations.format(n=p.citations) }}</span>{% endif %}
   </div>
   <div class="actions bridge-only">
-    <button class="act" data-feedback="{{ p.uid }}|unsave" title="Đọc xong, bỏ khỏi Nhìn lại" aria-label="Đọc xong, bỏ khỏi Nhìn lại"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>Đọc xong</span></button>
+    <button class="act" data-feedback="{{ p.uid }}|unsave" title="{{ t.story_unsave_title }}" aria-label="{{ t.story_unsave_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span>{{ t.story_done }}</span></button>
   </div>
 </article>
 {% endmacro %}
@@ -69,7 +69,7 @@
 {% macro most_read() %}
 {% if front_page.most_read %}
 <section class="most-read">
-  <h2>Đọc nhiều</h2>
+  <h2>{{ t.most_read_title }}</h2>
   <ol>
     {% for r in front_page.most_read %}
     <li><a href="#story-{{ r.item.id }}">{{ r.item.title }}</a></li>
@@ -85,14 +85,14 @@
   <section class="overview briefing" id="briefing" aria-label="{{ overview_label }}">
     <div class="briefing-head">
       <div class="kicker">{{ overview_label | upper }}</div>
-      <div class="briefing-title">Trong ngày</div>
+      <div class="briefing-title">{{ t.overview_title }}</div>
     </div>
     <ul class="overview-points">
       {% if overview_points %}
       {% for point in overview_points %}
       <li class="overview-point{% if point.kind == 'takeaway' %} spotlight{% endif %}{% if point.kind == 'rest' %} overview-rest{% endif %}">
         <span class="overview-body">
-          {% for seg in point.segments %}{{ seg.text }}{% if seg.ref %}<a class="oref" href="#story-{{ seg.ref.uid }}" data-story-ref="{{ seg.ref.uid }}" title="{{ seg.ref.title }}" aria-label="Chuyển đến bài: {{ seg.ref.title }}">{{ seg.ref.label }}</a>{% endif %}{% endfor %}
+          {% for seg in point.segments %}{{ seg.text }}{% if seg.ref %}<a class="oref" href="#story-{{ seg.ref.uid }}" data-story-ref="{{ seg.ref.uid }}" title="{{ seg.ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=seg.ref.title) }}">{{ seg.ref.label }}</a>{% endif %}{% endfor %}
         </span>
       </li>
       {% endfor %}
@@ -109,13 +109,13 @@
 
   {% if pinned %}
   <section class="block pinned-block" id="pinned">
-    <h2>Nhìn lại <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">+{{ pinned_overflow }} cũ hơn</span>{% endif %}</h2>
+    <h2>{{ t.pinned_title }} <span class="pill">{{ pinned | length }}</span>{% if pinned_overflow %} <span class="pill">{{ t.pinned_older.format(n=pinned_overflow) }}</span>{% endif %}</h2>
     {% for p in pinned %}{{ pinned_item(p) }}{% endfor %}
   </section>
   {% endif %}
 
   <div class="source-line">
-    Nguồn:
+    {{ t.source_prefix }}
     {% for source, count in front_page.source_counts.items() %}{{ source_names.get(source, source) }} {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}
   </div>
 </aside>

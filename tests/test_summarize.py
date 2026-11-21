@@ -369,10 +369,10 @@ def test_heuristic_overview_counts_and_themes(tmp_path):
     assert overview.startswith("4 mục hôm nay")
     assert "2 papers" in overview and "2 tin công nghệ" in overview
     assert "LLM" in overview  # top theme from the items
-    assert overview_label(config) == "Tổng hợp hôm nay"
+    assert overview_label("vi") == "Tổng hợp hôm nay"
 
     config.llm.overview_language = "en"
-    assert overview_label(config) == "Today's overview"
+    assert overview_label("en") == "Today's overview"
     assert "items today" in heuristic_overview(ranked, config)
 
 

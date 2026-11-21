@@ -9,6 +9,16 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from daily_digest.frontpage import build_front_page
+from daily_digest.i18n import (
+    LOCALE_LABEL,
+    SUPPORTED_LOCALES,
+    format_date_long,
+    format_short_date,
+    js_messages,
+    locale_strings,
+    section_title,
+    t,
+)
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
@@ -30,19 +40,13 @@ _VI_WEEKDAYS = (
 
 
 def _format_date_long(date: str) -> str:
-    """'2026-11-19' -> 'THỨ NĂM, 19.11.2026'; invalid input falls back verbatim."""
-    try:
-        parsed = datetime.strptime(date, "%Y-%m-%d")
-    except (TypeError, ValueError):
-        return date
-    return f"{_VI_WEEKDAYS[parsed.weekday()]}, {parsed:%d.%m.%Y}"
+    """Backward-compatible vi date formatter."""
+    return format_date_long(date, "vi")
 
 
 def _short_date(value: datetime | None) -> str:
-    """Paper metadata date, e.g. 18.11.2026; empty when unknown."""
-    if not isinstance(value, datetime):
-        return ""
-    return value.strftime("%d.%m.%Y")
+    """Backward-compatible vi paper date formatter."""
+    return format_short_date(value, "vi")
 
 
 def build_digest_data(ranked: list[RankedItem], pinned: list[dict], date: str) -> dict:
@@ -81,7 +85,7 @@ def render_digest(
     model_name: str,
     template: Path,
     overview: str = "",
-    overview_label: str = "Today's overview",
+    overview_label: str | None = None,
     overview_points: Sequence[OverviewPoint] = (),
     notice: str = "",
     digest_data: dict | None = None,
@@ -89,21 +93,24 @@ def render_digest(
     pinned_overflow: int = 0,
     images: Mapping[str, ImageAsset] | None = None,
     source_names: Mapping[str, str] | None = None,
+    locale: str = "vi",
 ) -> str:
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
-    env.filters["short_date"] = _short_date
+    env.filters["short_date"] = lambda value: format_short_date(value, locale)
     tpl = env.get_template(template.name)
     front_page = build_front_page(ranked)
+    strings = locale_strings(locale)
+    resolved_overview_label = overview_label or t(locale, "overview_label")
     return tpl.render(
         date=date,
-        date_long=_format_date_long(date),
+        date_long=format_date_long(date, locale),
         mode=mode,
         model_name=model_name,
         degraded=degraded,
         sources_failed=sources_failed,
         overview=overview,
-        overview_label=overview_label,
+        overview_label=resolved_overview_label,
         overview_points=overview_points,
         notice=notice,
         digest_data=digest_data,
@@ -113,6 +120,14 @@ def render_digest(
         images=images or {},
         source_names={**SOURCE_NAMES, **(source_names or {})},
         total=len(ranked),
+        locale=locale,
+        t=strings,
+        messages=js_messages(locale),
+        languages=[(code, LOCALE_LABEL[code]) for code in SUPPORTED_LOCALES],
+        section_titles={
+            key: section_title(key, locale)
+            for key in ("papers", "tech_news", "tools_releases")
+        },
     )
 
 

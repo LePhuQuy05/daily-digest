@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="{{ locale }}" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -25,11 +25,11 @@
 <div class="wrap">
   <header class="masthead" id="top">
     <div class="masthead-top">
-      <span class="edition">BẢN TIN AI</span>
+      <span class="edition">{{ t.edition }}</span>
       <div class="masthead-actions">
-        <button class="act bridge-only masthead-action" id="saved-open" type="button" title="Xem tất cả bài đã lưu">Đã lưu</button>
-        <button class="act bridge-only masthead-action" id="refresh-now" type="button" title="Tìm các bài mới chưa từng hiển thị">Tìm bài mới</button>
-        <button id="theme-toggle" class="theme-toggle" aria-label="Đổi giao diện sáng/tối" title="Đổi giao diện sáng/tối">
+        <button class="act bridge-only masthead-action" id="saved-open" type="button" title="{{ t.masthead_saved_title }}">{{ t.masthead_saved }}</button>
+        <button class="act bridge-only masthead-action" id="refresh-now" type="button" title="{{ t.masthead_refresh_title }}">{{ t.masthead_refresh }}</button>
+        <button id="theme-toggle" class="theme-toggle" aria-label="{{ t.theme_toggle }}" title="{{ t.theme_toggle }}">
           <svg class="icon icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
           <svg class="icon icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
         </button>
@@ -37,17 +37,17 @@
     </div>
     <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
     <div class="dateline">
-      <span>{{ date_long or date }} · {{ total }} câu chuyện <button id="size-open" class="size-trigger bridge-only" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="size-modal" title="Đổi số bài trong bản tin">Đổi</button></span>
-      <span>Biên tập: {% if mode == "llm" %}{{ model_name }}{% elif mode == "demo" %}demo fixtures{% elif mode == "empty" %}empty digest{% else %}heuristic{% endif %}</span>
+      <span>{{ date_long or date }} · {{ t.dateline_stories.format(n=total) }} <button id="size-open" class="size-trigger bridge-only" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="size-modal" title="{{ t.size_trigger_title }}">{{ t.settings_change }}</button></span>
+      <span>{{ t.dateline_editor.format(name=(model_name if mode == "llm" else t.mode_demo if mode == "demo" else t.mode_empty if mode == "empty" else t.mode_heuristic)) }}</span>
     </div>
   </header>
 
-  <nav class="section-nav" aria-label="Chuyên mục">
-    <a href="#top" class="active">Tổng hợp</a>
-    <a href="#papers">Nghiên cứu</a>
-    <a href="#tech-news">Công nghệ</a>
-    <a href="#tools-releases">Công cụ</a>
-    {% if pinned %}<a href="#pinned" class="pinned-link">Nhìn lại</a>{% endif %}
+  <nav class="section-nav" aria-label="{{ t.nav_aria }}">
+    <a href="#top" class="active">{{ t.nav_overview }}</a>
+    <a href="#papers">{{ t.nav_papers }}</a>
+    <a href="#tech-news">{{ t.nav_tech }}</a>
+    <a href="#tools-releases">{{ t.nav_tools }}</a>
+    {% if pinned %}<a href="#pinned" class="pinned-link">{{ t.nav_pinned }}</a>{% endif %}
     <span class="section-nav-indicator" aria-hidden="true"></span>
   </nav>
 
@@ -56,8 +56,8 @@
   {% endif %}
   {% if degraded %}
   <div class="status-strip degraded">
-    This digest ran in degraded mode{% if sources_failed %} — source(s) unavailable: {{ sources_failed | join(", ") }}{% endif %}.
-    Details in <code>logs/daily-digest.log</code>.
+    {{ t.degraded }}{% if sources_failed %} {{ t.degraded_sources.format(sources=sources_failed | join(", ")) }}{% endif %}
+    {{ t.degraded_details.format(path="logs/daily-digest.log") }}
   </div>
   {% endif %}
 
@@ -74,7 +74,7 @@
   </div>
   {% else %}
   <div class="top-fold top-fold--empty">
-    <div class="empty-note">— hôm nay không có mục nào —</div>
+    <div class="empty-note">{{ t.empty_none }}</div>
     {{ rail() }}
   </div>
   {% endif %}
@@ -86,14 +86,14 @@
   <section class="section-front sec-{{ section_key }} section-front--{{ section_variant }}" id="{{ section_key | replace('_', '-') }}">
     <div class="section-head">
       <span class="idx">{{ "%02d" | format(loop.index) }}</span>
-      <h2>{{ section.title }}</h2>
-      <span class="count">{{ section.total }} stories{% if section.total > shown %} · {{ section.total - shown }} ở trên{% endif %}</span>
+      <h2>{{ section_titles.get(section_key, section.title) }}</h2>
+      <span class="count">{{ t.section_count.format(n=section.total) }}{% if section.total > shown %} · {{ t.section_above.format(n=section.total - shown) }}{% endif %}</span>
     </div>
 
     {% if section.total == 0 %}
-    <p class="empty-note">— hôm nay không có mục nào trong nhóm này —</p>
+    <p class="empty-note">{{ t.section_empty }}</p>
     {% elif section.lead is none %}
-    <p class="section-note">Bài chính ở trên.</p>
+    <p class="section-note">{{ t.section_lead_above }}</p>
     {% else %}
     <div class="section-body">
       <div class="lead-col">
@@ -115,55 +115,57 @@
   {% endfor %}
 
   <footer>
-    Generated by daily-digest · to change the ranking model edit <code>llm.model</code> in
-    <code>config.yaml</code> (e.g. glm-5.3-flash, glm-5.3, deepseek-v4.1-flash) ·
-    old digests are archived in <code>output/</code>
+    {{ t.footer }}
   </footer>
 </div>
 
 <div id="saved-modal" class="saved-modal" role="dialog" aria-modal="true" aria-labelledby="saved-title" hidden>
   <div class="saved-modal__panel">
     <div class="saved-modal__head">
-      <h2 id="saved-title">Đã lưu</h2>
-      <button id="saved-close" class="act" type="button" aria-label="Đóng">×</button>
+      <h2 id="saved-title">{{ t.saved_title }}</h2>
+      <button id="saved-close" class="act" type="button" aria-label="{{ t.saved_close }}">×</button>
     </div>
     <div id="saved-list" class="saved-list"></div>
-    <p id="saved-empty" class="empty-note" hidden>Chưa có bài nào được lưu.</p>
+    <p id="saved-empty" class="empty-note" hidden>{{ t.saved_empty }}</p>
   </div>
 </div>
 
 <div id="size-modal" class="size-modal" role="dialog" aria-modal="true" aria-labelledby="size-title" hidden>
   <div class="size-modal__panel">
     <div class="size-modal__head">
-      <h2 id="size-title">Số bài trong bản tin</h2>
-      <button id="size-close" class="act" type="button" aria-label="Đóng">×</button>
+      <h2 id="size-title">{{ t.settings_title }}</h2>
+      <button id="size-close" class="act" type="button" aria-label="{{ t.settings_close }}">×</button>
     </div>
-    <p id="size-help" class="size-note">Chọn từ 1 đến 30 bài. Mặc định là 12.</p>
-    <div class="size-stepper" role="group" aria-label="Số bài">
-      <button id="size-minus" class="act" type="button" aria-label="Giảm số bài">−</button>
+    <p id="size-help" class="size-note">{{ t.settings_help }}</p>
+    <div class="size-stepper" role="group" aria-label="{{ t.settings_size_group }}">
+      <button id="size-minus" class="act" type="button" aria-label="{{ t.settings_minus }}">−</button>
       <output id="size-value" class="size-value" aria-live="polite">12</output>
-      <button id="size-plus" class="act" type="button" aria-label="Tăng số bài">+</button>
+      <button id="size-plus" class="act" type="button" aria-label="{{ t.settings_plus }}">+</button>
     </div>
-    <p id="size-current" class="size-note">Bản này: 12 câu chuyện.</p>
+    <p id="size-current" class="size-note">{{ t.settings_current.format(n=total) }}</p>
     <p id="size-warning" class="size-note size-warning" hidden></p>
     <p id="size-status" class="size-status" role="status" aria-live="polite"></p>
     <div class="size-actions">
-      <button id="size-apply" class="act size-apply" type="button">Áp dụng</button>
-      <button id="size-reset" class="act" type="button">Đặt lại</button>
+      <button id="size-apply" class="act size-apply" type="button">{{ t.settings_apply }}</button>
+      <button id="size-reset" class="act" type="button">{{ t.settings_reset }}</button>
     </div>
   </div>
 </div>
 
 <div id="undo-bar" class="undo-bar" role="status" aria-live="polite" hidden>
-  <span id="undo-text">Đã bỏ lưu.</span>
-  <button id="undo-btn" class="act" type="button">Hoàn tác</button>
+  <span id="undo-text">{{ t.undo_saved }}</span>
+  <button id="undo-btn" class="act" type="button">{{ t.undo_button }}</button>
 </div>
 
 {% if digest_data %}
 <script type="application/json" id="digest-data">{{ digest_data | tojson }}</script>
 {% endif %}
+<script type="application/json" id="digest-i18n">{{ messages | tojson }}</script>
 <script>
   (function () {
+    var M = {};
+    try { M = JSON.parse(document.getElementById("digest-i18n").textContent); } catch (e) { M = {}; }
+    function mt(key) { return M[key] || key; }
     /* --- theme: default follows the system; toggle persists in localStorage --- */
     var KEY = "digest-theme";
     function applyTheme(t) {
@@ -225,8 +227,8 @@
       button.classList.toggle("active", saved);
       button.setAttribute("data-saved", saved ? "1" : "0");
       var label = button.querySelector("span");
-      if (label) label.textContent = saved ? "Đã lưu" : "Lưu";
-      var text = saved ? "Bỏ lưu mục này" : "Giữ lại trong mục Nhìn lại";
+      if (label) label.textContent = saved ? mt("story_saved") : mt("story_save");
+      var text = saved ? mt("story_unsave_title") : mt("story_save_title");
       button.title = text;
       button.setAttribute("aria-label", text);
     }
@@ -371,7 +373,7 @@
       link.href = item.href || "#";
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = item.title || "(không có tiêu đề)";
+      link.textContent = item.title || mt("saved_no_title");
       var heading = document.createElement("h3");
       heading.appendChild(link);
       card.appendChild(heading);
@@ -400,7 +402,7 @@
       var unsave = document.createElement("button");
       unsave.type = "button";
       unsave.className = "act";
-      unsave.textContent = "Đọc xong";
+      unsave.textContent = mt("story_done");
       unsave.setAttribute("data-feedback", (item.uid || "") + "|unsave");
       card.appendChild(unsave);
       return card;
@@ -414,11 +416,11 @@
         savedList.replaceChildren();
         items.forEach(function (item) { savedList.appendChild(savedCard(item)); });
         savedEmpty.hidden = items.length > 0;
-        savedEmpty.textContent = "Chưa có bài nào được lưu.";
+        savedEmpty.textContent = mt("saved_empty");
         savedModal.hidden = false;
       }).catch(function () {
         savedList.replaceChildren();
-        savedEmpty.textContent = "Không tải được danh sách đã lưu.";
+        savedEmpty.textContent = mt("saved_load_error");
         savedEmpty.hidden = false;
         savedModal.hidden = false;
       });
@@ -476,11 +478,13 @@
     function updateSize() {
       if (sizeValue) sizeValue.textContent = String(sizeState.value);
       if (sizeHelp) {
-        sizeHelp.textContent = "Chọn từ " + sizeState.min + " đến " + sizeState.max +
-          " bài. Mặc định là " + sizeState.default + ".";
+        sizeHelp.textContent = mt("settings_help")
+          .replace("{min}", sizeState.min)
+          .replace("{max}", sizeState.max)
+          .replace("{default}", sizeState.default);
       }
       if (sizeCurrent) {
-        sizeCurrent.textContent = "Bản này: " + sizeState.current + " câu chuyện.";
+        sizeCurrent.textContent = mt("settings_current").replace("{n}", sizeState.current);
       }
       var disabled = sizeState.busy || !sizeState.can_change;
       if (sizeMinus) sizeMinus.disabled = disabled || sizeState.value <= sizeState.min;
@@ -492,9 +496,9 @@
       if (sizeWarning) {
         var warning = "";
         if (sizeState.archived) {
-          warning = "Bản lưu trữ chỉ xem; không thể đổi số bài.";
+          warning = mt("settings_archived");
         } else if (!sizeState.has_key) {
-          warning = "Không có API key — lần chạy lại sẽ dùng xếp hạng heuristic.";
+          warning = mt("settings_no_key");
         }
         sizeWarning.textContent = warning;
         sizeWarning.hidden = !warning;
@@ -515,7 +519,7 @@
       sizeReturnFocus = document.activeElement;
       api.digest_size().then(function (res) {
         if (!res || !res.ok) {
-          sizeStatus.textContent = "Không đọc được cấu hình số bài.";
+          sizeStatus.textContent = mt("settings_error_read");
           sizeModal.hidden = false;
           if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
           return;
@@ -537,7 +541,7 @@
         if (sizeMinus && !sizeMinus.disabled) sizeMinus.focus();
         else if (sizeClose) sizeClose.focus();
       }).catch(function () {
-        sizeStatus.textContent = "Không đọc được cấu hình số bài.";
+        sizeStatus.textContent = mt("settings_error_read");
         sizeModal.hidden = false;
         if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
       });
@@ -556,27 +560,27 @@
       var api = sizeApi();
       if (!api || !api.set_digest_size || sizeState.busy || !sizeState.can_change) return;
       sizeState.busy = true;
-      if (sizeStatus) sizeStatus.textContent = "Đang lưu…";
+      if (sizeStatus) sizeStatus.textContent = mt("settings_saving");
       updateSize();
       api.set_digest_size(sizeState.value).then(function (res) {
         sizeState.busy = false;
         if (res && res.ok) {
           sizeState.stored = res.size;
           if (res.spawned) {
-            sizeStatus.textContent = "Đang cập nhật…";
+            sizeStatus.textContent = mt("settings_updating");
             updateSize();
             setTimeout(closeSize, 1400);
           } else {
-            sizeStatus.textContent = "Đã lưu. Lần chạy tới sẽ dùng " + res.size + " bài.";
+            sizeStatus.textContent = mt("settings_saved").replace("{n}", res.size);
             updateSize();
           }
         } else {
-          sizeStatus.textContent = (res && res.error) || "Không lưu được số bài.";
+          sizeStatus.textContent = (res && res.error) || mt("settings_error_save");
           updateSize();
         }
       }).catch(function () {
         sizeState.busy = false;
-        sizeStatus.textContent = "Không lưu được số bài.";
+        sizeStatus.textContent = mt("settings_error_save");
         updateSize();
       });
     }
@@ -585,21 +589,21 @@
       var api = sizeApi();
       if (!api || !api.reset_digest_size || sizeState.busy || !sizeState.can_change) return;
       sizeState.busy = true;
-      if (sizeStatus) sizeStatus.textContent = "Đang đặt lại…";
+      if (sizeStatus) sizeStatus.textContent = mt("settings_saving");
       updateSize();
       api.reset_digest_size().then(function (res) {
         sizeState.busy = false;
         if (res && res.ok) {
           sizeState.value = res.size;
           sizeState.stored = res.stored;
-          sizeStatus.textContent = "Đã đặt lại về " + res.size + " bài.";
+          sizeStatus.textContent = mt("settings_reset_done").replace("{n}", res.size);
         } else {
-          sizeStatus.textContent = (res && res.error) || "Không đặt lại được.";
+          sizeStatus.textContent = (res && res.error) || mt("settings_error_reset");
         }
         updateSize();
       }).catch(function () {
         sizeState.busy = false;
-        sizeStatus.textContent = "Không đặt lại được.";
+        sizeStatus.textContent = mt("settings_error_reset");
         updateSize();
       });
     }
@@ -658,8 +662,8 @@
     function showUndo(uid) {
       if (!undoBar || !undoBtn || !undoText) return;
       undoUid = uid;
-      undoText.textContent = "Đã bỏ lưu.";
-      undoBtn.textContent = "Hoàn tác";
+      undoText.textContent = mt("undo_saved");
+      undoBtn.textContent = mt("undo_button");
       undoBtn.disabled = false;
       undoBar.hidden = false;
       if (undoTimer) clearTimeout(undoTimer);
@@ -678,11 +682,11 @@
             hideUndo();
             if (savedModal && !savedModal.hidden) openSaved();
           } else {
-            undoText.textContent = "Không hoàn tác được.";
+            undoText.textContent = mt("undo_error");
             undoBtn.disabled = false;
           }
         }).catch(function () {
-          undoText.textContent = "Không hoàn tác được.";
+          undoText.textContent = mt("undo_error");
           undoBtn.disabled = false;
         });
       });
@@ -696,15 +700,15 @@
             !window.pywebview.api.refresh || refreshBtn.disabled) return;
         var label = refreshBtn.textContent;
         refreshBtn.disabled = true;
-        refreshBtn.textContent = "Đang tìm…";
+        refreshBtn.textContent = mt("refresh_searching");
         pywebview.api.refresh().then(function (res) {
-          refreshBtn.textContent = (res && res.ok) ? "Đã gửi" : "Thử lại sau";
+          refreshBtn.textContent = (res && res.ok) ? mt("refresh_sent") : mt("refresh_retry");
           setTimeout(function () {
             refreshBtn.textContent = label;
             refreshBtn.disabled = false;
           }, 4000);
         }).catch(function () {
-          refreshBtn.textContent = "Thử lại sau";
+          refreshBtn.textContent = mt("refresh_retry");
           setTimeout(function () {
             refreshBtn.textContent = label;
             refreshBtn.disabled = false;
@@ -723,10 +727,10 @@
       out.innerHTML = '<span class="dots"><span></span><span></span><span></span></span>';
       btn.disabled = true;
       pywebview.api.ask(uid, q).then(function (answer) {
-        out.textContent = answer || "(không có câu trả lời)";
+        out.textContent = answer || mt("ask_no_answer");
         btn.disabled = false;
       }).catch(function (err) {
-        out.textContent = "Lỗi: " + err;
+        out.textContent = mt("ask_error");
         btn.disabled = false;
       });
     }
