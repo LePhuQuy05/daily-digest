@@ -199,6 +199,160 @@ _DEMO_SPECS = (
 )
 
 
+_DEMO_TEXT = {
+    "vi": {
+        "demo:p1": {
+            "why": "Giảm trực tiếp chi phí suy luận ngữ cảnh dài.",
+            "summary": (
+                "Một bộ chấm điểm nhẹ xếp hạng các mục KV theo mức độ chú ý dự kiến, "
+                "loại bỏ 60% bộ nhớ đệm mà vẫn giữ độ chính xác ngữ cảnh dài trong "
+                "khoảng 0,4 điểm so với full attention. Mô hình học trên 2.000 mẫu và "
+                "chỉ thêm dưới 2% chi phí decode."
+            ),
+        },
+        "demo:p2": {
+            "why": "Tăng tốc thực dụng mà không đổi mô hình đích.",
+            "summary": (
+                "Một draft model 120 triệu tham số, chưng cất từ chính các rollout của "
+                "mô hình đích, đạt tốc độ giải mã gấp 2,1 lần trên prompt code và suy "
+                "luận. Kết quả cho thấy hiệu chuẩn tỷ lệ chấp nhận quan trọng hơn kích "
+                "thước draft model."
+            ),
+        },
+        "demo:p3": {
+            "why": "Giúp phát hiện hồi quy agent mà không cần harness quá lớn.",
+            "summary": (
+                "Bộ 300 tác vụ kiểm tra chọn công cụ và neo đối số, với bộ chấm điểm "
+                "tất định và harness một lệnh. Nó phơi bày những kiểu lỗi mà benchmark "
+                "agent tổng hợp thường che mất."
+            ),
+        },
+        "demo:t1": {
+            "why": "Một mô hình giấy phép mở có năng lực gọi hàm cạnh tranh.",
+            "summary": (
+                "Bản phát hành bổ sung gọi công cụ có cấu trúc, cửa sổ ngữ cảnh 128k "
+                "và giấy phép mở. Các đánh giá sớm cho thấy độ chính xác gọi hàm cạnh "
+                "tranh với chi phí suy luận chỉ bằng một phần nhỏ."
+            ),
+        },
+        "demo:t2": {
+            "why": "Tách lợi ích thuật toán thật khỏi cải thiện phần cứng.",
+            "summary": (
+                "Một khảo sát đường cong chi phí năm qua: lượng tử hóa, giải mã suy "
+                "đoán và batch tốt hơn cộng dồn giúp giảm khoảng 4 lần chi phí mỗi "
+                "triệu token. Phân tích tách riêng lợi ích phần cứng và thuật toán."
+            ),
+        },
+        "demo:t3": {
+            "why": "Bỏ bớt phụ thuộc extension phổ biến cho ứng dụng RAG nhỏ.",
+            "summary": (
+                "Kiểu index mới mang tìm kiếm lân cận gần đúng kiểu HNSW vào lõi "
+                "Postgres. Benchmark sớm cho thấy recall cạnh tranh ở 10 triệu vector, "
+                "với sự đơn giản vận hành của một cơ sở dữ liệu duy nhất."
+            ),
+        },
+        "demo:d1": {
+            "why": "Biến lần chạy eval thành artifact có thể diff và đưa vào CI.",
+            "summary": (
+                "Một CLI nhỏ ghim prompt, phiên bản mô hình và tham số lấy mẫu, rồi lưu "
+                "đầu ra và điểm theo từng ví dụ. Nó được thiết kế cho CI và báo cáo "
+                "eval có thể diff thay vì dashboard."
+            ),
+        },
+        "demo:d2": {
+            "why": "Hữu ích cho trợ lý ngoại tuyến trên thiết bị yếu.",
+            "summary": (
+                "Một runtime 2 MB chạy mô hình lượng tử hóa trên CPU ARM mà không cần "
+                "Python. Dự án nhắm tới trợ lý ngoại tuyến và dùng benchmark token trên "
+                "joule thay vì chỉ throughput token."
+            ),
+        },
+        "demo:d3": {
+            "why": "Hiển thị chi tiêu mô hình mà không gửi log lên SaaS.",
+            "summary": (
+                "Dashboard ưu tiên cục bộ đọc log sử dụng của nhà cung cấp và hiển thị "
+                "chi tiêu theo dự án, mô hình và ngày. Nó đi kèm SQLite, một binary duy "
+                "nhất và không telemetry."
+            ),
+        },
+    },
+    "ja": {
+        "demo:p1": {
+            "why": "長文推論のコストを直接下げます。",
+            "summary": (
+                "軽量なスコアラが将来の注意度からKVキャッシュの各項目を順位付けし、"
+                "長文の精度を全注意の0.4ポイント以内に保ちながら60%を破棄します。"
+                "2,000サンプルで学習し、デコードのオーバーヘッドは2%未満です。"
+            ),
+        },
+        "demo:p2": {
+            "why": "対象モデルを変えずに実用的な高速化ができます。",
+            "summary": (
+                "対象モデル自身のロールアウトから蒸留した1.2億パラメータのドラフト"
+                "モデルが、コードと推論のプロンプトで2.1倍のデコード速度を達成します。"
+                "重要なのはドラフトモデルの大きさより、受容率の較正だという結果です。"
+            ),
+        },
+        "demo:p3": {
+            "why": "大掛かりなハーネスなしでエージェントの退行を可視化できます。",
+            "summary": (
+                "ツール選択と引数の根拠付けを評価する300タスクのベンチマークで、"
+                "決定的な採点器と単一コマンドのハーネスを備えます。集約型のエージェント"
+                "ベンチマークが隠しがちな失敗モードを浮き彫りにします。"
+            ),
+        },
+        "demo:t1": {
+            "why": "関数呼び出しで競争力のある寛容なライセンスのモデルです。",
+            "summary": (
+                "構造化ツール呼び出し、128kコンテキスト、寛容なライセンスを追加した"
+                "リリースです。初期評価では、推論コストを大幅に抑えながら関数呼び出し"
+                "の精度で競争力があることが示されています。"
+            ),
+        },
+        "demo:t2": {
+            "why": "実際のアルゴリズム改善とハードウェア改善を切り分けます。",
+            "summary": (
+                "過去1年のコスト曲線を調査し、量子化・投機的デコーディング・バッチ"
+                "改善の積み重ねで100万トークンあたり約4倍のコスト削減を達成したと"
+                "分析します。ハードウェアの貢献とアルゴリズムの貢献を分けて示しています。"
+            ),
+        },
+        "demo:t3": {
+            "why": "小規模なRAGアプリで一般的な拡張機能依存を減らせます。",
+            "summary": (
+                "新しいインデックス型がHNSW風の近似最近傍検索をPostgres本体に"
+                "持ち込みます。初期ベンチマークでは1,000万ベクトルで競争力のある"
+                "再現率を示し、単一データベースで運用できる簡便さを備えます。"
+            ),
+        },
+        "demo:d1": {
+            "why": "評価実行をdiff可能でCI向けの成果物に変えます。",
+            "summary": (
+                "プロンプト、モデル版、サンプリング設定を固定し、例ごとの出力と"
+                "スコアを保存する小さなCLIです。ダッシュボードではなく、CIと"
+                "diff可能な評価レポート向けに設計されています。"
+            ),
+        },
+        "demo:d2": {
+            "why": "低消費電力端末のオフラインアシスタントに有用です。",
+            "summary": (
+                "2MBのランタイムがPythonなしでARM CPU上の量子化モデルを実行します。"
+                "オフラインアシスタント向けで、トークン吞吐量だけでなくトークン毎"
+                "ジュールのベンチマークも含みます。"
+            ),
+        },
+        "demo:d3": {
+            "why": "ログをSaaSに送らずにモデル支出を可視化できます。",
+            "summary": (
+                "プロバイダーの利用ログを解析し、プロジェクト・モデル・日別の支出を"
+                "表示するローカル優先のダッシュボードです。SQLite、単一バイナリ、"
+                "テレメトリーなしで提供されます。"
+            ),
+        },
+    },
+}
+
+
 def _demo_image_asset() -> ImageAsset:
     """A deterministic abstract cover image, generated locally for the demo."""
     width, height = 1200, 630
@@ -234,10 +388,13 @@ def _demo_image_asset() -> ImageAsset:
     )
 
 
-def _demo_ranked() -> list[RankedItem]:
+def _demo_ranked(locale: str = "vi") -> list[RankedItem]:
+    loc = normalize_locale(locale) or "vi"
     published = datetime(2026, 11, 20, 6, 0, tzinfo=timezone.utc)
     ranked: list[RankedItem] = []
     for spec in _DEMO_SPECS:
+        text = _DEMO_TEXT.get(loc, {}).get(str(spec["id"]), {})
+        summary = str(text.get("summary", spec["summary"]))
         item = Item(
             id=str(spec["id"]),
             title=str(spec["title"]),
@@ -245,15 +402,15 @@ def _demo_ranked() -> list[RankedItem]:
             source=str(spec["source"]),
             points=spec.get("points"),
             published=published,
-            summary=str(spec["summary"]),
+            summary=summary,
             citations=spec.get("citations"),
         )
         ranked.append(
             RankedItem(
                 item=item,
-                why=str(spec["why"]),
+                why=str(text.get("why", spec["why"])),
                 section=cast(Section, spec["section"]),
-                llm_summary=str(spec["summary"]),
+                llm_summary=summary,
             )
         )
     return ranked
@@ -264,7 +421,7 @@ def render_demo(
 ) -> Path:
     """Render `output/demo.html` from bundled fixtures and optionally open it."""
     loc = normalize_locale(locale) or "vi"
-    ranked = _demo_ranked()
+    ranked = _demo_ranked(loc)
     overview = DEMO_OVERVIEWS[loc]
     points = ensure_coverage(parse_overview(overview, ranked, loc), ranked, loc)
     html = render_digest(

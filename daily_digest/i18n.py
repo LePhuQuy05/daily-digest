@@ -122,7 +122,7 @@ _VI: dict[str, str] = {
     "overview_story_n": "Bài {n}",
     "overview_takeaway_marker": "Điểm cần nhớ:",
     "overview_jump_aria": "Chuyển đến bài: {title}",
-    "summary_ai_label": "AI SUMMARY",
+    "summary_ai_label": "TÓM TẮT AI",
     "saved_title": "Đã lưu",
     "saved_empty": "Chưa có bài nào được lưu.",
     "saved_load_error": "Không tải được danh sách đã lưu.",
