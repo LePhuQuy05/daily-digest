@@ -276,7 +276,7 @@ SUMMARIZE_SYSTEM_PROMPT = (
 )
 
 MAX_SUMMARY_CHARS = 600
-MAX_SUMMARY_CHARS_JA = 180
+MAX_SUMMARY_CHARS_JA = 240
 MAX_OVERVIEW_CHARS = 1600
 MAX_OVERVIEW_CHARS_JA = 1200
 SUMMARY_INPUT_CHARS = 1200
@@ -301,10 +301,7 @@ def _summary_line(
     locale: str = "vi",
 ) -> str:
     label = (labels or _SOURCE_LABELS).get(ranked.item.source, ranked.item.source)
-    if normalize_locale(locale) == "ja":
-        description = re.sub(r"\s+", " ", ranked.item.summary)[:SUMMARY_INPUT_CHARS_JA]
-    else:
-        description = " ".join(ranked.item.summary.split())[:SUMMARY_INPUT_CHARS]
+    description = " ".join(ranked.item.summary.split())[:SUMMARY_INPUT_CHARS]
     if not description:
         description = "(no description provided)"
     return f"[{index}] ({label}) {ranked.item.title}\n    {description}"
@@ -330,6 +327,10 @@ def _validate_summaries(
             continue
         text = " ".join(str(entry.get("summary", "")).split())[:max_chars]
         if loc == "ja" and fails_kana_gate(text, loc):
+            LOG.warning(
+                "ja summary for item %s dropped by kana gate",
+                index_map[index].item.id,
+            )
             continue
         if text:
             summaries[index] = text
@@ -351,6 +352,21 @@ def _validate_overview(
         return ""
     if len(cleaned) <= max_chars:
         return cleaned
+    marker = takeaway_marker(locale)
+    marker_index = cleaned.rfind(marker)
+    if marker_index >= 0:
+        tail = cleaned[marker_index:].strip()
+        head = cleaned[:marker_index].rstrip()
+        if not head:
+            return (
+                tail
+                if len(tail) <= max_chars
+                else truncate_overview(tail, max_chars, locale)
+            )
+        allowed = max_chars - len(tail) - 2
+        if allowed >= 200:
+            head = truncate_overview(head, allowed, locale).rstrip()
+            return head + "\n\n" + tail
     return truncate_overview(cleaned, max_chars, locale)
 
 
@@ -371,7 +387,7 @@ def summarize_with_llm(
     loc = normalize_locale(locale) or "vi"
     language = PROMPT_LANGUAGE[loc]
     summary_limit = (
-        "180 Japanese characters"
+        "150-220 Japanese characters"
         if loc == "ja"
         else f"{config.llm.summary_max_words} words"
     )

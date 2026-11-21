@@ -1,5 +1,6 @@
 """Two-LLM digest: editor selects, writer summarizes. Contract, fallback, wiring."""
 
+import dataclasses
 import json
 import logging
 
@@ -73,6 +74,43 @@ def test_summarize_overview_truncated_and_cleaned(tmp_path):
     assert 0 < len(overview) <= 1605
     assert "  " not in overview  # whitespace collapsed
     assert overview.endswith("…")  # word-boundary ellipsis, never mid-word
+
+
+def test_ja_writer_sees_abstract_beyond_400_chars(tmp_path):
+    config = make_config(tmp_path)
+    ranked = _ranked(1)
+    long_summary = ("A" * 800) + " MARKER-AT-800"
+    ranked[0] = dataclasses.replace(
+        ranked[0],
+        item=dataclasses.replace(ranked[0].item, summary=long_summary),
+    )
+    chat = FakeChat(_summary_json({0: "これは日本語の要約です。"}))
+
+    summarize_with_llm(ranked, chat, config, locale="ja")
+
+    user_message = chat.calls[0][1]["content"]
+    assert "MARKER-AT-800" in user_message
+
+
+def test_overview_truncation_preserves_takeaway(tmp_path):
+    config = make_config(tmp_path)
+    long_head = "Long theme sentence. " * 120
+    overview_text = long_head + "\n\nKey takeaway: keep this insight."
+    _, overview = summarize_with_llm(
+        _ranked(1),
+        FakeChat(
+            json.dumps(
+                {
+                    "overview": overview_text,
+                    "items": [{"id": 0, "summary": "x"}],
+                }
+            )
+        ),
+        config,
+        locale="en",
+    )
+    assert "Key takeaway: keep this insight." in overview
+    assert len(overview) <= 1605
 
 
 def test_overview_preserves_blank_lines_and_markers(tmp_path):

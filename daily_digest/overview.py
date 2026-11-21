@@ -24,6 +24,7 @@ from daily_digest.i18n import (
 from daily_digest.model import SECTIONS, RankedItem
 
 MAX_POINTS = 5
+REST_CHUNK = 8
 LABEL_MAX = 28
 LABEL_MAX_JA = 13
 REST_TEXT = "Còn lại hôm nay: "  # backwards-compatible vi constant
@@ -95,11 +96,28 @@ def _strip_duplicate_label(
     return text
 
 
-def _split_points(text: str, locale: str) -> list[str]:
-    points = split_sentences(normalize_markers(text), locale)
+def split_overview_points(text: str, locale: str = "vi") -> list[str]:
+    """Split into display points: blank-line paragraphs first, sentences second.
+
+    A multi-paragraph overview is already structured; splitting every sentence
+    again breaks the writer's intended point boundaries. A single paragraph
+    still needs sentence splitting.
+    """
+    cleaned = normalize_markers(text)
+    paragraphs = [
+        part.strip() for part in re.split(r"\n\s*\n", cleaned) if part.strip()
+    ]
+    if len(paragraphs) >= 2:
+        points = paragraphs
+    else:
+        points = split_sentences(cleaned, locale)
     if len(points) > MAX_POINTS:
         points = points[: MAX_POINTS - 1] + points[-1:]
     return points
+
+
+def _split_points(text: str, locale: str) -> list[str]:
+    return split_overview_points(text, locale)
 
 
 def _is_takeaway(raw: str, locale: str) -> bool:
@@ -203,18 +221,23 @@ def ensure_coverage(
     if not missing:
         return tuple(points)
 
-    segments: list[OverviewSegment] = [OverviewSegment(text=t(locale, "overview_rest"))]
-    for offset, (index, _item) in enumerate(missing):
-        if offset:
-            segments.append(OverviewSegment(text=" · "))
-        segments.append(OverviewSegment(ref=_ref_for(ranked, index, locale)))
+    rest_points: list[OverviewPoint] = []
+    for start in range(0, len(missing), REST_CHUNK):
+        chunk = missing[start : start + REST_CHUNK]
+        segments: list[OverviewSegment] = [
+            OverviewSegment(text=t(locale, "overview_rest"))
+        ]
+        for offset, (index, _item) in enumerate(chunk):
+            if offset:
+                segments.append(OverviewSegment(text=" · "))
+            segments.append(OverviewSegment(ref=_ref_for(ranked, index, locale)))
+        rest_points.append(OverviewPoint(segments=tuple(segments), kind="rest"))
 
-    rest = OverviewPoint(segments=tuple(segments), kind="rest")
     points = list(points)
     if points and points[-1].kind == "takeaway":
-        points.insert(len(points) - 1, rest)
+        points[len(points) - 1 : len(points) - 1] = rest_points
     else:
-        points.append(rest)
+        points.extend(rest_points)
     return tuple(points)
 
 

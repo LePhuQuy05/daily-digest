@@ -34,7 +34,7 @@ def _editor(locale: str) -> str:
 def _writer(locale: str) -> str:
     return SUMMARIZE_SYSTEM_PROMPT.format(
         topics="LLM, agents",
-        summary_limit="180 Japanese characters" if locale == "ja" else "70 words",
+        summary_limit="150-220 Japanese characters" if locale == "ja" else "70 words",
         language=PROMPT_LANGUAGE[locale],
         reader_context="",
         overview_chars=overview_char_budget(12, locale),

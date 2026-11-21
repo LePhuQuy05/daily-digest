@@ -68,7 +68,7 @@ def test_writer_prompt_uses_japanese_marker_and_limit(tmp_path):
     )
     system = chat.calls[0][0]["content"]
     assert "Write the overview in Japanese" in system
-    assert "at most 180 Japanese characters" in system
+    assert "at most 150-220 Japanese characters" in system
     assert "要点:" in system
     assert "Điểm cần nhớ" not in system
     assert overview.startswith("本日は")

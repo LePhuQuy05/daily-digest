@@ -95,11 +95,23 @@ def test_no_markers_keeps_plain_text_points():
 
 
 def test_more_than_five_points_keeps_first_four_and_last():
-    text = "First.\nSecond.\nThird.\nFourth.\nFifth.\n\nĐiểm cần nhớ: Sixth."
+    text = "First. Second. Third. Fourth. Fifth. Điểm cần nhớ: Sixth."
     points = parse_overview(text, _ranked())
     assert len(points) == 5
     assert points[-1].kind == "takeaway"
     assert "Sixth" in "".join(segment.text for segment in points[-1].segments)
+
+
+def test_paragraphs_are_points_not_sentences():
+    points = parse_overview(
+        "Câu một. Câu hai.\n\nCâu ba. Câu bốn.",
+        _ranked(),
+    )
+    assert len(points) == 2
+    first = "".join(segment.text for segment in points[0].segments)
+    second = "".join(segment.text for segment in points[1].segments)
+    assert "Câu một" in first and "Câu hai" in first
+    assert "Câu ba" in second and "Câu bốn" in second
 
 
 def test_duplicate_title_before_marker_is_removed_once():
@@ -190,3 +202,15 @@ def test_thirty_item_overview_keeps_full_coverage_and_scales_budget():
     assert _uids(points) == {r.item.id for r in ranked}
     assert any(point.kind == "rest" for point in points)
     assert overview_char_budget(30) == 2680
+
+
+def test_rest_points_cap_refs_at_eight():
+    ranked = _ranked(30)
+    covered = ensure_coverage((), ranked)
+    rest = [point for point in covered if point.kind == "rest"]
+    assert rest
+    assert all(
+        sum(1 for segment in point.segments if segment.ref is not None) <= 8
+        for point in rest
+    )
+    assert _uids(covered) == {r.item.id for r in ranked}
