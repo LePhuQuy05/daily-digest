@@ -1,0 +1,19 @@
+{
+  "locale": "en",
+  "ranked": [
+    {
+      "item": {"title": "A concrete paper"},
+      "why": "why",
+      "llm_summary": "The method cuts decode latency by 23% on long-context prompts while keeping accuracy within 0.4 points."
+    }
+  ],
+  "overview_points": [
+    {
+      "kind": "theme",
+      "segments": [
+        {"text": "Inference work: ", "ref": null},
+        {"text": "A concrete paper", "ref": {"uid": "x:1", "label": "Paper", "title": "A concrete paper"}}
+      ]
+    }
+  ]
+}

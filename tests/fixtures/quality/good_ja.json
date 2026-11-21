@@ -1,0 +1,19 @@
+{
+  "locale": "ja",
+  "ranked": [
+    {
+      "item": {"title": "具体的な論文"},
+      "why": "why",
+      "llm_summary": "この手法は長文プロンプトでデコード遅延を23%削減し、精度を0.4ポイント以内に保ちます。"
+    }
+  ],
+  "overview_points": [
+    {
+      "kind": "theme",
+      "segments": [
+        {"text": "推論の話題: ", "ref": null},
+        {"text": "具体的な論文", "ref": {"uid": "x:1", "label": "論文", "title": "具体的な論文"}}
+      ]
+    }
+  ]
+}

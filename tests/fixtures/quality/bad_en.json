@@ -1,0 +1,11 @@
+{
+  "locale": "en",
+  "ranked": [
+    {
+      "item": {"title": "A generic paper"},
+      "why": "why",
+      "llm_summary": "This paper proposes a novel approach that may be significant for future work."
+    }
+  ],
+  "overview_points": []
+}
