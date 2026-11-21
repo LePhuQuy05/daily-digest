@@ -69,7 +69,7 @@ def test_html_lang_and_dates_per_locale(tmp_path):
     assert 'id="lang-switch"' in ja
     assert 'value="ja" selected' in ja
     assert 'location.href = "demo-" + target + ".html"' in ja
-    assert "api.apply_settings(res.size, target)" in ja
+    assert "api.set_language(target)" in ja
 
 
 def test_section_titles_and_catalog_messages_per_locale(tmp_path):

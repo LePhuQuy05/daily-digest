@@ -17,6 +17,7 @@ import os
 import re
 import threading
 import time
+from pathlib import Path
 
 from daily_digest.backup import backup_digest
 from daily_digest.config import Config
@@ -97,10 +98,12 @@ class DigestBridge:
         chat_factory=None,
         spawn_fn=None,
         locale: str | None = None,
+        html_path: Path | None = None,
     ) -> None:
         self.config = config
         self.date = str(digest_data.get("date", ""))
         self.locale = normalize_locale(locale) or "vi"
+        self.html_path = Path(html_path) if html_path is not None else None
         self.items: dict[str, dict] = dict(digest_data.get("items", {}))
         self.pinned: dict[str, dict] = {
             str(entry.get("uid", "")): entry
@@ -114,6 +117,17 @@ class DigestBridge:
         self._ask_profile: str | None = None
         self._spawn_fn = spawn_fn  # test seam: callable(args) -> bool
         self._last_refresh = 0.0
+
+    def _live_html_path(self) -> Path | None:
+        """The writable artifact for today, or None for archived/morning files."""
+        if not self.date or self.date != today_str():
+            return None
+        path = self.html_path or (self.config.output_dir / f"digest-{self.date}.html")
+        if "-morning" in path.stem:
+            return None
+        if path.name == "latest.html":
+            return self.config.output_dir / f"digest-{self.date}.html"
+        return path
 
     def _snapshot_for(self, uid: str) -> dict | None:
         entry = self.items.get(uid) or self.pinned.get(uid)
@@ -277,7 +291,7 @@ class DigestBridge:
     def settings(self) -> dict:
         """Return size + language controls for the current digest."""
         try:
-            archived = not self.date or self.date != today_str()
+            archived = self._live_html_path() is None
             preferences = load_preferences(self.config.preferences_path)
             cap = effective_max(self.config)
             stored_language = normalize_locale(preferences.get("language"))
@@ -303,11 +317,120 @@ class DigestBridge:
             LOG.error("settings failed: %s: %s", type(exc).__name__, exc)
             return {"ok": False, "error": str(exc), "can_change": False}
 
+    def set_language(self, language: str) -> dict:
+        """Localize today's current edition without re-fetching or re-ranking."""
+        saved = False
+        try:
+            path = self._live_html_path()
+            if path is None:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "archived": True,
+                    "error": "archived digest",
+                }
+            try:
+                locale = require_locale(language)
+            except LocaleError as exc:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": str(exc),
+                }
+            with self._lock:
+                preferences = load_preferences(self.config.preferences_path)
+                previous_locale = resolve_locale(self.config, preferences)
+                if locale == self.locale and locale == previous_locale:
+                    return {
+                        "ok": True,
+                        "saved": False,
+                        "spawned": False,
+                        "language": locale,
+                        "message": "already using this language",
+                    }
+                if locale == self.locale:
+                    save_preferences(self.config.preferences_path, language=locale)
+                    return {
+                        "ok": True,
+                        "saved": True,
+                        "spawned": False,
+                        "language": locale,
+                        "message": "preference saved",
+                    }
+                now = time.monotonic()
+                if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
+                    return {
+                        "ok": False,
+                        "saved": False,
+                        "spawned": False,
+                        "language": locale,
+                        "error": "already refreshing",
+                    }
+                try:
+                    backup_digest(path, self.config.output_dir)
+                except OSError as exc:
+                    LOG.error("language backup failed: %s", exc)
+                    return {
+                        "ok": False,
+                        "saved": False,
+                        "spawned": False,
+                        "error": f"backup failed: {exc}",
+                    }
+                save_preferences(self.config.preferences_path, language=locale)
+                saved = True
+                spawn = self._spawn_fn
+                if spawn is None:
+                    from daily_digest.popup import spawn_cli
+
+                    spawn = spawn_cli
+                spawned = spawn(
+                    [
+                        "localize",
+                        "--date",
+                        self.date,
+                        "--lang",
+                        locale,
+                        "--expect-count",
+                        str(len(self.items)),
+                        "--no-backup",
+                        "--path",
+                        str(path),
+                    ]
+                )
+                if not spawned:
+                    save_preferences(
+                        self.config.preferences_path, language=previous_locale
+                    )
+                    return {
+                        "ok": False,
+                        "saved": False,
+                        "spawned": False,
+                        "language": previous_locale,
+                        "error": "spawn failed; language preference restored",
+                    }
+                self._last_refresh = now
+                return {
+                    "ok": True,
+                    "saved": True,
+                    "spawned": True,
+                    "language": locale,
+                }
+        except Exception as exc:  # noqa: BLE001 — bridge must never raise
+            LOG.error("set_language failed: %s: %s", type(exc).__name__, exc)
+            return {
+                "ok": False,
+                "saved": saved,
+                "spawned": False,
+                "error": str(exc),
+            }
+
     def apply_settings(self, size: int, language: str) -> dict:
         """Validate, back up, save size + language once, then spawn one rebuild."""
         saved = False
         try:
-            if not self.date or self.date != today_str():
+            if self._live_html_path() is None:
                 return {
                     "ok": False,
                     "saved": False,
@@ -342,11 +465,25 @@ class DigestBridge:
                     "error": str(exc),
                 }
 
+            preferences = load_preferences(self.config.preferences_path)
+            previous_size = resolve_digest_size(self.config, preferences)
+            previous_locale = resolve_locale(self.config, preferences)
+            if normalized == previous_size and locale != previous_locale:
+                return self.set_language(locale)
+            if normalized == previous_size and locale == previous_locale:
+                return {
+                    "ok": True,
+                    "saved": False,
+                    "spawned": False,
+                    "size": normalized,
+                    "language": locale,
+                    "message": "already using these settings",
+                }
+
             with self._lock:
-                preferences = load_preferences(self.config.preferences_path)
-                previous_size = resolve_digest_size(self.config, preferences)
-                previous_locale = resolve_locale(self.config, preferences)
-                source = self.config.output_dir / f"digest-{self.date}.html"
+                source = self._live_html_path() or (
+                    self.config.output_dir / f"digest-{self.date}.html"
+                )
                 try:
                     backup_digest(source, self.config.output_dir)
                 except OSError as exc:
@@ -363,21 +500,6 @@ class DigestBridge:
                     language=locale,
                 )
                 saved = True
-                changed = (
-                    normalized != len(self.items)
-                    or locale != self.locale
-                    or normalized != previous_size
-                    or locale != previous_locale
-                )
-                if not changed:
-                    return {
-                        "ok": True,
-                        "saved": True,
-                        "spawned": False,
-                        "size": normalized,
-                        "language": locale,
-                        "message": "already using these settings",
-                    }
                 now = time.monotonic()
                 if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
                     return {

@@ -201,21 +201,16 @@
       langSwitch.addEventListener("change", function () {
         var target = langSwitch.value;
         var api = window.pywebview && window.pywebview.api ? window.pywebview.api : null;
-        if (api && api.settings && api.apply_settings) {
+        if (api && api.set_language) {
           if (!window.confirm(mt("settings_drift_warning"))) {
             langSwitch.value = document.documentElement.lang;
             return;
           }
           langSwitch.disabled = true;
-          api.settings().then(function (res) {
-            if (!res || !res.ok) return null;
-            return api.apply_settings(res.size, target);
-          }).then(function (res) {
+          api.set_language(target).then(function (res) {
             langSwitch.disabled = false;
             if (!res || !res.ok) {
               langSwitch.value = document.documentElement.lang;
-            } else if (!res.spawned) {
-              window.location.reload();
             }
           }).catch(function () {
             langSwitch.disabled = false;

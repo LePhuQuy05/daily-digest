@@ -256,7 +256,7 @@ def cmd_open(config: Config, args: argparse.Namespace) -> int:
     bridge = None
     if digest_data:
         try:
-            bridge = DigestBridge(config, digest_data, locale=locale)
+            bridge = DigestBridge(config, digest_data, locale=locale, html_path=path)
         except Exception as exc:  # noqa: BLE001 — read-only popup beats no popup
             LOG.warning(
                 "bridge unavailable (%s: %s); opening read-only",
@@ -389,6 +389,16 @@ def _locale_arg(value: str) -> str:
         raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
+def _edition_count(value: str) -> int:
+    try:
+        count = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("count must be an integer") from exc
+    if not 0 <= count <= MAX_DIGEST_SIZE:
+        raise argparse.ArgumentTypeError(f"edition count must be 0..{MAX_DIGEST_SIZE}")
+    return count
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="daily-digest", description="Daily AI & tech digest popup"
@@ -451,7 +461,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     localize.add_argument(
         "--expect-count",
-        type=_digest_count,
+        type=_edition_count,
         default=None,
         metavar="N",
         help="abort unless the edition currently has N items",

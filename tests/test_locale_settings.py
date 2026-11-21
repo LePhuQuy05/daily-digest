@@ -11,12 +11,13 @@ from daily_digest.util import today_str
 from helpers import make_config
 
 
-def _bridge(config, *, date=None, spawn=None, locale="vi"):
+def _bridge(config, *, date=None, spawn=None, locale="vi", items=None, html_path=None):
     return DigestBridge(
         config,
-        {"date": date or today_str(), "items": {}, "pinned": []},
+        {"date": date or today_str(), "items": items or {}, "pinned": []},
         spawn_fn=spawn,
         locale=locale,
+        html_path=html_path,
     )
 
 
@@ -116,6 +117,162 @@ def test_extract_locale_reads_baked_html():
     assert extract_locale('<html lang="ja" dir="ltr">') == "ja"
     assert extract_locale('<html lang="en">') == "en"
     assert extract_locale("<html>") is None
+
+
+def test_set_language_spawns_localize_once_and_keeps_size(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    source = config.output_dir / f"digest-{day}.html"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("OLD DIGEST", encoding="utf-8")
+    config.preferences_path.write_text(
+        json.dumps({"digest_size": 16}), encoding="utf-8"
+    )
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        items={"arxiv:1": {}},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    result = bridge.set_language("ja")
+
+    assert result["ok"] is True
+    assert result["saved"] is True
+    assert result["spawned"] is True
+    assert calls == [
+        [
+            "localize",
+            "--date",
+            day,
+            "--lang",
+            "ja",
+            "--expect-count",
+            "1",
+            "--no-backup",
+            "--path",
+            str(source),
+        ]
+    ]
+    stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
+    assert stored == {"digest_size": 16, "language": "ja"}
+    assert (config.output_dir / f"digest-{day}-morning.html").read_text(
+        encoding="utf-8"
+    ) == "OLD DIGEST"
+    assert len(list(config.output_dir.glob(f"digest-{day}-morning*.html"))) == 1
+
+
+def test_apply_settings_language_only_uses_current_count_for_short_pool(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    source = config.output_dir / f"digest-{day}.html"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("OLD", encoding="utf-8")
+    config.preferences_path.write_text(
+        json.dumps({"digest_size": 12}), encoding="utf-8"
+    )
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        items={f"item:{i}": {} for i in range(10)},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    result = bridge.apply_settings(12, "ja")
+
+    assert result["ok"] is True
+    assert result["spawned"] is True
+    assert len(calls) == 1
+    assert calls[0][0] == "localize"
+    assert calls[0][calls[0].index("--expect-count") + 1] == "10"
+    assert "run" not in calls[0]
+
+
+def test_set_language_archived_morning_backup_is_read_only(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    morning = config.output_dir / f"digest-{day}-morning.html"
+    morning.parent.mkdir(parents=True, exist_ok=True)
+    morning.write_text("ARCHIVED", encoding="utf-8")
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        html_path=morning,
+        items={"arxiv:1": {}},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    assert bridge.settings()["can_change"] is False
+    result = bridge.set_language("ja")
+    assert result["ok"] is False
+    assert result["archived"] is True
+    assert calls == []
+    assert morning.read_text(encoding="utf-8") == "ARCHIVED"
+
+
+def test_set_language_uses_actual_dash_two_path(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    source = config.output_dir / f"digest-{day}-2.html"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("DASH TWO", encoding="utf-8")
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        html_path=source,
+        items={"arxiv:1": {}},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    result = bridge.set_language("en")
+
+    assert result["ok"] is True
+    assert (config.output_dir / f"digest-{day}-2-morning.html").exists()
+    assert calls[0][calls[0].index("--path") + 1] == str(source)
+
+
+def test_set_language_spawn_failure_restores_preference(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    source = config.output_dir / f"digest-{day}.html"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("OLD", encoding="utf-8")
+    config.preferences_path.write_text(
+        json.dumps({"digest_size": 12, "language": "vi"}), encoding="utf-8"
+    )
+    bridge = _bridge(
+        config,
+        locale="vi",
+        items={"arxiv:1": {}},
+        spawn=lambda args: False,
+    )
+
+    result = bridge.set_language("ja")
+
+    assert result["ok"] is False
+    assert result["saved"] is False
+    stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
+    assert stored["language"] == "vi"
+    assert stored["digest_size"] == 12
+
+
+def test_set_language_no_op_does_not_backup_or_spawn(tmp_path):
+    config = make_config(tmp_path)
+    config.preferences_path.write_text(json.dumps({"language": "ja"}), encoding="utf-8")
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        locale="ja",
+        items={"arxiv:1": {}},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    result = bridge.set_language("ja")
+
+    assert result["ok"] is True
+    assert result["spawned"] is False
+    assert calls == []
+    assert not list(config.output_dir.glob("digest-*-morning*.html"))
 
 
 def test_write_digest_does_not_clobber_latest_on_backfill(tmp_path):
