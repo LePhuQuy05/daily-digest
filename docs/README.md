@@ -31,4 +31,6 @@ The README is the tour; these notes are the details.
 - [Feature landscape](feature-ideas-landscape.md) — alternatives considered
 - [Feedback and personalization spec](f1-f2-f4-f5-spec.md) — F1/F2/F4/F5 behavior
 
+- [Writer quality harness](writer-quality.md) — offline vi/en/ja measurement and writer v2 rollout
+
 > Planning documents are historical records. The current behavior is defined by the code and the test suite.

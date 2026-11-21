@@ -6,7 +6,7 @@
 uv run pytest -o addopts=''
 ```
 
-- **493 tests**, offline by default.
+- **519 tests**, offline by default.
 - CI runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are pinned in `uv.lock`; CI installs with `uv sync --locked`.
 
@@ -25,6 +25,7 @@ uv run pytest -o addopts=''
 | Demo | Bundled fixture render, coverage, no network or key requirement |
 | Overview | Marker parsing, duplicate cleanup, coverage guarantee, every fallback mode |
 | Interaction | Feedback toggles, saved/undo, bridge read layer, ask failure paths |
+| Writer quality | vi/en/ja detection, visible budgets, HTML/snapshot scoring, fallback exclusion, regression gate |
 | Desktop | Tray/shortcut/task installation behind mocks; no real desktop changes |
 
 ## What is mocked

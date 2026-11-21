@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Masthead language selector for direct switching; demo mode navigates between pre-rendered vi/en/ja files.
 - `localize --lang` localizes today's selected edition without fetching or re-ranking; a versioned `output/editions/digest-YYYY-MM-DD.json` sidecar preserves ordered items, paper dates, overview points, pinned items, path, and HTML hash.
 - Japanese typography and print rules, localized AI-summary label, toast body, dates, section titles, and heuristic fallbacks.
+- Offline writer-quality harness (`tools/writer_eval.py`) and writer v2 behind `llm.writer_v2=false`: ja abstract/cap fixes, paragraph-aware overview points, bounded rest lists, takeaway preservation, source-aware batches, and independent overview/fallback stages.
 
 ### Changed
 
