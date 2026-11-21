@@ -13,11 +13,25 @@ No webview imports here: everything is plain Python and unit-testable.
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import time
 
 from daily_digest.config import Config
+from daily_digest.digest_size import (
+    DEFAULT_DIGEST_SIZE,
+    MAX_DIGEST_SIZE,
+    MIN_DIGEST_SIZE,
+    DigestSizeError,
+    clear_digest_size,
+    effective_max,
+    load_preferences,
+    normalize_digest_size,
+    resolve_digest_size,
+    save_digest_size,
+    stored_digest_size,
+)
 from daily_digest.feedback import (
     ACTIONS,
     aggregate,
@@ -26,7 +40,7 @@ from daily_digest.feedback import (
 )
 from daily_digest.normalize import safe_href
 from daily_digest.source_labels import labels_for
-from daily_digest.util import LOG
+from daily_digest.util import LOG, today_str
 
 REFRESH_COOLDOWN_SECONDS = 60.0
 
@@ -234,6 +248,125 @@ class DigestBridge:
                 return {"ok": True, "spawned": True}
         except Exception as exc:  # noqa: BLE001 — Promise must never reject
             LOG.error("refresh failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc)}
+
+    def digest_size(self) -> dict:
+        """Return the effective size and whether this digest can change it."""
+        try:
+            archived = self.date != today_str()
+            preferences = load_preferences(self.config.preferences_path)
+            cap = effective_max(self.config)
+            return {
+                "ok": True,
+                "size": resolve_digest_size(self.config, preferences),
+                "default": DEFAULT_DIGEST_SIZE,
+                "min": MIN_DIGEST_SIZE,
+                "max": cap,
+                "stored": stored_digest_size(preferences),
+                "current": len(self.items),
+                "can_change": not archived,
+                "archived": archived,
+                "has_key": bool(os.environ.get(self.config.llm.api_key_env)),
+            }
+        except Exception as exc:  # noqa: BLE001  Ebridge must never raise
+            LOG.error("digest_size failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc), "can_change": False}
+
+    def set_digest_size(self, size: int) -> dict:
+        """Persist a size preference and spawn a detached rebuild."""
+        saved = False
+        try:
+            if not self.date or self.date != today_str():
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "archived": True,
+                    "error": "archived digest",
+                }
+            try:
+                normalized = normalize_digest_size(size)
+            except DigestSizeError as exc:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": str(exc),
+                }
+            cap = effective_max(self.config)
+            if normalized > cap:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": f"size must be <= {cap}",
+                }
+
+            with self._lock:
+                previous = resolve_digest_size(
+                    self.config, load_preferences(self.config.preferences_path)
+                )
+                save_digest_size(self.config.preferences_path, normalized)
+                saved = True
+                if normalized == previous:
+                    return {
+                        "ok": True,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "message": "already using this size",
+                    }
+                now = time.monotonic()
+                if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
+                    return {
+                        "ok": False,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "error": "already refreshing",
+                    }
+                spawn = self._spawn_fn
+                if spawn is None:
+                    from daily_digest.popup import spawn_cli
+
+                    spawn = spawn_cli
+                spawned = spawn(["run", "--force", "--count", str(normalized)])
+                if not spawned:
+                    return {
+                        "ok": False,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "error": "spawn failed; preference saved for the next run",
+                    }
+                self._last_refresh = now
+                return {
+                    "ok": True,
+                    "saved": True,
+                    "spawned": True,
+                    "size": normalized,
+                }
+        except Exception as exc:  # noqa: BLE001  Ebridge must never raise
+            LOG.error("set_digest_size failed: %s: %s", type(exc).__name__, exc)
+            return {
+                "ok": False,
+                "saved": saved,
+                "spawned": False,
+                "error": str(exc),
+            }
+
+    def reset_digest_size(self) -> dict:
+        """Remove the stored preference; the next run uses config/default."""
+        try:
+            clear_digest_size(self.config.preferences_path)
+            preferences = load_preferences(self.config.preferences_path)
+            return {
+                "ok": True,
+                "size": resolve_digest_size(self.config, preferences),
+                "stored": stored_digest_size(preferences),
+            }
+        except Exception as exc:  # noqa: BLE001  Ebridge must never raise
+            LOG.error("reset_digest_size failed: %s: %s", type(exc).__name__, exc)
             return {"ok": False, "error": str(exc)}
 
     def _get_ask_chat(self):
