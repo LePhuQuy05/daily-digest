@@ -14,6 +14,7 @@ from daily_digest.edition import (
     load_edition,
     render_edition,
     save_edition,
+    snapshot_path,
     with_artifact,
 )
 from daily_digest.cli import build_parser, cmd_localize
@@ -322,11 +323,11 @@ def test_localize_refuses_stale_snapshot_hash(tmp_path):
 
 def test_localize_stale_hash_rolls_back_language_and_reports_error(tmp_path):
     config, date, _ = _setup(tmp_path)
-    config.preferences_path.write_text(
-        json.dumps({"language": "ja"}), encoding="utf-8"
-    )
+    config.preferences_path.write_text(json.dumps({"language": "ja"}), encoding="utf-8")
     path = config.output_dir / f"digest-{date}.html"
-    path.write_text(path.read_text(encoding="utf-8") + "\n<!-- changed -->", encoding="utf-8")
+    path.write_text(
+        path.read_text(encoding="utf-8") + "\n<!-- changed -->", encoding="utf-8"
+    )
 
     result = localize_edition(
         config,
@@ -339,16 +340,16 @@ def test_localize_stale_hash_rolls_back_language_and_reports_error(tmp_path):
     assert result.exit_code == 2
     stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
     assert stored["language"] == "vi"
-    status = json.loads(localize_status_path(config.output_dir, date).read_text(encoding="utf-8"))
+    status = json.loads(
+        localize_status_path(config.output_dir, date).read_text(encoding="utf-8")
+    )
     assert status["state"] == "error"
     assert "does not match" in status["message"]
 
 
 def test_localize_count_mismatch_rolls_back_language(tmp_path):
     config, date, _ = _setup(tmp_path)
-    config.preferences_path.write_text(
-        json.dumps({"language": "ja"}), encoding="utf-8"
-    )
+    config.preferences_path.write_text(json.dumps({"language": "ja"}), encoding="utf-8")
 
     result = localize_edition(
         config,
@@ -363,3 +364,56 @@ def test_localize_count_mismatch_rolls_back_language(tmp_path):
     assert "expected 99" in result.message
     stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
     assert stored["language"] == "vi"
+
+
+def test_localize_uses_legacy_html_when_snapshot_is_missing(tmp_path, monkeypatch):
+    config, date, item = _setup(tmp_path)
+    snapshot_path(config.output_dir, date).unlink()
+    monkeypatch.setattr(pipeline, "fetch_all", _fail)
+    monkeypatch.setattr(ranking_mod, "select", _fail)
+    monkeypatch.setattr(media_mod, "collect_images", _fail)
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    assert result.exit_code == 0
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert re.findall(r'data-uid="([^"]+)"', html) == [item.item.id]
+    assert "VI sentinel summary" not in html
+    assert "English summary." in html
+
+
+def test_localize_uses_legacy_html_when_snapshot_is_corrupt(tmp_path):
+    config, date, item = _setup(tmp_path)
+    snapshot_path(config.output_dir, date).write_text(
+        "{not valid json", encoding="utf-8"
+    )
+
+    result = localize_edition(config, date, "en", backup=False)
+
+    assert result.exit_code == 1  # deterministic fallback, but item set survives
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert re.findall(r'data-uid="([^"]+)"', html) == [item.item.id]
+    assert "VI sentinel summary" not in html
+
+
+def test_localize_refuses_when_date_crosses_midnight(tmp_path, monkeypatch):
+    import daily_digest.localize as localize_mod
+
+    config, date, _ = _setup(tmp_path)
+    path = config.output_dir / f"digest-{date}.html"
+    before = path.read_text(encoding="utf-8")
+    calls = iter([date, "2099-01-01"])
+    monkeypatch.setattr(localize_mod, "today_str", lambda: next(calls))
+
+    result = localize_edition(config, date, "en", backup=False)
+
+    assert result.exit_code == 2
+    assert "date changed" in result.message
+    assert path.read_text(encoding="utf-8") == before

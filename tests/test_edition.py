@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,6 +23,7 @@ from daily_digest.i18n import locale_strings
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
 from daily_digest.overview import OverviewPoint, OverviewRef, OverviewSegment
+from daily_digest.util import PROJECT_ROOT
 from helpers import FakeLlmClient, llm_ok_json, make_config, make_item
 
 
@@ -281,3 +285,38 @@ def test_legacy_extraction_requires_digest_data(tmp_path):
     assert (
         edition_from_legacy_html(path.read_text(encoding="utf-8"), path, config) is None
     )
+
+
+def test_rendered_html_hash_is_deterministic_across_hash_seeds():
+    script = r"""
+from datetime import datetime, timezone
+import hashlib
+from daily_digest.config import Config
+from daily_digest.edition import Edition, render_edition
+from daily_digest.model import Item, RankedItem
+
+item = Item(
+    id="arxiv:1", title="Deterministic title", url="https://example.test/1",
+    source="arxiv", published=datetime(2026, 11, 18, tzinfo=timezone.utc),
+    summary="Abstract",
+)
+ranked = RankedItem(item=item, why="why", section="papers", llm_summary="summary")
+edition = Edition(
+    date="2026-11-21", locale="vi", ranked=(ranked,), mode="llm",
+    model_name="test-model", overview="Tổng hợp [[0]]", overview_points=(),
+)
+html = render_edition(edition, Config())
+print(hashlib.sha256(html.encode("utf-8")).hexdigest())
+"""
+    hashes = []
+    for seed in ("1", "2"):
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = seed
+        output = subprocess.check_output(
+            [sys.executable, "-c", script],
+            cwd=str(PROJECT_ROOT),
+            env=env,
+            text=True,
+        )
+        hashes.append(output.strip())
+    assert hashes[0] == hashes[1]
