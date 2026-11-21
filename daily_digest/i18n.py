@@ -479,6 +479,11 @@ def locale_strings(locale: str) -> dict[str, str]:
     return {key: t(locale, key) for key in keys}
 
 
+def catalog_keys(locale: str) -> set[str]:
+    """Keys owned by one locale (not the fallback-merged view)."""
+    return set(_CATALOG[normalize_locale(locale) or DEFAULT_LOCALE])
+
+
 def js_messages(locale: str) -> dict[str, str]:
     return locale_strings(locale)
 

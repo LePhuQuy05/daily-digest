@@ -139,7 +139,7 @@
     <p id="size-help" class="size-note">{{ t.settings_help }}</p>
     <div class="size-stepper" role="group" aria-label="{{ t.settings_size_group }}">
       <button id="size-minus" class="act" type="button" aria-label="{{ t.settings_minus }}">−</button>
-      <output id="size-value" class="size-value" aria-live="polite">12</output>
+      <output id="size-value" class="size-value" aria-live="polite" aria-label="{{ t.settings_value_aria }}">12</output>
       <button id="size-plus" class="act" type="button" aria-label="{{ t.settings_plus }}">+</button>
     </div>
     <p id="size-current" class="size-note">{{ t.settings_current.format(n=total) }}</p>
@@ -731,7 +731,7 @@
             refreshBtn.disabled = false;
           }, 4000);
         }).catch(function () {
-          refreshBtn.textContent = mt("refresh_retry");
+          refreshBtn.textContent = mt("refresh_error");
           setTimeout(function () {
             refreshBtn.textContent = label;
             refreshBtn.disabled = false;

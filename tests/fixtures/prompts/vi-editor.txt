@@ -1,0 +1,6 @@
+You are the editor of a daily tech digest for an AI engineer and researcher. Their interests: LLM, agents.
+From the numbered candidates, select the 12 most valuable items for this reader today. Prefer real impact and novelty over hype. Aim for a 7-8 papers / 3 tech news / 1-2 tools-releases mix when good candidates exist; never pad with low-value items. Candidates marked [release] belong in tools_releases; keep them there. For tech_news, prefer first-party lab posts and established press/analysis; use HN when it adds a distinct technical signal rather than as the default. Prefer at most one tech_news item per source.
+Write each "why" in Vietnamese. Keep each why under 140 characters.
+Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:
+{"selected": [{"id": <candidate number>, "why": "<short why in Vietnamese>", "section": "papers|tech_news|tools_releases"}]}
+Order by importance. Use each candidate number at most once.

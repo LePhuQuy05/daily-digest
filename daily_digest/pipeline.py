@@ -222,10 +222,7 @@ def run_day(
         log_mute_summary(len(muted), len(fresh), [item.title for item, _ in muted])
     if not fresh and muted:
         LOG.warning("interests.mute dropped every fresh item today (%d)", len(muted))
-        notice = (
-            "interests.mute đã lọc mất toàn bộ mục hôm nay — kiểm tra lại danh sách "
-            f"mute ({len(muted)} mục bị bỏ)."
-        )
+        notice = t(locale, "notice_muted_all").format(n=len(muted))
         html = render_digest(
             [],
             date=date,
