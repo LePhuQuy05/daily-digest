@@ -81,7 +81,6 @@ def test_answer_question_returns_chat_answer():
 
 def test_answer_question_offline_without_key():
     assert answer_question(SNAPSHOT, "q", None) == OFFLINE_MESSAGE
-    assert "OPENCODE_API_KEY" in OFFLINE_MESSAGE
 
 
 def test_answer_question_raising_chat_returns_polite_message():
@@ -95,7 +94,7 @@ def test_answer_question_raising_chat_returns_polite_message():
 
 def test_answer_question_empty_answer_is_replaced():
     chat = FakeChat("   ")
-    assert "câu trả lời rỗng" in answer_question(SNAPSHOT, "q", chat)
+    assert "Chưa có câu trả lời" in answer_question(SNAPSHOT, "q", chat)
 
 
 # ------------------------------------------------------------------ popup LLM budget

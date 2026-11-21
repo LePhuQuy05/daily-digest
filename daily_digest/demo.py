@@ -16,6 +16,7 @@ from typing import cast
 from PIL import Image, ImageDraw, ImageOps
 
 from daily_digest.config import Config
+from daily_digest.i18n import normalize_locale, t
 from daily_digest.media import ImageAsset
 from daily_digest.model import Item, RankedItem, Section
 from daily_digest.overview import ensure_coverage, parse_overview
@@ -230,10 +231,13 @@ def _demo_ranked() -> list[RankedItem]:
     return ranked
 
 
-def render_demo(config: Config, *, open_browser: bool = True) -> Path:
+def render_demo(
+    config: Config, *, locale: str = "vi", open_browser: bool = True
+) -> Path:
     """Render `output/demo.html` from bundled fixtures and optionally open it."""
+    loc = normalize_locale(locale) or "vi"
     ranked = _demo_ranked()
-    points = ensure_coverage(parse_overview(DEMO_OVERVIEW, ranked), ranked)
+    points = ensure_coverage(parse_overview(DEMO_OVERVIEW, ranked, loc), ranked, loc)
     html = render_digest(
         ranked,
         date=DEMO_DATE,
@@ -243,12 +247,13 @@ def render_demo(config: Config, *, open_browser: bool = True) -> Path:
         model_name="demo fixtures",
         template=config.template_path,
         overview=DEMO_OVERVIEW,
-        overview_label="Tổng hợp hôm nay",
+        overview_label=t(loc, "overview_label"),
         overview_points=points,
-        notice="Demo mode: bundled fixtures, no network or API key.",
+        notice=t(loc, "demo_notice"),
         digest_data=build_digest_data(ranked, [], DEMO_DATE),
         pinned=[],
         images={"demo:p1": _demo_image_asset()},
+        locale=loc,
     )
     path = config.output_dir / "demo.html"
     path.parent.mkdir(parents=True, exist_ok=True)

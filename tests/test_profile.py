@@ -58,27 +58,34 @@ GOLDEN_WRITER = (
 )
 
 
-def test_golden_editor_prompt_byte_identity_with_empty_inputs():
+def test_editor_prompt_has_locale_language_and_why_limit():
     rendered = SYSTEM_PROMPT.format(
         topics="LLM, agents",
         top_n=12,
         mix_guidance=mix_guidance(12),
         reader_context="",
         always_rule="",
+        language="Vietnamese",
+        why_limit=140,
     )
-    assert rendered == GOLDEN_EDITOR
+    assert 'Write each "why" in Vietnamese.' in rendered
+    assert "under 140 characters" in rendered
 
 
-def test_golden_writer_prompt_byte_identity_with_empty_inputs():
+def test_writer_prompt_has_locale_language_and_marker():
     rendered = SUMMARIZE_SYSTEM_PROMPT.format(
         topics="LLM, agents",
-        max_words=70,
+        summary_limit="70 words",
         language="Vietnamese",
         reader_context="",
         overview_chars=1600,
         density_hint="",
+        takeaway_marker="Điểm cần nhớ:",
+        japanese_guard="",
     )
-    assert rendered == GOLDEN_WRITER
+    assert "End with a point starting with 'Điểm cần nhớ:'." in rendered
+    assert "at most 70 words" in rendered
+    assert "Write every per-item summary in Vietnamese." in rendered
 
 
 def test_prompt_with_context_inserts_after_interests_line():
@@ -89,6 +96,8 @@ def test_prompt_with_context_inserts_after_interests_line():
         mix_guidance=mix_guidance(12),
         reader_context=block,
         always_rule="",
+        language="Vietnamese",
+        why_limit=140,
     )
     assert rendered.index("Their interests: LLM.\n") < rendered.index(block)
     assert rendered.index(block) < rendered.index("From the numbered candidates")
@@ -162,6 +171,8 @@ def test_profile_with_braces_never_breaks_format():
         mix_guidance=mix_guidance(5),
         reader_context=block,
         always_rule="",
+        language="Vietnamese",
+        why_limit=140,
     )
     assert "{custom}" in rendered  # substituted value is not re-formatted
 
@@ -225,9 +236,10 @@ def test_run_day_without_profile_prompts_stay_golden(tmp_path, monkeypatch):
     topics = ", ".join(config.interests.topics)
     editor_system = editor.chat.calls[0][0]["content"]
     writer_system = writer.chat.calls[0][0]["content"]
-    assert editor_system.startswith(
-        GOLDEN_EDITOR.split("From the numbered")[0].replace("LLM, agents", topics)
-    )
+    assert 'Write each "why" in Vietnamese.' in editor_system
+    assert "at most 70 words" in writer_system
+    assert "Write the overview in Vietnamese" in writer_system
+    assert "Write every per-item summary in Vietnamese" in writer_system
     assert "About the reader's current work" not in editor_system
     assert "About the reader's current work" not in writer_system
 

@@ -18,21 +18,29 @@ def select(
     adjustments: dict[str, float] | None = None,
     *,
     target: int | None = None,
+    locale: str = "vi",
 ) -> tuple[list[RankedItem], str]:
     """Returns (ranked_items, mode) where mode is "llm" or "heuristic"."""
     limit = target or config.llm.top_n
     if llm_client is not None and items:
         try:
             ranked = rank_with_llm(
-                items, llm_client.chat, config, reader_context, target=limit
+                items,
+                llm_client.chat,
+                config,
+                reader_context,
+                target=limit,
+                locale=locale,
             )[:limit]
             if config.llm.diversify_tech_news:
-                ranked = diversify_tech_news(ranked, items, config, adjustments)
+                ranked = diversify_tech_news(
+                    ranked, items, config, adjustments, locale=locale
+                )
             LOG.info("LLM ranking OK: %d items via %s", len(ranked), config.llm.model)
             return ranked, "llm"
         except LlmError as exc:
             LOG.warning("LLM ranking failed, using heuristic fallback: %s", exc)
-    ranked = rank_heuristic(items, config, adjustments)[:limit]
+    ranked = rank_heuristic(items, config, adjustments, locale)[:limit]
     if config.llm.diversify_tech_news:
-        ranked = diversify_tech_news(ranked, items, config, adjustments)
+        ranked = diversify_tech_news(ranked, items, config, adjustments, locale=locale)
     return ranked, "heuristic"

@@ -95,7 +95,7 @@ def test_no_markers_keeps_plain_text_points():
 
 
 def test_more_than_five_points_keeps_first_four_and_last():
-    text = "First.\nSecond.\nThird.\nFourth.\nFifth.\nSixth."
+    text = "First.\nSecond.\nThird.\nFourth.\nFifth.\n\nĐiểm cần nhớ: Sixth."
     points = parse_overview(text, _ranked())
     assert len(points) == 5
     assert points[-1].kind == "takeaway"
@@ -173,9 +173,9 @@ def test_heuristic_overview_covers_every_section_item(tmp_path):
     assert points
     assert _uids(points) == {r.item.id for r in ranked}
     text = " ".join(segment.text for point in points for segment in point.segments)
-    assert "Research Papers" in text
-    assert "Tech News" in text
-    assert "Tools & Releases" in text
+    assert "Nghiên cứu" in text
+    assert "Công nghệ" in text
+    assert "Công cụ" in text
 
 
 def test_thirty_item_overview_keeps_full_coverage_and_scales_budget():

@@ -16,7 +16,9 @@ from daily_digest.i18n import (
     format_short_date,
     js_messages,
     locale_strings,
+    normalize_locale,
     section_title,
+    split_sentences,
     t,
 )
 from daily_digest.media import ImageAsset
@@ -95,9 +97,11 @@ def render_digest(
     source_names: Mapping[str, str] | None = None,
     locale: str = "vi",
 ) -> str:
+    locale = normalize_locale(locale) or "vi"
     env = Environment(loader=FileSystemLoader(template.parent), autoescape=True)
     env.filters["safe_href"] = safe_href
     env.filters["short_date"] = lambda value: format_short_date(value, locale)
+    env.filters["split_overview"] = lambda value: split_sentences(value, locale)
     tpl = env.get_template(template.name)
     front_page = build_front_page(ranked)
     strings = locale_strings(locale)

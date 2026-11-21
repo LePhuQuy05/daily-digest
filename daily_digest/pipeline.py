@@ -234,7 +234,7 @@ def run_day(
             [],
             date=date,
             mode="empty",
-            overview=heuristic_overview([], config),
+            overview=heuristic_overview([], config, locale),
             overview_label=overview_label(locale),
             degraded=bool(failed),
             sources_failed=failed,
@@ -298,7 +298,7 @@ def run_day(
         ]
         previous, _ = apply_mute(previous, config)
         need = target - len(fresh)
-        backfill = heuristic_order(previous, config, adjustments)[:need]
+        backfill = heuristic_order(previous, config, adjustments, locale)[:need]
         if backfill:
             fresh = merge_items([*fresh, *backfill])
             LOG.info(
@@ -308,7 +308,7 @@ def run_day(
                 target,
             )
 
-    pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments)
+    pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments, locale)
 
     # 2b. Citation enrichment (OpenAlex, keyless, one batched request): gives the
     # editor LLM — and the heuristic fallback — citation evidence per paper.
@@ -330,7 +330,13 @@ def run_day(
             exc,
         )
     ranked, mode = select(
-        pool, llm_client, config, reader_context, adjustments, target=target
+        pool,
+        llm_client,
+        config,
+        reader_context,
+        adjustments,
+        target=target,
+        locale=locale,
     )
     if len(ranked) < target:
         LOG.info(
@@ -348,16 +354,20 @@ def run_day(
     if config.llm.summarize and summary_client is not None:
         if time.monotonic() < deadline:
             ranked, overview = summarize_with_llm(
-                ranked, summary_client.chat, config, reader_context
+                ranked, summary_client.chat, config, reader_context, locale
             )
         else:
             LOG.warning("run budget exceeded before writer; keeping raw abstracts")
     if overview:
-        overview_points = ensure_coverage(parse_overview(overview, ranked), ranked)
+        overview_points = ensure_coverage(
+            parse_overview(overview, ranked, locale), ranked, locale
+        )
     if not overview_points:
         if not overview:
-            overview = heuristic_overview(ranked, config)  # always have something
-        overview_points = heuristic_overview_points(ranked, config)
+            overview = heuristic_overview(
+                ranked, config, locale
+            )  # always have something
+        overview_points = heuristic_overview_points(ranked, config, locale)
 
     # 3c. "Nhìn lại": pinned saves (cap + overflow note), minus any uid that is
     # already in today's ranked (the fresher in-section card wins).

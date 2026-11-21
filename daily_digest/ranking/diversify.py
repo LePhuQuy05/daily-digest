@@ -24,11 +24,12 @@ def _replacement_candidates(
     *,
     selected_ids: set[str],
     blocked_sources: set[str],
+    locale: str = "vi",
 ) -> list[RankedItem]:
     """Unused tech_news candidates from other sources, best heuristic score first."""
     return [
         ranked
-        for ranked in rank_heuristic(pool, config, adjustments)
+        for ranked in rank_heuristic(pool, config, adjustments, locale)
         if ranked.section == "tech_news"
         and ranked.item.id not in selected_ids
         and ranked.item.source not in blocked_sources
@@ -43,6 +44,7 @@ def diversify_tech_news(
     adjustments: dict[str, float] | None = None,
     *,
     max_per_source: int = 1,
+    locale: str = "vi",
 ) -> list[RankedItem]:
     """Replace duplicate-source tech_news picks with qualified unused candidates.
 
@@ -73,6 +75,7 @@ def diversify_tech_news(
         adjustments,
         selected_ids=selected_ids,
         blocked_sources=blocked_sources,
+        locale=locale,
     )
 
     result = list(ranked)

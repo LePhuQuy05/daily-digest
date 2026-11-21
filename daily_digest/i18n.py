@@ -85,6 +85,17 @@ _VI: dict[str, str] = {
     "pinned_title": "Nhìn lại",
     "pinned_older": "+{n} cũ hơn",
     "source_prefix": "Nguồn:",
+    "heuristic_matches": "khớp: {topics}",
+    "heuristic_trending_hf": "đang trending trên HF Papers",
+    "heuristic_trending_alphaxiv": "nổi bật trên alphaXiv",
+    "heuristic_trending_em": "trending trên mạng xã hội (Emergent Mind)",
+    "heuristic_new_arxiv": "arXiv mới {id}",
+    "heuristic_hn": "trang nhất HN",
+    "heuristic_release": "bản phát hành mới",
+    "heuristic_via": "qua {label}",
+    "heuristic_top": "bài nổi bật hôm nay",
+    "heuristic_overview": "{total} mục hôm nay: {papers} bài báo · {news} tin công nghệ · {tools} công cụ. Chủ đề nổi bật: {topics}.",
+    "demo_notice": "Chế độ demo: dữ liệu mẫu, không cần mạng hay API key.",
     "story_kicker": "CÂU CHUYỆN CHÍNH",
     "story_points": "{n} điểm",
     "story_citations": "{n} trích dẫn",
@@ -190,6 +201,17 @@ _EN: dict[str, str] = {
     "pinned_title": "Saved",
     "pinned_older": "+{n} older",
     "source_prefix": "Sources:",
+    "heuristic_matches": "matches: {topics}",
+    "heuristic_trending_hf": "trending on HF Papers",
+    "heuristic_trending_alphaxiv": "hot on alphaXiv",
+    "heuristic_trending_em": "trending across social media (Emergent Mind)",
+    "heuristic_new_arxiv": "new arXiv {id}",
+    "heuristic_hn": "HN front page",
+    "heuristic_release": "new release",
+    "heuristic_via": "via {label}",
+    "heuristic_top": "top story today",
+    "heuristic_overview": "{total} items today: {papers} papers · {news} tech news · {tools} tools. Top themes: {topics}.",
+    "demo_notice": "Demo mode: bundled fixtures, no network or API key.",
     "story_kicker": "TOP STORY",
     "story_points": "{n} points",
     "story_citations": "{n} citations",
@@ -295,6 +317,17 @@ _JA: dict[str, str] = {
     "pinned_title": "振り返り",
     "pinned_older": "他{n}件",
     "source_prefix": "ソース:",
+    "heuristic_matches": "一致: {topics}",
+    "heuristic_trending_hf": "HF Papersでトレンド",
+    "heuristic_trending_alphaxiv": "alphaXivで注目",
+    "heuristic_trending_em": "SNSでトレンド (Emergent Mind)",
+    "heuristic_new_arxiv": "新着arXiv {id}",
+    "heuristic_hn": "HNトップ",
+    "heuristic_release": "新リリース",
+    "heuristic_via": "{label}経由",
+    "heuristic_top": "本日のトップ記事",
+    "heuristic_overview": "本日{total}件: 論文{papers}件 · テックニュース{news}件 · ツール{tools}件。主なテーマ: {topics}。",
+    "demo_notice": "デモモード: 同梱データを使用。ネットワークとAPIキーは不要です。",
     "story_kicker": "トップ記事",
     "story_points": "{n}ポイント",
     "story_citations": "{n}件の引用",
@@ -567,3 +600,23 @@ def truncate_overview(text: str, max_chars: int, locale: str) -> str:
 
 def takeaway_marker(locale: str) -> str:
     return t(locale, "overview_takeaway_marker")
+
+
+_KANA_RE = re.compile(r"[\u3040-\u30ff\u31f0-\u31ff]")
+
+
+def has_kana(text: str) -> bool:
+    """True when text contains hiragana or katakana."""
+    return bool(_KANA_RE.search(text or ""))
+
+
+def fails_kana_gate(text: str, locale: str) -> bool:
+    """Reject long Japanese output that contains no kana at all.
+
+    Technical Latin terms are allowed as long as the sentence also contains
+    Japanese kana; the gate only catches accidentally-English output.
+    """
+    if (normalize_locale(locale) or "vi") != "ja":
+        return False
+    cleaned = (text or "").strip()
+    return len(cleaned) > 20 and not has_kana(cleaned)

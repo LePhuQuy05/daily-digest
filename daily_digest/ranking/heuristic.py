@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timezone
 
 from daily_digest.config import Config
-from daily_digest.i18n import t
+from daily_digest.i18n import normalize_locale, t
 from daily_digest.model import Item, RankedItem, Section
 from daily_digest.relevance import matches_topics
 from daily_digest.source_labels import labels_for
@@ -107,36 +107,45 @@ def score_item(
 
 
 def _why_line(
-    item: Item, topics: list[str], labels: dict[str, str] | None = None
+    item: Item,
+    topics: list[str],
+    labels: dict[str, str] | None = None,
+    locale: str = "vi",
 ) -> str:
+    loc = normalize_locale(locale) or "vi"
     bits: list[str] = []
     hits = topic_hits(item, topics)
     if hits:
-        bits.append("matches: " + ", ".join(hits[:3]))
+        bits.append(t(loc, "heuristic_matches").format(topics=", ".join(hits[:3])))
     if item.points:
-        bits.append(f"{item.points} pts")
+        bits.append(t(loc, "story_points").format(n=item.points))
     if item.citations:
-        bits.append(f"{item.citations} citations")
+        bits.append(t(loc, "story_citations").format(n=item.citations))
     if item.source == "hf_papers":
-        bits.append("trending on HF Papers")
+        bits.append(t(loc, "heuristic_trending_hf"))
     elif item.source == "alphaxiv":
-        bits.append("hot on alphaXiv")
+        bits.append(t(loc, "heuristic_trending_alphaxiv"))
     elif item.source == "emergentmind":
-        bits.append("trending across social media (Emergent Mind)")
+        bits.append(t(loc, "heuristic_trending_em"))
     elif item.source == "arxiv":
-        bits.append(f"new arXiv {item.id.removeprefix('arxiv:')}")
+        bits.append(
+            t(loc, "heuristic_new_arxiv").format(id=item.id.removeprefix("arxiv:"))
+        )
     elif item.source == "hn":
-        bits.append("HN front page")
+        bits.append(t(loc, "heuristic_hn"))
     elif item.source.startswith("gh_"):
-        bits.append("new release")
+        bits.append(t(loc, "heuristic_release"))
     else:
         label = (labels or {}).get(item.source, item.source)
-        bits.append(f"via {label}")
-    return " · ".join(bits) if bits else "top story today"
+        bits.append(t(loc, "heuristic_via").format(label=label))
+    return " · ".join(bits) if bits else t(loc, "heuristic_top")
 
 
 def rank_heuristic(
-    items: list[Item], config: Config, adjustments: dict[str, float] | None = None
+    items: list[Item],
+    config: Config,
+    adjustments: dict[str, float] | None = None,
+    locale: str = "vi",
 ) -> list[RankedItem]:
     """Deterministic ranking + a mechanical 'why' line so the digest never renders empty reasons."""
     labels = labels_for(config)
@@ -151,7 +160,7 @@ def rank_heuristic(
         ranked.append(
             RankedItem(
                 item=item,
-                why=_why_line(item, config.interests.topics, labels)[:140],
+                why=_why_line(item, config.interests.topics, labels, locale)[:140],
                 section=section,
             )
         )
@@ -159,10 +168,15 @@ def rank_heuristic(
 
 
 def heuristic_order(
-    items: list[Item], config: Config, adjustments: dict[str, float] | None = None
+    items: list[Item],
+    config: Config,
+    adjustments: dict[str, float] | None = None,
+    locale: str = "vi",
 ) -> list[Item]:
     """Order-only view, used to pre-cap the candidate pool before the LLM sees it."""
-    return [ranked.item for ranked in rank_heuristic(items, config, adjustments)]
+    return [
+        ranked.item for ranked in rank_heuristic(items, config, adjustments, locale)
+    ]
 
 
 def balanced_pool(
@@ -170,6 +184,7 @@ def balanced_pool(
     config: Config,
     cap: int,
     adjustments: dict[str, float] | None = None,
+    locale: str = "vi",
 ) -> list[Item]:
     """Pre-cap the editor pool while reserving space for news and tool releases.
 
@@ -178,7 +193,7 @@ def balanced_pool(
     those sections. Quotas guarantee the editor has a real choice; leftover
     slots still go to the best remaining items.
     """
-    ranked = rank_heuristic(items, config, adjustments)
+    ranked = rank_heuristic(items, config, adjustments, locale)
     # HN is a general front page: keep only AI-relevant links in the editorial
     # pool, otherwise high-score off-topic stories crowd out lab/press feeds.
     ranked = [
@@ -222,21 +237,15 @@ def balanced_pool(
     ]
 
 
-_OVERVIEW_LABELS = {"vi": "Tổng hợp hôm nay", "en": "Today's overview"}
-_OVERVIEW_TEMPLATES = {
-    "vi": "{total} mục hôm nay: {papers} papers · {news} tin công nghệ · {tools} tools. Chủ đề nổi bật: {topics}.",
-    "en": "{total} items today: {papers} papers · {news} tech news · {tools} tools. Top themes: {topics}.",
-}
-
-
 def overview_label(locale: str = "vi") -> str:
     return t(locale, "overview_label")
 
 
-def heuristic_overview(ranked: list[RankedItem], config: Config) -> str:
+def heuristic_overview(
+    ranked: list[RankedItem], config: Config, locale: str = "vi"
+) -> str:
     """Mechanical day-overview fallback (always available, no LLM): counts + top themes."""
-    language = config.llm.overview_language.strip().lower()
-    template = _OVERVIEW_TEMPLATES.get(language, _OVERVIEW_TEMPLATES["en"])
+    loc = normalize_locale(locale) or "vi"
     papers = sum(1 for r in ranked if r.section == "papers")
     news = sum(1 for r in ranked if r.section == "tech_news")
     tools = sum(1 for r in ranked if r.section == "tools_releases")
@@ -247,6 +256,6 @@ def heuristic_overview(ranked: list[RankedItem], config: Config) -> str:
             theme_counts[topic] = theme_counts.get(topic, 0) + 1
     top_themes = sorted(theme_counts, key=theme_counts.get, reverse=True)[:3]
     topics = ", ".join(top_themes) if top_themes else "—"
-    return template.format(
+    return t(loc, "heuristic_overview").format(
         total=len(ranked), papers=papers, news=news, tools=tools, topics=topics
     )

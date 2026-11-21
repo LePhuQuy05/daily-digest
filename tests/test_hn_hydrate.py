@@ -153,9 +153,9 @@ def test_run_day_hydrates_before_balanced_pool(tmp_path, monkeypatch):
     captured: dict[str, list] = {}
     real_balanced = pipeline.balanced_pool
 
-    def spy(pool_items, cfg, cap, adjustments=None):
+    def spy(pool_items, cfg, cap, adjustments=None, locale="vi"):
         captured["pool"] = list(pool_items)
-        return real_balanced(pool_items, cfg, cap, adjustments)
+        return real_balanced(pool_items, cfg, cap, adjustments, locale)
 
     monkeypatch.setattr(pipeline, "balanced_pool", spy)
 

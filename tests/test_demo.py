@@ -14,7 +14,7 @@ def test_demo_renders_offline_digest_with_coverage(tmp_path):
     assert path == tmp_path / "output" / "demo.html"
     assert path.exists()
     html = path.read_text(encoding="utf-8")
-    assert "Demo mode" in html
+    assert "Chế độ demo" in html
     assert "Biên tập: demo" in html
     assert html.count('class="oref"') >= 9
     assert "Còn lại hôm nay" in html

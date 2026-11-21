@@ -17,6 +17,7 @@ import os
 import secrets
 
 from daily_digest.config import Config
+from daily_digest.i18n import t
 from daily_digest.ranking.llm import LlmClient
 from daily_digest.util import LOG
 
@@ -33,10 +34,7 @@ ASK_SYSTEM_PROMPT = (
     "Answer in the language of the question, at most 120 words, plain text."
 )
 
-OFFLINE_MESSAGE = (
-    "Chưa cấu hình API key (OPENCODE_API_KEY trong .env) nên chưa hỏi được — "
-    "digest vẫn đọc bình thường nhé."
-)
+OFFLINE_MESSAGE = t("vi", "ask_offline")
 
 
 def build_ask_messages(snapshot: dict, question: str, profile: str = "") -> list[dict]:
@@ -63,17 +61,19 @@ def build_ask_messages(snapshot: dict, question: str, profile: str = "") -> list
     ]
 
 
-def answer_question(snapshot: dict, question: str, chat, profile: str = "") -> str:
+def answer_question(
+    snapshot: dict, question: str, chat, profile: str = "", locale: str = "vi"
+) -> str:
     """Total function: NEVER raises — offline/no-key/timeout all return a polite
     string so the JS Promise always resolves."""
     if chat is None:
-        return OFFLINE_MESSAGE
+        return t(locale, "ask_offline")
     try:
         answer = str(chat(build_ask_messages(snapshot, question, profile))).strip()
-        return answer or "(câu trả lời rỗng — thử hỏi lại nhé)"
+        return answer or t(locale, "ask_no_answer")
     except Exception as exc:  # noqa: BLE001 — the drawer must never crash
         LOG.warning("ask failed: %s: %s", type(exc).__name__, exc)
-        return f"Chưa hỏi được lúc này ({type(exc).__name__}). Thử lại sau nhé."
+        return t(locale, "ask_error")
 
 
 def _read_session_readonly(config: Config) -> str:

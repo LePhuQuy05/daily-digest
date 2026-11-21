@@ -18,14 +18,26 @@ from typing import Protocol
 import httpx
 
 from daily_digest.config import Config
+from daily_digest.i18n import (
+    PROMPT_LANGUAGE,
+    fails_kana_gate,
+    normalize_locale,
+    t,
+    takeaway_marker,
+    truncate_overview,
+)
 from daily_digest.model import Item, RankedItem
 from daily_digest.ranking.heuristic import default_section
 from daily_digest.source_labels import SOURCE_LABELS, labels_for
 from daily_digest.util import LOG
 
 MAX_WHY = 140
+MAX_WHY_JA = 80
 MIN_SELECTION = 3
 SUMMARY_WORDS = 40
+SUMMARY_INPUT_CHARS = 1200
+SUMMARY_INPUT_CHARS_JA = 400
+MAX_OUTPUT_TOKENS = 4096
 
 SYSTEM_PROMPT = (
     "You are the editor of a daily tech digest for an AI engineer and researcher. "
@@ -38,8 +50,9 @@ SYSTEM_PROMPT = (
     "For tech_news, prefer first-party lab posts and established press/analysis; "
     "use HN when it adds a distinct technical signal rather than as the default. "
     "Prefer at most one tech_news item per source.\n"
+    'Write each "why" in {language}. Keep each why under {why_limit} characters.\n'
     "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
-    '{{"selected": [{{"id": <candidate number>, "why": "<=140 chars why it matters to this reader", '
+    '{{"selected": [{{"id": <candidate number>, "why": "<short why in {language}>", '
     '"section": "papers|tech_news|tools_releases"}}]}}\n'
     "Order by importance. Use each candidate number at most once."
 )
@@ -91,6 +104,7 @@ def _candidate_line(
     item: Item,
     always: list[str] | None = None,
     labels: dict[str, str] | None = None,
+    locale: str = "vi",
 ) -> str:
     from daily_digest.rules import always_match
 
@@ -105,9 +119,12 @@ def _candidate_line(
         signals.append(f"{item.points} pts")
     if item.citations:
         signals.append(f"{item.citations} citations")
-    words = " ".join(item.summary.split()[:SUMMARY_WORDS])
+    if normalize_locale(locale) == "ja":
+        summary = item.summary[:SUMMARY_INPUT_CHARS_JA]
+    else:
+        summary = " ".join(item.summary.split()[:SUMMARY_WORDS])
     signal = " ".join(signals)
-    return f"[{index}] {marker}{item.title} | {label}{f' {signal}' if signal else ''} | {words}".rstrip()
+    return f"[{index}] {marker}{item.title} | {label}{f' {signal}' if signal else ''} | {summary}".rstrip()
 
 
 def _extract_json(text: str) -> dict:
@@ -124,7 +141,11 @@ def _extract_json(text: str) -> dict:
     return payload
 
 
-def _validate(payload: dict, index_map: dict[int, Item]) -> list[RankedItem]:
+def _validate(
+    payload: dict, index_map: dict[int, Item], locale: str = "vi"
+) -> list[RankedItem]:
+    loc = normalize_locale(locale) or "vi"
+    why_limit = MAX_WHY_JA if loc == "ja" else MAX_WHY
     picked: set[int] = set()
     ranked: list[RankedItem] = []
     for pick in payload.get("selected", []):
@@ -138,7 +159,7 @@ def _validate(payload: dict, index_map: dict[int, Item]) -> list[RankedItem]:
             continue
         picked.add(index)
         item = index_map[index]
-        why = str(pick.get("why", "")).strip()[:MAX_WHY]
+        why = str(pick.get("why", "")).strip()[:why_limit]
         # Sections must be consistent with the source: paper sources stay papers;
         # everything else is news or a tool release. Bogus values clamp to the
         # source's hint/default (GitHub releases -> tools_releases).
@@ -153,7 +174,9 @@ def _validate(payload: dict, index_map: dict[int, Item]) -> list[RankedItem]:
             section = default_section(item)
         ranked.append(
             RankedItem(
-                item=item, why=why or "picked by the LLM editor", section=section
+                item=item,
+                why=why or t(loc, "heuristic_top"),
+                section=section,
             )
         )  # type: ignore[arg-type]
     return ranked
@@ -166,8 +189,10 @@ def rank_with_llm(
     reader_context: str = "",
     *,
     target: int | None = None,
+    locale: str = "vi",
 ) -> list[RankedItem]:
     """Rank via the chat function. Raises LlmError if the model can't produce a usable selection."""
+    loc = normalize_locale(locale) or "vi"
     index_map = {index: item for index, item in enumerate(items)}
     always_rule = _ALWAYS_RULE if config.interests.always else ""
     limit = min(target or config.llm.top_n, len(items))
@@ -177,6 +202,8 @@ def rank_with_llm(
         mix_guidance=mix_guidance(limit),
         reader_context=reader_context,
         always_rule=always_rule,
+        language=PROMPT_LANGUAGE[loc],
+        why_limit=MAX_WHY_JA if loc == "ja" else MAX_WHY,
     )
     labels = labels_for(config)
     messages: list[dict] = [
@@ -184,7 +211,7 @@ def rank_with_llm(
         {
             "role": "user",
             "content": "\n".join(
-                _candidate_line(i, item, config.interests.always, labels)
+                _candidate_line(i, item, config.interests.always, labels, loc)
                 for i, item in enumerate(items)
             ),
         },
@@ -192,7 +219,7 @@ def rank_with_llm(
 
     text = chat(messages)
     try:
-        ranked = _validate(_extract_json(text), index_map)
+        ranked = _validate(_extract_json(text), index_map, loc)
     except ValueError as first_error:
         LOG.debug("LLM JSON invalid (%s); asking for one repair", first_error)
         messages.extend(
@@ -207,7 +234,7 @@ def rank_with_llm(
         )
         text = chat(messages)
         try:
-            ranked = _validate(_extract_json(text), index_map)
+            ranked = _validate(_extract_json(text), index_map, loc)
         except ValueError as second_error:
             raise LlmError(
                 f"LLM returned invalid JSON twice: {second_error}"
@@ -229,15 +256,16 @@ SUMMARIZE_SYSTEM_PROMPT = (
     "for this reader. Separate points with blank lines. At every article mention, "
     "write its candidate number as [[n]] IN PLACE OF the title; the item list is "
     "0-based ([[0]] is the first item). Every numbered item must appear at least "
-    "once across the overview. End with a point starting with 'Điểm cần nhớ:'. "
+    "once across the overview. End with a point starting with '{takeaway_marker}'. "
     "Keep it under ~{overview_chars} characters. Write the overview in {language}. Plain text, "
     "no HTML, no markdown, no URLs, no bullet characters, and no other bracket "
     "syntax.\n"
     "2. PER-ITEM SUMMARIES: for each numbered item, a compact summary in at most "
-    "{max_words} words, 2-3 sentences, plain text (in English):\n"
+    "{summary_limit}, 2-3 sentences, plain text (in {language}):\n"
     "- research papers: what the paper does, the key method or finding, and the "
     "practical relevance to this reader.\n"
     "- news / tools: what happened or was released, and why it matters to this reader.\n"
+    "Write every per-item summary in {language}.{japanese_guard}"
     "Base everything ONLY on the provided descriptions; never invent results. "
     "If a description is empty, infer cautiously from the title and say so briefly.\n"
     "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
@@ -247,37 +275,45 @@ SUMMARIZE_SYSTEM_PROMPT = (
 )
 
 MAX_SUMMARY_CHARS = 600
+MAX_SUMMARY_CHARS_JA = 180
 MAX_OVERVIEW_CHARS = 1600
+MAX_OVERVIEW_CHARS_JA = 1200
 SUMMARY_INPUT_CHARS = 1200
 
 
-def overview_char_budget(item_count: int) -> int:
+def overview_char_budget(item_count: int, locale: str = "vi") -> int:
     """Grow the overview budget with larger user-selected digests."""
+    if normalize_locale(locale) == "ja":
+        if item_count <= 12:
+            return MAX_OVERVIEW_CHARS_JA
+        grown = MAX_OVERVIEW_CHARS_JA + round(600 * (item_count - 12) / 18)
+        return min(1800, grown)
     if item_count <= 12:
         return MAX_OVERVIEW_CHARS
     return min(3000, MAX_OVERVIEW_CHARS + 60 * (item_count - 12))
 
 
-_LANGUAGE_NAME = {
-    "vi": "Vietnamese",
-    "en": "English",
-    "": "English",
-}
-
-
 def _summary_line(
-    index: int, ranked: RankedItem, labels: dict[str, str] | None = None
+    index: int,
+    ranked: RankedItem,
+    labels: dict[str, str] | None = None,
+    locale: str = "vi",
 ) -> str:
     label = (labels or _SOURCE_LABELS).get(ranked.item.source, ranked.item.source)
-    description = " ".join(ranked.item.summary.split())[:SUMMARY_INPUT_CHARS]
+    if normalize_locale(locale) == "ja":
+        description = re.sub(r"\s+", " ", ranked.item.summary)[:SUMMARY_INPUT_CHARS_JA]
+    else:
+        description = " ".join(ranked.item.summary.split())[:SUMMARY_INPUT_CHARS]
     if not description:
         description = "(no description provided)"
     return f"[{index}] ({label}) {ranked.item.title}\n    {description}"
 
 
 def _validate_summaries(
-    payload: dict, index_map: dict[int, RankedItem]
+    payload: dict, index_map: dict[int, RankedItem], locale: str = "vi"
 ) -> dict[int, str]:
+    loc = normalize_locale(locale) or "vi"
+    max_chars = MAX_SUMMARY_CHARS_JA if loc == "ja" else MAX_SUMMARY_CHARS
     summaries: dict[int, str] = {}
     entries = payload.get("items", [])
     if not isinstance(entries, list):
@@ -291,18 +327,18 @@ def _validate_summaries(
             continue
         if index not in index_map:
             continue
-        text = " ".join(str(entry.get("summary", "")).split())[:MAX_SUMMARY_CHARS]
+        text = " ".join(str(entry.get("summary", "")).split())[:max_chars]
+        if loc == "ja" and fails_kana_gate(text, loc):
+            continue
         if text:
             summaries[index] = text
     return summaries
 
 
-def _validate_overview(payload: dict, max_chars: int = MAX_OVERVIEW_CHARS) -> str:
-    """Clean, cap and return the day overview ('' when absent/invalid).
-
-    Newlines and [[n]] markers are preserved; only spacing is normalized.
-    Truncation prefers a point/sentence boundary and never leaves a half marker.
-    """
+def _validate_overview(
+    payload: dict, max_chars: int = MAX_OVERVIEW_CHARS, locale: str = "vi"
+) -> str:
+    """Clean, cap and return the day overview ('' when absent/invalid)."""
     overview = payload.get("overview")
     if not isinstance(overview, str):
         return ""
@@ -310,27 +346,19 @@ def _validate_overview(payload: dict, max_chars: int = MAX_OVERVIEW_CHARS) -> st
     cleaned = re.sub(r"[ \t]+", " ", cleaned)
     cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    if fails_kana_gate(cleaned, locale):
+        return ""
     if len(cleaned) <= max_chars:
         return cleaned
-
-    cut = cleaned[:max_chars]
-    blank = cut.rfind("\n\n")
-    if blank > max_chars // 2:
-        cut = cut[:blank]
-    else:
-        sentence = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
-        if sentence > max_chars // 2:
-            cut = cut[: sentence + 1]
-        else:
-            last_space = cut.rfind(" ")
-            if last_space > max_chars // 2:
-                cut = cut[:last_space]
-    cut = re.sub(r"\[\[[^\]]*$", "", cut)  # incomplete marker at the cut
-    return cut.rstrip(" ,;:.-") + "…"
+    return truncate_overview(cleaned, max_chars, locale)
 
 
 def summarize_with_llm(
-    ranked: list[RankedItem], chat: ChatFn, config: Config, reader_context: str = ""
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    config: Config,
+    reader_context: str = "",
+    locale: str = "vi",
 ) -> tuple[list[RankedItem], str]:
     """Write the day overview + a reader-facing summary per item (one batched call).
 
@@ -339,12 +367,21 @@ def summarize_with_llm(
     mechanical overview)."""
     if not ranked:
         return ranked, ""
-    language = _LANGUAGE_NAME.get(config.llm.overview_language.strip().lower())
-    if language is None:
-        language = config.llm.overview_language.strip() or "English"
+    loc = normalize_locale(locale) or "vi"
+    language = PROMPT_LANGUAGE[loc]
+    summary_limit = (
+        "180 Japanese characters"
+        if loc == "ja"
+        else f"{config.llm.summary_max_words} words"
+    )
+    japanese_guard = (
+        "\nUse natural Japanese; keep standard technical names in Latin script. "
+        if loc == "ja"
+        else ""
+    )
     index_map = {index: item for index, item in enumerate(ranked)}
     labels = labels_for(config)
-    budget = overview_char_budget(len(ranked))
+    budget = overview_char_budget(len(ranked), loc)
     density_hint = (
         " This is a dense digest: keep each summary tight so the JSON fits."
         if len(ranked) > 16
@@ -355,17 +392,20 @@ def summarize_with_llm(
             "role": "system",
             "content": SUMMARIZE_SYSTEM_PROMPT.format(
                 topics=", ".join(config.interests.topics),
-                max_words=config.llm.summary_max_words,
+                summary_limit=summary_limit,
                 language=language,
                 reader_context=reader_context,
                 overview_chars=budget,
                 density_hint=density_hint,
+                takeaway_marker=takeaway_marker(loc),
+                japanese_guard=japanese_guard,
             ),
         },
         {
             "role": "user",
             "content": "\n".join(
-                _summary_line(index, item, labels) for index, item in enumerate(ranked)
+                _summary_line(index, item, labels, loc)
+                for index, item in enumerate(ranked)
             ),
         },
     ]
@@ -374,8 +414,8 @@ def summarize_with_llm(
         text = chat(messages)
         try:
             payload = _extract_json(text)
-            summaries = _validate_summaries(payload, index_map)
-            overview = _validate_overview(payload, budget)
+            summaries = _validate_summaries(payload, index_map, loc)
+            overview = _validate_overview(payload, budget, loc)
         except ValueError as first_error:
             LOG.debug("summary JSON invalid (%s); asking for one repair", first_error)
             messages.extend(
@@ -390,8 +430,8 @@ def summarize_with_llm(
             )
             text = chat(messages)
             payload = _extract_json(text)
-            summaries = _validate_summaries(payload, index_map)
-            overview = _validate_overview(payload, budget)
+            summaries = _validate_summaries(payload, index_map, loc)
+            overview = _validate_overview(payload, budget, loc)
     except (LlmError, ValueError) as exc:
         LOG.warning("LLM summarization failed (%s); keeping original abstracts", exc)
         return ranked, ""

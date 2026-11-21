@@ -336,7 +336,7 @@ def test_run_day_overview_falls_back_to_mechanical_when_writer_fails(
     assert "Tổng hợp hôm nay" in html  # the card still renders
     assert 'class="overview-point' in html  # structured fallback, not empty
     assert 'class="oref"' in html  # coverage refs are present
-    assert "Research Papers" in html or "Tech News" in html
+    assert "Nghiên cứu" in html or "Công nghệ" in html
 
 
 def test_run_day_overview_without_summary_client_is_mechanical(tmp_path, monkeypatch):
@@ -367,13 +367,12 @@ def test_heuristic_overview_counts_and_themes(tmp_path):
     ranked = _ranked(4)  # 2 papers + 2 tech_news, titles mention LLM reasoning
     overview = heuristic_overview(ranked, config)
     assert overview.startswith("4 mục hôm nay")
-    assert "2 papers" in overview and "2 tin công nghệ" in overview
+    assert "2 bài báo" in overview and "2 tin công nghệ" in overview
     assert "LLM" in overview  # top theme from the items
     assert overview_label("vi") == "Tổng hợp hôm nay"
 
-    config.llm.overview_language = "en"
     assert overview_label("en") == "Today's overview"
-    assert "items today" in heuristic_overview(ranked, config)
+    assert "items today" in heuristic_overview(ranked, config, "en")
 
 
 def test_run_day_summary_failure_keeps_abstracts_and_delivery(tmp_path, monkeypatch):

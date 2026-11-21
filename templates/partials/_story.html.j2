@@ -97,7 +97,7 @@
       </li>
       {% endfor %}
       {% else %}
-      {% set points = overview.split(". ") %}
+      {% set points = overview | split_overview %}
       {% set shown_points = points[:3] + points[-1:] if points | length > 3 else points %}
       {% for point in shown_points %}
       <li class="overview-point{% if loop.last and loop.length > 1 %} spotlight{% endif %}">{{ point }}{% if not loop.last and not point.endswith(".") %}.{% endif %}</li>
