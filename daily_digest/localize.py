@@ -5,6 +5,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import time
 from pathlib import Path
 
 from daily_digest.backup import backup_digest
@@ -34,7 +35,7 @@ from daily_digest.overview import (
     parse_overview,
 )
 from daily_digest.ranking.heuristic import heuristic_overview, heuristic_why
-from daily_digest.ranking.llm import _extract_json, summarize_with_llm
+from daily_digest.ranking.llm import _extract_json, summarize_with_llm, writer_deadline
 from daily_digest.util import LOG, atomic_write_text, load_json, save_json, today_str
 from daily_digest.render import write_digest
 
@@ -175,16 +176,24 @@ def _sha256(text: str) -> str:
 
 
 def _notice_for(
-    edition: Edition, locale: str, degraded: bool
+    edition: Edition, locale: str, localize_degraded: bool
 ) -> tuple[str, str, dict[str, object]]:
     parts: list[str] = []
-    if edition.notice_key:
-        parts.append(t(locale, edition.notice_key, **dict(edition.notice_params)))
-    if degraded:
+    # A previous localize fallback describes that attempt, not the source
+    # edition. Recompute it from this run instead of carrying stale state.
+    carried_key = (
+        edition.notice_key if edition.notice_key != "localize_fallback" else ""
+    )
+    if carried_key:
+        parts.append(t(locale, carried_key, **dict(edition.notice_params)))
+    if localize_degraded:
         parts.append(t(locale, "localize_fallback"))
-    if degraded:
         return " ".join(parts), "localize_fallback", {}
-    return " ".join(parts), edition.notice_key, dict(edition.notice_params)
+    return (
+        " ".join(parts),
+        carried_key,
+        dict(edition.notice_params) if carried_key else {},
+    )
 
 
 def _localize_edition_unlocked(
@@ -244,19 +253,24 @@ def _localize_edition_unlocked(
             dataclasses.replace(item, why="", llm_summary="") for item in edition.ranked
         ]
 
-    degraded = False
+    # Source failures and heuristic mode survive localization because a
+    # language switch cannot repair them. Writer/overview failures belong to
+    # this run and are recomputed below.
+    source_degraded = bool(edition.sources_failed) or edition.mode == "heuristic"
+    localize_degraded = False
     localized, why_ok = localize_whys_with_llm(
         ranked, _chat(editor_client), config, reader_context, loc
     )
-    degraded = degraded or not why_ok
+    localize_degraded = localize_degraded or not why_ok
 
     overview = ""
     if config.llm.summarize and _chat(writer_client) is not None and localized:
-        localized, overview = summarize_with_llm(
-            localized, _chat(writer_client), config, reader_context, loc
-        )
+        with writer_deadline(time.monotonic() + 12 * 60):
+            localized, overview = summarize_with_llm(
+                localized, _chat(writer_client), config, reader_context, loc
+            )
     if localized and not overview:
-        degraded = True
+        localize_degraded = True
         overview = heuristic_overview(localized, config, loc)
     points = (
         ensure_coverage(parse_overview(overview, localized, loc), localized, loc)
@@ -264,13 +278,13 @@ def _localize_edition_unlocked(
         else ()
     )
     if not points and localized:
-        degraded = True
+        localize_degraded = True
         points = heuristic_overview_points(localized, config, loc)
     if localized and (
         not any(item.llm_summary for item in localized)
         or (config.llm.writer_v2 and not all(item.llm_summary for item in localized))
     ):
-        degraded = True
+        localize_degraded = True
 
     if backup:
         try:
@@ -278,7 +292,9 @@ def _localize_edition_unlocked(
         except OSError as exc:
             return RunResult(exit_code=2, message=f"backup failed: {exc}")
 
-    notice_text, notice_key, notice_params = _notice_for(edition, loc, degraded)
+    notice_text, notice_key, notice_params = _notice_for(
+        edition, loc, localize_degraded
+    )
     images = extract_images_from_html(html_text)
     localized_edition = dataclasses.replace(
         edition,
@@ -289,7 +305,7 @@ def _localize_edition_unlocked(
         notice_text=notice_text,
         notice_key=notice_key,
         notice_params=notice_params,
-        degraded=degraded or edition.degraded,
+        degraded=localize_degraded or source_degraded,
         images=images,
     )
     if date != today_str():

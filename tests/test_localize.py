@@ -34,7 +34,17 @@ WRITER_OK = (
 EDITOR_OK = '{"items": [{"id": 0, "why": "English why."}]}'
 
 
-def _setup(tmp_path, *, locale="vi", image=None):
+def _setup(
+    tmp_path,
+    *,
+    locale="vi",
+    image=None,
+    mode="llm",
+    degraded=False,
+    sources_failed=(),
+    notice_key="",
+    notice_text="",
+):
     config = make_config(tmp_path)
     date = today_str()
     ranked = [
@@ -56,10 +66,14 @@ def _setup(tmp_path, *, locale="vi", image=None):
         date=date,
         locale=locale,
         ranked=tuple(ranked),
-        mode="llm",
+        mode=mode,
         model_name="test-model",
+        degraded=degraded,
+        sources_failed=tuple(sources_failed),
         overview="Tổng quan cũ [[0]]",
         overview_points=tuple(points),
+        notice_key=notice_key,
+        notice_text=notice_text,
         images={ranked[0].item.id: image} if image is not None else {},
     )
     html = render_edition(edition, config)
@@ -152,6 +166,74 @@ def test_localize_writer_failure_keeps_target_fallbacks(tmp_path):
     assert "English summary." not in html
     assert "VI sentinel summary" not in html
     assert '<div class="status-strip notice">Full localization was unavailable' in html
+
+
+def test_localize_clears_stale_fallback_state(tmp_path):
+    config, date, _ = _setup(
+        tmp_path,
+        degraded=True,
+        notice_key="localize_fallback",
+        notice_text="stale fallback",
+    )
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    assert result.exit_code == 0
+    assert result.degraded is False
+    saved = load_edition(config.output_dir, date)
+    assert saved is not None
+    assert saved.degraded is False
+    assert saved.notice_key == ""
+    assert saved.notice_text == ""
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert '<div class="status-strip notice">' not in html
+
+
+def test_localize_keeps_source_failure_degraded(tmp_path):
+    config, date, _ = _setup(tmp_path, degraded=True, sources_failed=("arxiv",))
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    assert result.exit_code == 1
+    assert result.degraded is True
+    saved = load_edition(config.output_dir, date)
+    assert saved is not None
+    assert saved.sources_failed == ("arxiv",)
+    assert saved.degraded is True
+
+
+def test_localize_keeps_heuristic_mode_degraded(tmp_path):
+    config, date, _ = _setup(tmp_path, mode="heuristic", degraded=True)
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    assert result.exit_code == 1
+    assert result.degraded is True
+    saved = load_edition(config.output_dir, date)
+    assert saved is not None
+    assert saved.mode == "heuristic"
+    assert saved.degraded is True
 
 
 def test_localize_refuses_count_mismatch_and_archived(tmp_path):
