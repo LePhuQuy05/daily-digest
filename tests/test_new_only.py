@@ -157,9 +157,12 @@ def test_new_only_backs_up_the_morning_digest_once(tmp_path, monkeypatch):
     backup = config.output_dir / f"digest-{DATE}-morning.html"
     assert backup.read_text(encoding="utf-8") == "MORNING EDITION"
     assert "New one" in morning.read_text(encoding="utf-8")
-    # A second backup call must never overwrite the first morning copy.
+    # A second backup must never overwrite the first morning copy; it gets -2.
     morning.write_text("EVENING EDITION", encoding="utf-8")
-    assert _backup_morning_digest(config.output_dir, DATE) is None
+    second = _backup_morning_digest(config.output_dir, DATE)
+    assert second is not None
+    assert second.name == f"digest-{DATE}-morning-2.html"
+    assert second.read_text(encoding="utf-8") == "EVENING EDITION"
     assert backup.read_text(encoding="utf-8") == "MORNING EDITION"
 
 

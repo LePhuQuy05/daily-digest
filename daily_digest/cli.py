@@ -190,19 +190,26 @@ def cmd_open(config: Config, args: argparse.Namespace) -> int:
         os.startfile(str(path))  # noqa: S606
         return 0
     from daily_digest.popup import show_popup
-    from daily_digest.popup_bridge import DigestBridge, extract_digest_data
+    from daily_digest.popup_bridge import (
+        DigestBridge,
+        extract_digest_data,
+        extract_locale,
+    )
 
     # The bridge is built from the digest's OWN embedded data blob — old digests
     # (no blob) get a read-only popup; feedback/ask stay hidden in the page.
+    locale = None
     try:
-        digest_data = extract_digest_data(path.read_text(encoding="utf-8"))
+        html_text = path.read_text(encoding="utf-8")
+        digest_data = extract_digest_data(html_text)
+        locale = extract_locale(html_text)
     except OSError as exc:
         LOG.warning("could not read digest data (%s); opening read-only", exc)
         digest_data = {}
     bridge = None
     if digest_data:
         try:
-            bridge = DigestBridge(config, digest_data)
+            bridge = DigestBridge(config, digest_data, locale=locale)
         except Exception as exc:  # noqa: BLE001 — read-only popup beats no popup
             LOG.warning(
                 "bridge unavailable (%s: %s); opening read-only",

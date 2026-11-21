@@ -143,6 +143,11 @@
       <button id="size-plus" class="act" type="button" aria-label="{{ t.settings_plus }}">+</button>
     </div>
     <p id="size-current" class="size-note">{{ t.settings_current.format(n=total) }}</p>
+    <label class="size-language" for="size-language">{{ t.settings_language }}</label>
+    <select id="size-language" class="size-language-select">
+      {% for code, label in languages %}<option value="{{ code }}"{% if code == locale %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <p class="size-note">{{ t.settings_language_help }}</p>
     <p id="size-warning" class="size-note size-warning" hidden></p>
     <p id="size-status" class="size-status" role="status" aria-live="polite"></p>
     <div class="size-actions">
@@ -452,6 +457,7 @@
     var sizeCurrent = document.getElementById("size-current");
     var sizeWarning = document.getElementById("size-warning");
     var sizeStatus = document.getElementById("size-status");
+    var sizeLanguage = document.getElementById("size-language");
     var sizeReturnFocus = null;
     var sizeState = {
       value: 12,
@@ -459,6 +465,7 @@
       max: 30,
       default: 12,
       current: 0,
+      language: document.documentElement.lang || "vi",
       stored: null,
       can_change: false,
       has_key: false,
@@ -487,16 +494,19 @@
         sizeCurrent.textContent = mt("settings_current").replace("{n}", sizeState.current);
       }
       var disabled = sizeState.busy || !sizeState.can_change;
+      var languageChanged = sizeLanguage && sizeLanguage.value !== sizeState.language;
       if (sizeMinus) sizeMinus.disabled = disabled || sizeState.value <= sizeState.min;
       if (sizePlus) sizePlus.disabled = disabled || sizeState.value >= sizeState.max;
       if (sizeApply) {
-        sizeApply.disabled = disabled || isSizeUnchanged();
+        sizeApply.disabled = disabled || (isSizeUnchanged() && !languageChanged);
       }
       if (sizeReset) sizeReset.disabled = disabled;
       if (sizeWarning) {
         var warning = "";
         if (sizeState.archived) {
           warning = mt("settings_archived");
+        } else if (languageChanged) {
+          warning = mt("settings_drift_warning");
         } else if (!sizeState.has_key) {
           warning = mt("settings_no_key");
         }
@@ -515,9 +525,9 @@
 
     function openSize() {
       var api = sizeApi();
-      if (!api || !api.digest_size || !sizeModal) return;
+      if (!api || !api.settings || !api.apply_settings || !sizeModal) return;
       sizeReturnFocus = document.activeElement;
-      api.digest_size().then(function (res) {
+      api.settings().then(function (res) {
         if (!res || !res.ok) {
           sizeStatus.textContent = mt("settings_error_read");
           sizeModal.hidden = false;
@@ -530,11 +540,13 @@
         sizeState.default = res.default;
         sizeState.current = res.current;
         sizeState.stored = res.stored;
+        sizeState.language = res.language || document.documentElement.lang || "vi";
         sizeState.can_change = res.can_change;
         sizeState.has_key = res.has_key;
         sizeState.archived = res.archived;
         sizeState.busy = false;
         sizeStatus.textContent = "";
+        if (sizeLanguage) sizeLanguage.value = sizeState.language;
         updateSize();
         sizeModal.hidden = false;
         if (sizeOpen) sizeOpen.setAttribute("aria-expanded", "true");
@@ -558,14 +570,18 @@
 
     function applySize() {
       var api = sizeApi();
-      if (!api || !api.set_digest_size || sizeState.busy || !sizeState.can_change) return;
+      if (!api || !api.apply_settings || sizeState.busy || !sizeState.can_change) return;
       sizeState.busy = true;
       if (sizeStatus) sizeStatus.textContent = mt("settings_saving");
       updateSize();
-      api.set_digest_size(sizeState.value).then(function (res) {
+      api.apply_settings(
+        sizeState.value,
+        sizeLanguage ? sizeLanguage.value : document.documentElement.lang || "vi"
+      ).then(function (res) {
         sizeState.busy = false;
         if (res && res.ok) {
           sizeState.stored = res.size;
+          if (res.language) sizeState.language = res.language;
           if (res.spawned) {
             sizeStatus.textContent = mt("settings_updating");
             updateSize();
@@ -587,15 +603,21 @@
 
     function resetSize() {
       var api = sizeApi();
-      if (!api || !api.reset_digest_size || sizeState.busy || !sizeState.can_change) return;
+      if ((!api || !api.reset_settings) && (!api || !api.reset_digest_size)) return;
+      if (sizeState.busy || !sizeState.can_change) return;
       sizeState.busy = true;
       if (sizeStatus) sizeStatus.textContent = mt("settings_saving");
       updateSize();
-      api.reset_digest_size().then(function (res) {
+      var call = api.reset_settings
+        ? api.reset_settings()
+        : api.reset_digest_size();
+      call.then(function (res) {
         sizeState.busy = false;
         if (res && res.ok) {
           sizeState.value = res.size;
           sizeState.stored = res.stored;
+          if (res.language) sizeState.language = res.language;
+          if (sizeLanguage) sizeLanguage.value = sizeState.language;
           sizeStatus.textContent = mt("settings_reset_done").replace("{n}", res.size);
         } else {
           sizeStatus.textContent = (res && res.error) || mt("settings_error_reset");
@@ -613,6 +635,7 @@
     if (sizePlus) sizePlus.addEventListener("click", function () { stepSize(1); });
     if (sizeApply) sizeApply.addEventListener("click", applySize);
     if (sizeReset) sizeReset.addEventListener("click", resetSize);
+    if (sizeLanguage) sizeLanguage.addEventListener("change", updateSize);
     if (sizeClose) sizeClose.addEventListener("click", closeSize);
     if (sizeModal) {
       sizeModal.addEventListener("click", function (ev) {

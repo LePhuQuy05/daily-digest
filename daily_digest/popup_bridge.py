@@ -18,6 +18,7 @@ import re
 import threading
 import time
 
+from daily_digest.backup import backup_digest
 from daily_digest.config import Config
 from daily_digest.digest_size import (
     DEFAULT_DIGEST_SIZE,
@@ -25,11 +26,13 @@ from daily_digest.digest_size import (
     MIN_DIGEST_SIZE,
     DigestSizeError,
     clear_digest_size,
+    clear_language,
     effective_max,
     load_preferences,
     normalize_digest_size,
     resolve_digest_size,
     save_digest_size,
+    save_preferences,
     stored_digest_size,
 )
 from daily_digest.feedback import (
@@ -37,6 +40,15 @@ from daily_digest.feedback import (
     aggregate,
     append_feedback,
     read_feedback,
+)
+from daily_digest.i18n import (
+    LOCALE_LABEL,
+    SUPPORTED_LOCALES,
+    LocaleError,
+    normalize_locale,
+    require_locale,
+    resolve_locale,
+    t,
 )
 from daily_digest.normalize import safe_href
 from daily_digest.source_labels import labels_for
@@ -48,6 +60,16 @@ _BLOB_RE = re.compile(
     r'<script[^>]*\bid="digest-data"[^>]*>(.*?)</script>',
     re.DOTALL | re.IGNORECASE,
 )
+_LANG_RE = re.compile(
+    r'<html[^>]*\blang=["\']([^"\']+)["\']',
+    re.IGNORECASE,
+)
+
+
+def extract_locale(html_text: str) -> str | None:
+    """Read the baked locale from a digest's <html lang> attribute."""
+    match = _LANG_RE.search(html_text)
+    return normalize_locale(match.group(1)) if match else None
 
 
 def extract_digest_data(html_text: str) -> dict:
@@ -74,9 +96,11 @@ class DigestBridge:
         digest_data: dict,
         chat_factory=None,
         spawn_fn=None,
+        locale: str | None = None,
     ) -> None:
         self.config = config
         self.date = str(digest_data.get("date", ""))
+        self.locale = normalize_locale(locale) or "vi"
         self.items: dict[str, dict] = dict(digest_data.get("items", {}))
         self.pinned: dict[str, dict] = {
             str(entry.get("uid", "")): entry
@@ -250,6 +274,178 @@ class DigestBridge:
             LOG.error("refresh failed: %s: %s", type(exc).__name__, exc)
             return {"ok": False, "error": str(exc)}
 
+    def settings(self) -> dict:
+        """Return size + language controls for the current digest."""
+        try:
+            archived = not self.date or self.date != today_str()
+            preferences = load_preferences(self.config.preferences_path)
+            cap = effective_max(self.config)
+            stored_language = normalize_locale(preferences.get("language"))
+            return {
+                "ok": True,
+                "size": resolve_digest_size(self.config, preferences),
+                "default": DEFAULT_DIGEST_SIZE,
+                "min": MIN_DIGEST_SIZE,
+                "max": cap,
+                "stored": stored_digest_size(preferences),
+                "current": len(self.items),
+                "can_change": not archived,
+                "archived": archived,
+                "has_key": bool(os.environ.get(self.config.llm.api_key_env)),
+                "language": self.locale,
+                "stored_language": stored_language,
+                "languages": [
+                    {"code": code, "label": LOCALE_LABEL[code]}
+                    for code in SUPPORTED_LOCALES
+                ],
+            }
+        except Exception as exc:  # noqa: BLE001 — bridge must never raise
+            LOG.error("settings failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc), "can_change": False}
+
+    def apply_settings(self, size: int, language: str) -> dict:
+        """Validate, back up, save size + language once, then spawn one rebuild."""
+        saved = False
+        try:
+            if not self.date or self.date != today_str():
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "archived": True,
+                    "error": "archived digest",
+                }
+            try:
+                normalized = normalize_digest_size(size)
+            except DigestSizeError as exc:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": str(exc),
+                }
+            cap = effective_max(self.config)
+            if normalized > cap:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": f"size must be <= {cap}",
+                }
+            try:
+                locale = require_locale(language)
+            except LocaleError as exc:
+                return {
+                    "ok": False,
+                    "saved": False,
+                    "spawned": False,
+                    "error": str(exc),
+                }
+
+            with self._lock:
+                preferences = load_preferences(self.config.preferences_path)
+                previous_size = resolve_digest_size(self.config, preferences)
+                previous_locale = resolve_locale(self.config, preferences)
+                source = self.config.output_dir / f"digest-{self.date}.html"
+                try:
+                    backup_digest(source, self.config.output_dir)
+                except OSError as exc:
+                    LOG.error("settings backup failed: %s", exc)
+                    return {
+                        "ok": False,
+                        "saved": False,
+                        "spawned": False,
+                        "error": f"backup failed: {exc}",
+                    }
+                save_preferences(
+                    self.config.preferences_path,
+                    digest_size=normalized,
+                    language=locale,
+                )
+                saved = True
+                changed = (
+                    normalized != len(self.items)
+                    or locale != self.locale
+                    or normalized != previous_size
+                    or locale != previous_locale
+                )
+                if not changed:
+                    return {
+                        "ok": True,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "language": locale,
+                        "message": "already using these settings",
+                    }
+                now = time.monotonic()
+                if now - self._last_refresh < REFRESH_COOLDOWN_SECONDS:
+                    return {
+                        "ok": False,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "language": locale,
+                        "error": "already refreshing",
+                    }
+                spawn = self._spawn_fn
+                if spawn is None:
+                    from daily_digest.popup import spawn_cli
+
+                    spawn = spawn_cli
+                spawned = spawn(
+                    [
+                        "run",
+                        "--force",
+                        "--count",
+                        str(normalized),
+                        "--lang",
+                        locale,
+                    ]
+                )
+                if not spawned:
+                    return {
+                        "ok": False,
+                        "saved": True,
+                        "spawned": False,
+                        "size": normalized,
+                        "language": locale,
+                        "error": "spawn failed; settings saved for the next run",
+                    }
+                self._last_refresh = now
+                return {
+                    "ok": True,
+                    "saved": True,
+                    "spawned": True,
+                    "size": normalized,
+                    "language": locale,
+                }
+        except Exception as exc:  # noqa: BLE001 — bridge must never raise
+            LOG.error("apply_settings failed: %s: %s", type(exc).__name__, exc)
+            return {
+                "ok": False,
+                "saved": saved,
+                "spawned": False,
+                "error": str(exc),
+            }
+
+    def reset_settings(self) -> dict:
+        """Remove stored size + language preferences."""
+        try:
+            clear_digest_size(self.config.preferences_path)
+            clear_language(self.config.preferences_path)
+            preferences = load_preferences(self.config.preferences_path)
+            return {
+                "ok": True,
+                "size": resolve_digest_size(self.config, preferences),
+                "stored": stored_digest_size(preferences),
+                "language": self.locale,
+                "stored_language": None,
+            }
+        except Exception as exc:  # noqa: BLE001 — bridge must never raise
+            LOG.error("reset_settings failed: %s: %s", type(exc).__name__, exc)
+            return {"ok": False, "error": str(exc)}
+
     def digest_size(self) -> dict:
         """Return the effective size and whether this digest can change it."""
         try:
@@ -421,10 +617,10 @@ class DigestBridge:
         try:
             snapshot = self._snapshot_for(uid)
             if snapshot is None:
-                return "Không tìm thấy mục này (digest cũ?)"
+                return t(self.locale, "ask_unknown_item")
             question = (question or "").strip()
             if not question:
-                return "Bạn chưa nhập câu hỏi."
+                return t(self.locale, "ask_empty")
             from daily_digest.ask import answer_question
 
             client = self._get_ask_chat()
@@ -434,7 +630,13 @@ class DigestBridge:
                 chat_fn = client.chat
             else:  # a plain callable (tests / custom factories)
                 chat_fn = client
-            return answer_question(snapshot, question, chat_fn, self._get_ask_profile())
+            return answer_question(
+                snapshot,
+                question,
+                chat_fn,
+                self._get_ask_profile(),
+                self.locale,
+            )
         except Exception as exc:  # noqa: BLE001 — Promise must never reject
             LOG.error("ask failed: %s: %s", type(exc).__name__, exc)
-            return f"Chưa hỏi được lúc này ({type(exc).__name__}). Thử lại sau nhé."
+            return t(self.locale, "ask_error")

@@ -92,7 +92,7 @@ def test_run_day_happy_path_llm(tmp_path, monkeypatch):
     assert len(state["seen"]) == 4
     html = result.digest_path.read_text(encoding="utf-8")
     assert "arXiv paper on RLHF" in html
-    assert (config.output_dir / "latest.html").exists()
+    assert not (config.output_dir / "latest.html").exists()  # backfill guard
 
 
 def test_run_day_idempotent_same_date(tmp_path, monkeypatch):

@@ -16,6 +16,7 @@ import httpx
 
 from daily_digest.config import Config
 from daily_digest.article import hydrate_hn_links
+from daily_digest.backup import backup_digest
 from daily_digest.digest_size import load_preferences, resolve_digest_size
 from daily_digest.enrich import enrich_citations
 from daily_digest.feedback import (
@@ -117,18 +118,13 @@ def _prune_seen(seen: dict[str, str], today: str, window_days: int) -> dict[str,
 
 
 def _backup_morning_digest(output_dir: Path, date: str) -> Path | None:
-    """Copy the same-day digest once before any refresh overwrites it."""
+    """Copy the same-day digest to the next free morning-backup name."""
     source = output_dir / f"digest-{date}.html"
-    backup = output_dir / f"digest-{date}-morning.html"
-    if not source.exists() or backup.exists():
-        return None
     try:
-        shutil.copyfile(source, backup)
+        return backup_digest(source, output_dir)
     except OSError as exc:
         LOG.warning("morning digest backup failed: %s", exc)
         return None
-    LOG.info("morning digest backed up to %s", backup)
-    return backup
 
 
 def run_day(

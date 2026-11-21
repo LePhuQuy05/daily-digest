@@ -60,7 +60,9 @@ def test_render_degraded_banner(tmp_path):
 
 
 def test_write_digest_archives_and_updates_latest(tmp_path):
-    path = write_digest("<html>hello</html>", tmp_path, "2026-11-18")
+    path = write_digest(
+        "<html>hello</html>", tmp_path, "2026-11-18", update_latest=True
+    )
     assert path.name == "digest-2026-11-18.html"
     assert path.read_text(encoding="utf-8") == "<html>hello</html>"
     assert (tmp_path / "latest.html").read_text(
@@ -80,7 +82,7 @@ def test_write_digest_locked_target_falls_back(tmp_path, monkeypatch):
         return original(path, text)
 
     monkeypatch.setattr(render_mod, "atomic_write_text", fake_write)
-    path = write_digest("<html>x</html>", tmp_path, "2026-11-18")
+    path = write_digest("<html>x</html>", tmp_path, "2026-11-18", update_latest=True)
     assert path.name == "digest-2026-11-18-2.html"
     assert path.exists()
     assert (tmp_path / "latest.html").exists()

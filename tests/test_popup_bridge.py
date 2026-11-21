@@ -85,7 +85,7 @@ def test_latest_html_self_pairs(tmp_path):
         )
     ]
     html, _ = _render(tmp_path, ranked)
-    path = write_digest(html, tmp_path, "2026-11-19")
+    path = write_digest(html, tmp_path, "2026-11-19", update_latest=True)
     latest = tmp_path / "latest.html"
     # latest.html is the same html: extraction works without any filename date
     assert (

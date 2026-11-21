@@ -26,7 +26,7 @@ from daily_digest.model import RankedItem
 from daily_digest.normalize import safe_href
 from daily_digest.overview import OverviewPoint
 from daily_digest.source_labels import SOURCE_LABELS
-from daily_digest.util import atomic_write_text
+from daily_digest.util import atomic_write_text, today_str
 
 SOURCE_NAMES = SOURCE_LABELS
 
@@ -135,9 +135,11 @@ def render_digest(
     )
 
 
-def write_digest(html: str, output_dir: Path, date: str) -> Path:
+def write_digest(
+    html: str, output_dir: Path, date: str, *, update_latest: bool | None = None
+) -> Path:
     """Archive digest-YYYY-MM-DD.html atomically; if the target is locked (open in a browser),
-    fall back to digest-YYYY-MM-DD-2.html. Always refresh latest.html."""
+    fall back to digest-YYYY-MM-DD-2.html. Refresh latest.html only for today."""
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / f"digest-{date}.html"
     try:
@@ -145,5 +147,8 @@ def write_digest(html: str, output_dir: Path, date: str) -> Path:
     except PermissionError:
         path = output_dir / f"digest-{date}-2.html"
         atomic_write_text(path, html)
-    atomic_write_text(output_dir / "latest.html", html)
+    if update_latest is None:
+        update_latest = date == today_str()
+    if update_latest:
+        atomic_write_text(output_dir / "latest.html", html)
     return path

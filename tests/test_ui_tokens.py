@@ -466,9 +466,9 @@ class TestDigestSizeDialog:
         tpl = (PROJECT_ROOT / "templates" / "digest.html.j2").read_text(
             encoding="utf-8"
         )
-        assert "api.digest_size()" in tpl
-        assert "api.set_digest_size(" in tpl
-        assert "api.reset_digest_size()" in tpl
+        assert "api.settings()" in tpl
+        assert "api.apply_settings(" in tpl
+        assert "api.reset_settings(" in tpl
 
     def test_css_and_print_hide_the_control(self):
         css = _css()
