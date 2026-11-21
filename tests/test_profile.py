@@ -16,48 +16,6 @@ from helpers import FakeLlmClient, llm_ok_json, make_config, make_item
 # Golden: the EXACT rendered prompts as of the F4 change, captured before the
 # {reader_context}/{always_rule} slots were added. Empty inputs must reproduce
 # these byte-for-byte forever.
-GOLDEN_EDITOR = (
-    "You are the editor of a daily tech digest for an AI engineer and researcher. "
-    "Their interests: LLM, agents.\n"
-    "From the numbered candidates, select the 12 most valuable items for this reader today. "
-    "Prefer real impact and novelty over hype. Aim for a 7-8 papers / 3 tech news / 1-2 "
-    "tools-releases mix when good candidates exist; never pad with low-value items. "
-    "Candidates marked [release] belong in tools_releases; keep them there. "
-    "For tech_news, prefer first-party lab posts and established press/analysis; "
-    "use HN when it adds a distinct technical signal rather than as the default. "
-    "Prefer at most one tech_news item per source.\n"
-    "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
-    '{"selected": [{"id": <candidate number>, "why": "<=140 chars why it matters to this reader", '
-    '"section": "papers|tech_news|tools_releases"}]}\n'
-    "Order by importance. Use each candidate number at most once."
-)
-GOLDEN_WRITER = (
-    "You are the writer of a daily tech digest for an AI engineer and researcher. "
-    "Their interests: LLM, agents.\n"
-    "Do two things:\n"
-    "1. OVERVIEW: write 3-5 short points about the whole day — the main themes "
-    "across ALL items, how they connect, and the single most important takeaway "
-    "for this reader. Separate points with blank lines. At every article mention, "
-    "write its candidate number as [[n]] IN PLACE OF the title; the item list is "
-    "0-based ([[0]] is the first item). Every numbered item must appear at least "
-    "once across the overview. End with a point starting with 'Điểm cần nhớ:'. "
-    "Keep it under ~1600 characters. Write the overview in Vietnamese. Plain text, "
-    "no HTML, no markdown, no URLs, no bullet characters, and no other bracket "
-    "syntax.\n"
-    "2. PER-ITEM SUMMARIES: for each numbered item, a compact summary in at most 70 "
-    "words, 2-3 sentences, plain text (in English):\n"
-    "- research papers: what the paper does, the key method or finding, and the "
-    "practical relevance to this reader.\n"
-    "- news / tools: what happened or was released, and why it matters to this reader.\n"
-    "Base everything ONLY on the provided descriptions; never invent results. "
-    "If a description is empty, infer cautiously from the title and say so briefly.\n"
-    "Respond with ONLY a JSON object — no prose, no markdown fences — in this exact shape:\n"
-    '{"overview": "<the day overview>", "items": [{"id": <item number>, '
-    '"summary": "<your summary>"}]}\n'
-    "Cover every numbered item."
-)
-
-
 def test_editor_prompt_has_locale_language_and_why_limit():
     rendered = SYSTEM_PROMPT.format(
         topics="LLM, agents",

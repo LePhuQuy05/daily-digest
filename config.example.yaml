@@ -77,7 +77,7 @@ llm:
   summarize_model: ""          # e.g. glm-5.3-flash for a cheaper writer; "" = same model
   summarize: true              # writer on/off (false -> show raw abstracts)
   summary_max_words: 70
-  overview_language: vi        # ngôn ngữ của card "Tổng hợp hôm nay" (vi / en / ...)
+  overview_language: vi        # legacy one-time fallback; preferences.json.language wins after a settings save (vi / en / ja)
   profile_file: profile.md     # F4: đoạn "về bạn" nạp vào prompt ("" để tắt)
   profile_max_chars: 600
   diversify_tech_news: true    # max 1 tech_news item per source (never pads)

@@ -2,7 +2,25 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses semantic versioning.
 
-## [0.1.1] - 2026-11-21
+## [Unreleased]
+
+### Added
+
+- First-class Vietnamese (`vi`), English (`en`), and Japanese (`ja`) locales for UI chrome and generated content; `vi` remains the default.
+- `run --lang` and `demo --lang`; `ja-JP`, `JA`, and `ja_JP` normalize to `ja`. `--lang` is a one-off override and implies `--force`.
+- Combined size + language settings dialog. One Apply writes both preferences atomically, creates a unique morning backup first, and spawns one rebuild.
+- Japanese typography and print rules, localized AI-summary label, toast body, dates, section titles, and heuristic fallbacks.
+
+### Changed
+
+- Full-locale output intentionally replaces the previous mixed vi/en behavior: `vi` now has Vietnamese summaries and `why` lines, and `en` has English chrome + content.
+- `latest.html` is refreshed only for today; `--date` backfills no longer clobber it.
+- Backups now use `-morning`, `-morning-2`, … and never overwrite an earlier copy.
+
+### Fixed
+
+- Archived digests keep their baked locale and remain read-only; legacy size bridge methods still work.
+- Japanese overviews split on `。！？` plus closing quotes, protect versions/URLs from ASCII-dot splitting, normalize full-width markers, and remove partial `[[` artifacts.
 
 ### Added
 

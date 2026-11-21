@@ -11,6 +11,18 @@ Daily AI Digest is a local pipeline with a deliberately small surface area: fetc
 | Deterministic | Normalization, merge/dedupe, seen-set, ranking fallback, rendering, atomic writes | Reproducible and covered by the offline suite |
 | Local-only | `state.json`, `feedback.jsonl`, `preferences.json`, `output/`, `logs/` | Never uploaded by the app; API keys come from the environment |
 
+## Locales
+
+One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates, section titles, and heuristic fallbacks.
+
+- Precedence: `--lang` > `preferences.json.language` > legacy `llm.overview_language` > `vi`.
+- `vi` is the default. `ja-JP`, `JA`, and `ja_JP` normalize to `ja`; unknown CLI/settings values fail fast, while invalid stored/legacy values warn and fall back.
+- `--lang` is one-off and implies `--force`. The settings dialog persists size + language in one atomic write.
+- Archived digests bake their locale into `<html lang>` and remain read-only.
+- Source titles, abstracts, URLs, authors, source labels, and product names are never translated.
+- The catalog falls back `locale → en → vi`; missing keys are logged once per locale/key. Translations are autoescaped or embedded with `tojson`, never `|safe`.
+- Japanese content uses blank lines as point boundaries, splits after `。！？` plus closing quotes, protects version/URL dots, normalizes full-width markers, and strips partial `[[` markers. Prompts use per-locale limits and a kana gate.
+
 ## Request lifecycle
 
 1. **Trigger** — Windows Task Scheduler at 09:00, the tray refresh action, or `daily-digest run`.
@@ -47,6 +59,8 @@ Daily AI Digest is a local pipeline with a deliberately small surface area: fetc
 | `daily_digest/pipeline.py` | Orchestration, idempotency, fallback policy |
 | `daily_digest/ranking/llm.py` | Editor/writer prompts, JSON parsing, overview validation |
 | `daily_digest/overview.py` | Citation marker parsing, labels, coverage guarantee |
+| `daily_digest/i18n.py` | Locale catalogs, resolution, dates, JS messages, CJK splitting/truncation |
+| `daily_digest/backup.py` | Unique write-ahead morning backups |
 | `daily_digest/render.py` | Jinja context and digest data blob |
 | `daily_digest/popup_bridge.py` | Bridge for feedback, saved items, and Ask |
 | `templates/` | HTML, CSS, and vanilla JS; no frontend build step |
