@@ -18,6 +18,7 @@ from daily_digest.config import Config
 from daily_digest.article import hydrate_hn_links
 from daily_digest.backup import backup_digest
 from daily_digest.digest_size import load_preferences, resolve_digest_size
+from daily_digest.edition import Edition, render_edition, save_edition, with_artifact
 from daily_digest.enrich import enrich_citations
 from daily_digest.feedback import (
     FeedbackAggregate,
@@ -43,14 +44,12 @@ from daily_digest.ranking.heuristic import (
     balanced_pool,
     heuristic_order,
     heuristic_overview,
-    overview_label,
 )
 from daily_digest.media import collect_images
 from daily_digest.ranking.llm import LlmClient, summarize_with_llm
-from daily_digest.render import build_digest_data, render_digest, write_digest
+from daily_digest.render import write_digest
 from daily_digest.rules import apply_mute, log_mute_summary
 from daily_digest.sources import SourceError, enabled_sources, fetch_all
-from daily_digest.source_labels import labels_for
 from daily_digest.util import LOG, load_json, save_json, today_str
 
 
@@ -125,6 +124,18 @@ def _backup_morning_digest(output_dir: Path, date: str) -> Path | None:
     except OSError as exc:
         LOG.warning("morning digest backup failed: %s", exc)
         return None
+
+
+def _persist_edition(
+    edition: Edition, html: str, path: Path, output_dir: Path
+) -> Edition:
+    """Attach the actual artifact metadata and persist the sidecar (best-effort)."""
+    edition = with_artifact(edition, path, html, output_dir)
+    try:
+        save_edition(edition, output_dir)
+    except Exception as exc:  # noqa: BLE001 — snapshots must not break delivery
+        LOG.warning("edition snapshot failed: %s: %s", type(exc).__name__, exc)
+    return edition
 
 
 def run_day(
@@ -223,23 +234,23 @@ def run_day(
     if not fresh and muted:
         LOG.warning("interests.mute dropped every fresh item today (%d)", len(muted))
         notice = t(locale, "notice_muted_all").format(n=len(muted))
-        html = render_digest(
-            [],
+        edition = Edition(
             date=date,
-            mode="empty",
-            overview=heuristic_overview([], config, locale),
-            overview_label=overview_label(locale),
-            degraded=bool(failed),
-            sources_failed=failed,
-            model_name=config.llm.model,
-            template=config.template_path,
-            notice=notice,
-            digest_data=build_digest_data([], [], date),
             locale=locale,
+            ranked=(),
+            mode="empty",
+            model_name=config.llm.model,
+            degraded=bool(failed),
+            sources_failed=tuple(failed),
+            overview=heuristic_overview([], config, locale),
+            overview_points=(),
+            notice_text=notice,
         )
+        html = render_edition(edition, config)
         if new_only or force:
             _backup_morning_digest(config.output_dir, date)
         digest_path = write_digest(html, config.output_dir, date)
+        _persist_edition(edition, html, digest_path, config.output_dir)
         days[date] = {
             "notified": False,
             "digest_path": str(digest_path),
@@ -379,27 +390,25 @@ def run_day(
 
     # 4. Render + archive atomically. The digest_data blob embeds the item
     # snapshots + date so popup-process features (feedback, ask) are self-pairing.
-    html = render_digest(
-        ranked,
+    edition = Edition(
         date=date,
-        mode=mode,
-        overview=overview,
-        overview_label=overview_label(locale),
-        overview_points=overview_points,
-        degraded=degraded,
-        sources_failed=failed,
-        model_name=config.llm.model,
-        template=config.template_path,
-        pinned=pinned,
-        pinned_overflow=pinned_overflow,
-        digest_data=build_digest_data(ranked, pinned, date),
-        images=images,
-        source_names=labels_for(config),
         locale=locale,
+        ranked=tuple(ranked),
+        mode=mode,
+        model_name=config.llm.model,
+        degraded=degraded,
+        sources_failed=tuple(failed),
+        overview=overview,
+        overview_points=tuple(overview_points),
+        pinned=tuple(pinned),
+        pinned_overflow=pinned_overflow,
+        images=images,
     )
+    html = render_edition(edition, config)
     if new_only or force:
         _backup_morning_digest(config.output_dir, date)
     digest_path = write_digest(html, config.output_dir, date)
+    _persist_edition(edition, html, digest_path, config.output_dir)
 
     # 5. Two-phase state: persisted as notified=false right after the digest exists
     entry = {

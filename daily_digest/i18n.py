@@ -476,7 +476,7 @@ def locale_strings(locale: str) -> dict[str, str]:
     keys: set[str] = set()
     for fallback in _fallback_chain(locale):
         keys.update(_CATALOG[fallback])
-    return {key: t(locale, key) for key in keys}
+    return {key: t(locale, key) for key in sorted(keys)}
 
 
 def catalog_keys(locale: str) -> set[str]:
