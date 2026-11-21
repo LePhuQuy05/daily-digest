@@ -13,8 +13,9 @@ from daily_digest.config import Config, ConfigError, load_config, redacted_confi
 from daily_digest.demo import render_demo
 from daily_digest.digest_size import MAX_DIGEST_SIZE, MIN_DIGEST_SIZE
 from daily_digest.i18n import LocaleError, require_locale
+from daily_digest.localize import localize_edition
 from daily_digest.pipeline import run_day
-from daily_digest.util import LOG, load_json, save_json, setup_logging
+from daily_digest.util import LOG, load_json, save_json, setup_logging, today_str
 
 
 def get_llm_client(config: Config):
@@ -85,6 +86,32 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
         if result.exit_code
         else LOG.info
     )("run: %s", message)
+    return result.exit_code
+
+
+def cmd_localize(config: Config, args: argparse.Namespace) -> int:
+    editor = get_llm_client(config)
+    result = localize_edition(
+        config,
+        args.date,
+        args.lang,
+        editor_client=editor,
+        writer_client=get_summarize_client(config, editor),
+        expect_count=getattr(args, "expect_count", None),
+        backup=not args.no_backup,
+        open_popup=not args.no_popup,
+        html_path=Path(args.path) if getattr(args, "path", None) else None,
+    )
+    message = result.message or (
+        f"{result.item_count} items ({result.mode}) -> {result.digest_path}"
+    )
+    (
+        LOG.error
+        if result.exit_code == 2
+        else LOG.warning
+        if result.exit_code
+        else LOG.info
+    )("localize: %s", message)
     return result.exit_code
 
 
@@ -406,6 +433,41 @@ def build_parser() -> argparse.ArgumentParser:
         help="content/UI language (vi, en, ja; ja-JP accepted); implies --force",
     )
 
+    localize = sub.add_parser(
+        "localize",
+        help="localize today's selected edition without fetching or re-ranking",
+    )
+    localize.add_argument(
+        "--date",
+        default=today_str(),
+        help="edition date (default: today; only today is writable)",
+    )
+    localize.add_argument(
+        "--lang",
+        type=_locale_arg,
+        required=True,
+        metavar="LOCALE",
+        help="target language (vi, en, ja; ja-JP accepted)",
+    )
+    localize.add_argument(
+        "--expect-count",
+        type=_digest_count,
+        default=None,
+        metavar="N",
+        help="abort unless the edition currently has N items",
+    )
+    localize.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="do not create a morning backup (bridge-owned backups)",
+    )
+    localize.add_argument(
+        "--no-popup",
+        action="store_true",
+        help="write the digest without opening a popup",
+    )
+    localize.add_argument("--path", default=None, help=argparse.SUPPRESS)
+
     demo = sub.add_parser("demo", help="render a bundled, no-key demo digest")
     demo.add_argument(
         "--no-open",
@@ -457,6 +519,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         handlers = {
             "run": cmd_run,
+            "localize": cmd_localize,
             "demo": cmd_demo,
             "smoke": cmd_smoke,
             "health": cmd_health,

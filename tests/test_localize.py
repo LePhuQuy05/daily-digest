@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 
@@ -15,6 +16,7 @@ from daily_digest.edition import (
     save_edition,
     with_artifact,
 )
+from daily_digest.cli import build_parser, cmd_localize
 from daily_digest.localize import localize_edition
 from daily_digest.model import RankedItem
 from daily_digest.overview import parse_overview
@@ -214,3 +216,46 @@ def test_localize_empty_edition_keeps_empty_mode(tmp_path):
     html = result.digest_path.read_text(encoding="utf-8")
     assert '<html lang="en"' in html
     assert '<div class="status-strip notice">' not in html
+
+
+def test_localize_cli_accepts_locale_and_count_and_dispatches(tmp_path, monkeypatch):
+    args = build_parser().parse_args(
+        ["localize", "--lang", "ja-JP", "--expect-count", "3"]
+    )
+    assert args.lang == "ja"
+    assert args.expect_count == 3
+    assert args.no_backup is False
+    assert args.no_popup is False
+
+    config = make_config(tmp_path)
+    captured: dict = {}
+
+    monkeypatch.setattr("daily_digest.cli.get_llm_client", lambda cfg: "editor")
+    monkeypatch.setattr(
+        "daily_digest.cli.get_summarize_client", lambda cfg, editor: "writer"
+    )
+
+    def fake_localize(*a, **kwargs):
+        captured.update(kwargs)
+        from daily_digest.model import RunResult
+
+        return RunResult(exit_code=0, item_count=3, mode="localized")
+
+    monkeypatch.setattr("daily_digest.cli.localize_edition", fake_localize)
+    rc = cmd_localize(
+        config,
+        argparse.Namespace(
+            date="2026-11-21",
+            lang="ja",
+            expect_count=3,
+            no_backup=True,
+            no_popup=True,
+            path=None,
+        ),
+    )
+    assert rc == 0
+    assert captured["editor_client"] == "editor"
+    assert captured["writer_client"] == "writer"
+    assert captured["expect_count"] == 3
+    assert captured["backup"] is False
+    assert captured["open_popup"] is False
