@@ -27,6 +27,9 @@
     <div class="masthead-top">
       <span class="edition">{{ t.edition }}</span>
       <div class="masthead-actions">
+        <select id="lang-switch" class="lang-switch" aria-label="{{ t.settings_language }}" title="{{ t.settings_language }}">
+          {% for code, label in languages %}<option value="{{ code }}"{% if code == locale %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
         <button class="act bridge-only masthead-action" id="saved-open" type="button" title="{{ t.masthead_saved_title }}">{{ t.masthead_saved }}</button>
         <button class="act bridge-only masthead-action" id="refresh-now" type="button" title="{{ t.masthead_refresh_title }}">{{ t.masthead_refresh }}</button>
         <button id="theme-toggle" class="theme-toggle" aria-label="{{ t.theme_toggle }}" title="{{ t.theme_toggle }}">
@@ -189,6 +192,43 @@
         var next = effective === "dark" ? "light" : "dark";
         applyTheme(next);
         try { localStorage.setItem(KEY, next); } catch (e2) { /* per-session only */ }
+      });
+    }
+
+    /* --- language switch: bridge rebuild, or pre-rendered demo files --- */
+    var langSwitch = document.getElementById("lang-switch");
+    if (langSwitch) {
+      langSwitch.addEventListener("change", function () {
+        var target = langSwitch.value;
+        var api = window.pywebview && window.pywebview.api ? window.pywebview.api : null;
+        if (api && api.settings && api.apply_settings) {
+          if (!window.confirm(mt("settings_drift_warning"))) {
+            langSwitch.value = document.documentElement.lang;
+            return;
+          }
+          langSwitch.disabled = true;
+          api.settings().then(function (res) {
+            if (!res || !res.ok) return null;
+            return api.apply_settings(res.size, target);
+          }).then(function (res) {
+            langSwitch.disabled = false;
+            if (!res || !res.ok) {
+              langSwitch.value = document.documentElement.lang;
+            } else if (!res.spawned) {
+              window.location.reload();
+            }
+          }).catch(function () {
+            langSwitch.disabled = false;
+            langSwitch.value = document.documentElement.lang;
+          });
+          return;
+        }
+        var file = (window.location.pathname.split("/").pop() || "").toLowerCase();
+        if (file.indexOf("demo") === 0) {
+          window.location.href = "demo-" + target + ".html";
+        } else {
+          langSwitch.value = document.documentElement.lang;
+        }
       });
     }
 

@@ -178,6 +178,7 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 The digest is complete in **Vietnamese (`vi`)**, **English (`en`)**, and **Japanese (`ja`)**. `vi` is the default.
 
 - In the popup, open **Cài đặt**, choose a language, then **Áp dụng**. One Apply saves size + language together, backs up the current edition first, and starts one rebuild.
+- The **masthead language selector** switches directly. In the desktop app it saves the preference and starts one rebuild (after the drift warning); in `daily-digest demo` it navigates between the pre-rendered `demo-vi.html`, `demo-en.html`, and `demo-ja.html` files.
 - `uv run daily-digest run --lang ja` is a one-off override. It implies `--force` and does not persist.
 - Precedence: `--lang` > `preferences.json.language` > legacy `llm.overview_language` > `vi`.
 - `ja-JP`, `JA`, and `ja_JP` normalize to `ja`; unknown values fail fast on the CLI and in settings.

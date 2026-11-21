@@ -417,9 +417,13 @@ def _demo_ranked(locale: str = "vi") -> list[RankedItem]:
 
 
 def render_demo(
-    config: Config, *, locale: str = "vi", open_browser: bool = True
+    config: Config,
+    *,
+    locale: str = "vi",
+    open_browser: bool = True,
+    filename: str = "demo.html",
 ) -> Path:
-    """Render `output/demo.html` from bundled fixtures and optionally open it."""
+    """Render a bundled demo file and optionally open it."""
     loc = normalize_locale(locale) or "vi"
     ranked = _demo_ranked(loc)
     overview = DEMO_OVERVIEWS[loc]
@@ -441,7 +445,7 @@ def render_demo(
         images={"demo:p1": _demo_image_asset()},
         locale=loc,
     )
-    path = config.output_dir / "demo.html"
+    path = config.output_dir / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_text(path, html)
     if open_browser:

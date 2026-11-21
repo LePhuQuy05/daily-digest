@@ -38,6 +38,21 @@ def test_demo_japanese_locale(tmp_path):
     assert "Chế độ demo" not in html
 
 
+def test_demo_writes_all_locale_files_for_ui_switcher(tmp_path):
+    import argparse
+
+    from daily_digest.cli import cmd_demo
+
+    config = make_config(tmp_path)
+    assert cmd_demo(config, argparse.Namespace(lang="ja", no_open=True)) == 0
+    for locale in ("vi", "en", "ja"):
+        path = config.output_dir / f"demo-{locale}.html"
+        html = path.read_text(encoding="utf-8")
+        assert f'<html lang="{locale}" dir="ltr">' in html
+        assert 'id="lang-switch"' in html
+        assert f'<option value="{locale}" selected>' in html
+
+
 def test_demo_does_not_need_network_or_a_key(tmp_path, monkeypatch):
     config = make_config(tmp_path)
 

@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - First-class Vietnamese (`vi`), English (`en`), and Japanese (`ja`) locales for UI chrome and generated content; `vi` remains the default.
 - `run --lang` and `demo --lang`; `ja-JP`, `JA`, and `ja_JP` normalize to `ja`. `--lang` is a one-off override and implies `--force`.
 - Combined size + language settings dialog. One Apply writes both preferences atomically, creates a unique morning backup first, and spawns one rebuild.
+- Masthead language selector for direct switching; demo mode navigates between pre-rendered vi/en/ja files.
 - Japanese typography and print rules, localized AI-summary label, toast body, dates, section titles, and heuristic fallbacks.
 
 ### Changed

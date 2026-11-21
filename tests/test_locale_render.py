@@ -66,6 +66,10 @@ def test_html_lang_and_dates_per_locale(tmp_path):
     assert "SATURDAY, 21.11.2026" in en
     assert '<html lang="ja" dir="ltr">' in ja
     assert "2026年11月21日（土）" in ja
+    assert 'id="lang-switch"' in ja
+    assert 'value="ja" selected' in ja
+    assert 'location.href = "demo-" + target + ".html"' in ja
+    assert "api.apply_settings(res.size, target)" in ja
 
 
 def test_section_titles_and_catalog_messages_per_locale(tmp_path):

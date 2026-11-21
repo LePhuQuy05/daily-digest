@@ -6,6 +6,7 @@ import argparse
 import os
 import secrets
 import sys
+import webbrowser
 from pathlib import Path
 
 from daily_digest.config import Config, ConfigError, load_config, redacted_config_dict
@@ -88,11 +89,26 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
 
 
 def cmd_demo(config: Config, args: argparse.Namespace) -> int:
+    locale = getattr(args, "lang", None) or "vi"
     path = render_demo(
         config,
-        locale=getattr(args, "lang", None) or "vi",
-        open_browser=not args.no_open,
+        locale=locale,
+        open_browser=False,
+        filename="demo.html",
     )
+    # Keep one fully rendered file per locale so the in-page switcher works
+    # even when the demo is opened in a plain browser (no pywebview bridge).
+    from daily_digest.i18n import SUPPORTED_LOCALES
+
+    for code in SUPPORTED_LOCALES:
+        render_demo(
+            config,
+            locale=code,
+            open_browser=False,
+            filename=f"demo-{code}.html",
+        )
+    if not args.no_open:
+        webbrowser.open(path.as_uri())
     print(f"demo: {path}")
     return 0
 
