@@ -30,6 +30,7 @@
         <select id="lang-switch" class="lang-switch" aria-label="{{ t.settings_language }}" title="{{ t.settings_language }}">
           {% for code, label in languages %}<option value="{{ code }}"{% if code == locale %} selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
+        <span id="lang-status" class="lang-status" role="status" aria-live="polite" hidden></span>
         <button class="act bridge-only masthead-action" id="saved-open" type="button" title="{{ t.masthead_saved_title }}">{{ t.masthead_saved }}</button>
         <button class="act bridge-only masthead-action" id="refresh-now" type="button" title="{{ t.masthead_refresh_title }}">{{ t.masthead_refresh }}</button>
         <button id="theme-toggle" class="theme-toggle" aria-label="{{ t.theme_toggle }}" title="{{ t.theme_toggle }}">
@@ -197,6 +198,7 @@
 
     /* --- language switch: bridge rebuild, or pre-rendered demo files --- */
     var langSwitch = document.getElementById("lang-switch");
+    var langStatus = document.getElementById("lang-status");
     if (langSwitch) {
       langSwitch.addEventListener("change", function () {
         var target = langSwitch.value;
@@ -207,17 +209,31 @@
             return;
           }
           langSwitch.disabled = true;
+          if (langStatus) {
+            langStatus.textContent = mt("settings_updating");
+            langStatus.hidden = false;
+          }
           api.set_language(target).then(function (res) {
             langSwitch.disabled = false;
             if (!res || !res.ok) {
               langSwitch.value = document.documentElement.lang;
+              if (langStatus) {
+                langStatus.textContent =
+                  (res && res.error) || mt("settings_error_save");
+              }
+            } else if (langStatus) {
+              langStatus.textContent = mt("settings_updating");
             }
           }).catch(function () {
             langSwitch.disabled = false;
             langSwitch.value = document.documentElement.lang;
+            if (langStatus) {
+              langStatus.textContent = mt("settings_error_save");
+            }
           });
           return;
         }
+        if (langStatus) langStatus.hidden = true;
         var file = (window.location.pathname.split("/").pop() || "").toLowerCase();
         if (file.indexOf("demo") === 0) {
           window.location.href = "demo-" + target + ".html";
@@ -530,6 +546,7 @@
       }
       var disabled = sizeState.busy || !sizeState.can_change;
       var languageChanged = sizeLanguage && sizeLanguage.value !== sizeState.language;
+      var sizeChanged = !isSizeUnchanged();
       if (sizeMinus) sizeMinus.disabled = disabled || sizeState.value <= sizeState.min;
       if (sizePlus) sizePlus.disabled = disabled || sizeState.value >= sizeState.max;
       if (sizeApply) {
@@ -540,6 +557,8 @@
         var warning = "";
         if (sizeState.archived) {
           warning = mt("settings_archived");
+        } else if (sizeChanged) {
+          warning = mt("settings_size_warning");
         } else if (languageChanged) {
           warning = mt("settings_drift_warning");
         } else if (!sizeState.has_key) {
