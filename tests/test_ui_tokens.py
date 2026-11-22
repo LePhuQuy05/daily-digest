@@ -496,13 +496,19 @@ def test_section_more_band_print_and_action_contract():
     assert story_print is not None
     assert "display: block" in story_print.group(1)
     assert "break-inside: avoid" in story_print.group(1)
-    assert ".more-head { break-after: avoid; }" in print_block
+    assert ".section-more .more-head { break-after: avoid; }" in print_block
+
+    story = re.search(r"\.section-more \.story--more \{([^}]*)\}", css)
+    assert story is not None
+    assert "grid-template-columns: minmax(0, 1fr) 112px" in story.group(1)
 
     act = re.search(r"\.section-more \.story--more \.act \{([^}]*)\}", css)
     assert act is not None
     assert "width: 32px" in act.group(1)
     assert "min-width: 32px" in act.group(1)
     assert "height: 32px" in act.group(1)
+    assert not re.search(r"(?m)^\.more-head\b", css)
+    assert not re.search(r"(?m)^\.more-count\b", css)
     assert "@media (max-width: 920px)" in css
 
 

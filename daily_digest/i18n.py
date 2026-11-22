@@ -50,6 +50,9 @@ class LocaleError(ValueError):
     """Invalid locale code."""
 
 
+# Deliberate deviation: `section_more_count` is separate from `section_count`
+# so English can say "1 more" instead of the existing "1 stories". `section_count`
+# remains the contract for section totals.
 _VI: dict[str, str] = {
     "edition": "BẢN TIN AI",
     "masthead_saved": "Đã lưu",

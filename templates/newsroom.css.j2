@@ -351,15 +351,15 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 
 /* Section-tail index: overflow briefs become a full-width, compact band. */
 .section-more { margin-top: 22px; padding-top: 10px; border-top: 3px solid var(--rule-strong); }
-.more-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
-.more-head h3 { margin: 0; font: 700 11px/1.4 var(--font-sans);
+.section-more .more-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
+.section-more .more-head h3 { margin: 0; font: 700 11px/1.4 var(--font-sans);
                 letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
-.more-count { margin-left: auto; color: var(--ink-3); font: 500 10.5px/1.4 var(--font-sans);
+.section-more .more-count { margin-left: auto; color: var(--ink-3); font: 500 10.5px/1.4 var(--font-sans);
               letter-spacing: 0.08em; text-transform: uppercase; }
 .section-more .more-list { display: grid;
                            grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
                            column-gap: 28px; align-items: start; grid-auto-rows: min-content; }
-.section-more .story--more { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+.section-more .story--more { display: grid; grid-template-columns: minmax(0, 1fr) 112px;
                              grid-template-areas: "title actions" "meta actions" "ask ask";
                              align-items: start; min-width: 0; padding: 10px 0;
                              border-top: 1px solid var(--rule); }
@@ -368,11 +368,12 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
                                    gap: 3px 10px; }
 .section-more .story--more .actions { grid-area: actions; margin-top: 0;
                                       justify-content: flex-end; flex-wrap: nowrap;
-                                      gap: 4px; min-width: 112px; }
+                                      gap: 4px; }
 .section-more .story--more .ask { grid-area: ask; margin-top: 6px;
                                   border-top: 1px dashed var(--rule); padding-top: 5px; }
 .section-more .story--more .ask summary { font-size: 11px; }
 .section-more .story--more:last-child:nth-child(odd) { grid-column: 1 / -1; }
+body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0, 1fr); }
 
 @media (max-width: 920px) {
   .section-more .more-list { grid-template-columns: 1fr; }
@@ -624,7 +625,7 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     .briefs { column-count: 2; column-gap: 6mm; }
     .lead-col > .more-list { column-count: 1; }
     .section-more { break-inside: auto; }
-    .more-head { break-after: avoid; }
+    .section-more .more-head { break-after: avoid; }
     .section-more .more-list { display: block; column-count: 2; column-gap: 6mm; }
     .section-more .story--more { display: block; break-inside: avoid; }
     .story--brief { break-inside: avoid; border-top: 1px solid #ccc; padding: 2mm 0; }
