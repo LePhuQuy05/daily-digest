@@ -143,6 +143,9 @@ def parse_feed(xml_text: str, entry: FeedEntry, topics: list[str]) -> list[Item]
         title = clean_html(_child_text(node, "title"))
         if not title:
             continue
+        lowered = title.lower()
+        if any(needle.lower() in lowered for needle in entry.exclude):
+            continue
         url = _link(node).strip()
         if not url.lower().startswith(("http://", "https://")):
             continue

@@ -157,6 +157,7 @@ class FeedEntry:
     max_items: int = 3
     max_age_days: int = 14
     require_topic: bool = False
+    exclude: tuple[str, ...] = ()  # case-insensitive title blocks
     hydrate: bool = False  # fetch the article's meta description when summary is thin
 
     def __post_init__(self) -> None:
@@ -225,6 +226,50 @@ def _default_feeds() -> list[FeedEntry]:
             "Hugging Face",
             max_items=3,
             hydrate=True,
+        ),
+        # --- independent research / engineering blogs (2026-11-22) ---------
+        FeedEntry(
+            "epoch_ai",
+            "https://epoch.ai/atom.xml",
+            "Epoch AI",
+            max_items=2,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "apple_ml",
+            "https://machinelearning.apple.com/rss.xml",
+            "Apple ML",
+            max_items=3,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "ai2_blog",
+            "https://allenai.org/rss.xml",
+            "Ai2",
+            max_items=2,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "vllm_blog",
+            "https://vllm.ai/blog/rss.xml",
+            "vLLM",
+            max_items=2,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "pytorch_blog",
+            "https://pytorch.org/blog/feed.xml",
+            "PyTorch",
+            max_items=2,
+            max_age_days=14,
+            require_topic=True,
+            exclude=(
+                "contributor award",
+                "ambassador community",
+                "call for proposals",
+                "community highlights",
+                "winners and nominees",
+            ),
         ),
         # --- reputable tech press (AI-specific unless require_topic) --------
         FeedEntry(
@@ -376,6 +421,17 @@ class FeedsCfg:
             "computer vision",
             "generative",
             "open source",
+            "kernel",
+            "serving",
+            "quantization",
+            "RLHF",
+            "reasoning",
+            "evaluation",
+            "diffusion",
+            "3D",
+            "MoE",
+            "distributed training",
+            "reinforcement learning",
         ]
     )
     entries: list[FeedEntry] = field(default_factory=_default_feeds)

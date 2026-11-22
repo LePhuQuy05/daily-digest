@@ -110,6 +110,18 @@ def test_parse_tools_skips_prereleases_and_sets_section_hint():
     assert "Stable release" in items[0].summary
 
 
+def test_feed_exclude_filters_case_insensitive_titles():
+    entry = FeedEntry(
+        "lab",
+        "https://example.test/rss",
+        exclude=("GEMINI BENCHMARK",),
+    )
+
+    items = parse_feed(_rss(), entry, ["AI", "LLM"])
+
+    assert [item.title for item in items] == ["OpenAI ships an agents API"]
+
+
 @respx.mock
 def test_fetch_feeds_hydrates_a_thin_summary_from_meta_description(monkeypatch):
     monkeypatch.setattr("daily_digest.net.host_is_public", lambda host: True)
@@ -173,11 +185,45 @@ def test_default_feed_list_is_enabled_and_curated(tmp_path):
     names = {entry.name for entry in config.sources.feeds.entries}
 
     assert config.sources.feeds.enabled is True
-    assert len(config.sources.feeds.entries) >= 20
-    assert {"openai_news", "the_verge_ai", "gh_vllm"} <= names
+    assert len(config.sources.feeds.entries) >= 25
+    assert {
+        "openai_news",
+        "the_verge_ai",
+        "gh_vllm",
+        "epoch_ai",
+        "apple_ml",
+        "ai2_blog",
+        "vllm_blog",
+        "pytorch_blog",
+    } <= names
     assert all(
         entry.url.startswith("https://") for entry in config.sources.feeds.entries
     )
+
+
+def test_source_expansion_feeds_are_bounded_and_labelled(tmp_path):
+    config = load_config(tmp_path / "missing.yaml")
+    entries = {entry.name: entry for entry in config.sources.feeds.entries}
+    expected = {
+        "epoch_ai": ("https://epoch.ai/atom.xml", 2, False),
+        "apple_ml": ("https://machinelearning.apple.com/rss.xml", 3, False),
+        "ai2_blog": ("https://allenai.org/rss.xml", 2, False),
+        "vllm_blog": ("https://vllm.ai/blog/rss.xml", 2, False),
+        "pytorch_blog": ("https://pytorch.org/blog/feed.xml", 2, True),
+    }
+    for name, (url, cap, require_topic) in expected.items():
+        entry = entries[name]
+        assert entry.url == url
+        assert entry.section == "tech_news"
+        assert entry.max_items == cap
+        assert entry.require_topic is require_topic
+    assert "contributor award" in entries["pytorch_blog"].exclude
+    labels = labels_for(config)
+    assert labels["epoch_ai"] == "Epoch AI"
+    assert labels["apple_ml"] == "Apple ML"
+    assert labels["ai2_blog"] == "Ai2"
+    assert labels["vllm_blog"] == "vLLM"
+    assert labels["pytorch_blog"] == "PyTorch"
 
 
 def test_yaml_can_override_the_feed_list(tmp_path):

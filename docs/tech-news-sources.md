@@ -18,7 +18,7 @@ it is no longer the only non-paper source.
 - **Real summaries** — when a feed carries only a title, fetch the article's
   meta description or first substantive paragraph (bounded, best-effort).
 
-## Chosen feeds (20)
+## Chosen feeds (25)
 
 | Group | Source key | Feed | Section | Cap / age |
 | --- | --- | --- | --- | --- |
@@ -28,6 +28,11 @@ it is no longer the only non-paper source.
 | Lab | `google_research` | https://research.google/blog/rss/ | tech_news | 3 / 14d |
 | Lab | `microsoft_research` | https://www.microsoft.com/en-us/research/feed/ | tech_news | 3 / 14d |
 | Lab | `huggingface_blog` | https://huggingface.co/blog/feed.xml | tech_news | 3 / 14d |
+| Research | `epoch_ai` | https://epoch.ai/atom.xml | tech_news | 2 / 21d |
+| Research | `apple_ml` | https://machinelearning.apple.com/rss.xml | tech_news | 3 / 21d |
+| Research | `ai2_blog` | https://allenai.org/rss.xml | tech_news | 2 / 21d |
+| Engineering | `vllm_blog` | https://vllm.ai/blog/rss.xml | tech_news | 2 / 21d |
+| Engineering | `pytorch_blog` | https://pytorch.org/blog/feed.xml | tech_news | 2 / 14d + topic/exclude |
 | Press | `the_verge_ai` | https://www.theverge.com/rss/ai-artificial-intelligence/index.xml | tech_news | 4 / 7d |
 | Press | `ieee_spectrum_ai` | https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss | tech_news | 4 / 14d |
 | Press | `ars_technica` | https://feeds.arstechnica.com/arstechnica/technology-lab | tech_news | 3 / 7d + AI filter |
@@ -101,6 +106,32 @@ Notes:
 - Repeated live probes tripped arXiv's 429 limit for alphaXiv's metadata call.
   alphaXiv now logs and skips on a metadata 429/timeout instead of marking the
   whole digest degraded; the feeds themselves delivered all 48 items.
+
+## 2026-11-22 expansion: research and engineering feeds
+
+Added five feeds from the source-expansion research:
+
+- `epoch_ai` — quantitative compute/inference/chip analysis.
+- `apple_ml` — Apple Machine Learning research.
+- `ai2_blog` — Ai2 open-model and benchmark research.
+- `vllm_blog` — inference/serving engineering, distinct from vLLM releases.
+- `pytorch_blog` — training/systems engineering; `require_topic=True` plus a
+  title `exclude` list removes contributor-award/ambassador/community posts.
+
+All five are official keyless Atom/RSS feeds and return `tech_news`; the current
+`FeedEntry` schema does not allow a blog feed to target the `papers` section.
+Live verification on 2026-11-22:
+
+```text
+feeds: 25/25 healthy
+epoch_ai: 2 items
+apple_ml: 3 items
+ai2_blog: 2 items
+vllm_blog: 2 items
+pytorch_blog: 2 items (technical posts after exclude)
+```
+
+Full suite after the expansion: **534 passed**.
 
 ## Sprint follow-up: HN hydration, diversity, feed health (2026-11-19)
 
