@@ -21,6 +21,7 @@ The README is the tour; these notes are the details.
 - [UI redesign](ui-redesign-plan.md) — tokens, typography, contrast, print
 - [Newsroom front page](news-ui-redesign-plan.md) — editorial layout and interaction decisions
 - [News UI research](research/news-ui.md) — reference analysis for the front page
+- [Source expansion research](research/source-expansion-2026-11-22.md)
 - [Article images](article-images-research.md) — image suitability and layout research
 
 ## Implementation plans
