@@ -86,6 +86,8 @@
   {% for section in front_page.sections %}
   {% set section_key = section.key %}
   {% set shown = (1 if section.lead else 0) + (section.briefs | length) %}
+  {% set more_items = section.briefs[6:] %}
+  {% set more_count = (section.briefs | length) - 6 %}
   {% set section_variant = "empty" if section.total == 0 else ("hero-only" if section.lead is none else ("band" if section.briefs | length == 0 else ("split" if section.briefs | length <= 3 else "grid"))) %}
   <section class="section-front sec-{{ section_key }} section-front--{{ section_variant }}" id="{{ section_key | replace('_', '-') }}">
     <div class="section-head">
@@ -102,11 +104,6 @@
     <div class="section-body">
       <div class="lead-col">
         {{ story(section.lead, "lead") }}
-        {% if section.briefs | length > 6 %}
-        <div class="more-list">
-          {% for r in section.briefs[6:] %}{{ story(r, "more") }}{% endfor %}
-        </div>
-        {% endif %}
       </div>
       {% if section.briefs %}
       <div class="briefs">
@@ -114,6 +111,18 @@
       </div>
       {% endif %}
     </div>
+    {% if more_items %}
+    <div class="section-more{% if more_items|length == 1 %} section-more--single{% endif %}"
+         role="group" aria-labelledby="more-{{ section_key | replace('_','-') }}">
+      <div class="more-head">
+        <h3 id="more-{{ section_key | replace('_','-') }}">{{ t.section_more }}</h3>
+        <span class="more-count">{{ t.section_more_count.format(n=more_count) }}</span>
+      </div>
+      <div class="more-list">
+        {% for r in more_items %}{{ story(r, "more") }}{% endfor %}
+      </div>
+    </div>
+    {% endif %}
     {% endif %}
   </section>
   {% endfor %}

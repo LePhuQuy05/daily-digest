@@ -482,6 +482,30 @@ class TestDigestSizeDialog:
         assert ".size-trigger" in print_block
 
 
+def test_section_more_band_print_and_action_contract():
+    css = _css()
+    print_block = css.split("@media print", 1)[1]
+
+    more_print = re.search(r"\.section-more \.more-list \{([^}]*)\}", print_block)
+    assert more_print is not None
+    assert "display: block" in more_print.group(1)
+    assert "column-count: 2" in more_print.group(1)
+    assert "column-gap: 6mm" in more_print.group(1)
+
+    story_print = re.search(r"\.section-more \.story--more \{([^}]*)\}", print_block)
+    assert story_print is not None
+    assert "display: block" in story_print.group(1)
+    assert "break-inside: avoid" in story_print.group(1)
+    assert ".more-head { break-after: avoid; }" in print_block
+
+    act = re.search(r"\.section-more \.story--more \.act \{([^}]*)\}", css)
+    assert act is not None
+    assert "width: 32px" in act.group(1)
+    assert "min-width: 32px" in act.group(1)
+    assert "height: 32px" in act.group(1)
+    assert "@media (max-width: 920px)" in css
+
+
 class TestStoryReferenceInteraction:
     def test_story_cards_are_focusable_and_have_scroll_flash_js(self, tmp_path):
         html = _html(tmp_path)

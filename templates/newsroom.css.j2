@@ -345,9 +345,43 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .story--brief:first-child { border-top: 0; padding-top: 0; }
 .story--lead { padding: 0; }
 .section-front--grid .briefs { grid-template-columns: 1fr; }
-.more-list { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--rule); }
-.more-list .story { padding: 7px 0; border-top: 1px solid var(--rule); }
-.more-list .story:first-child { border-top: 0; }
+.lead-col > .more-list { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--rule); }
+.lead-col > .more-list .story { padding: 7px 0; border-top: 1px solid var(--rule); }
+.lead-col > .more-list .story:first-child { border-top: 0; }
+
+/* Section-tail index: overflow briefs become a full-width, compact band. */
+.section-more { margin-top: 22px; padding-top: 10px; border-top: 3px solid var(--rule-strong); }
+.more-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
+.more-head h3 { margin: 0; font: 700 11px/1.4 var(--font-sans);
+                letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.more-count { margin-left: auto; color: var(--ink-3); font: 500 10.5px/1.4 var(--font-sans);
+              letter-spacing: 0.08em; text-transform: uppercase; }
+.section-more .more-list { display: grid;
+                           grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+                           column-gap: 28px; align-items: start; grid-auto-rows: min-content; }
+.section-more .story--more { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+                             grid-template-areas: "title actions" "meta actions" "ask ask";
+                             align-items: start; min-width: 0; padding: 10px 0;
+                             border-top: 1px solid var(--rule); }
+.section-more .story--more .story-title { grid-area: title; font-size: 15.5px; line-height: 1.3; }
+.section-more .story--more .meta { grid-area: meta; margin-top: 4px; font-size: 11px;
+                                   gap: 3px 10px; }
+.section-more .story--more .actions { grid-area: actions; margin-top: 0;
+                                      justify-content: flex-end; flex-wrap: nowrap;
+                                      gap: 4px; min-width: 112px; }
+.section-more .story--more .ask { grid-area: ask; margin-top: 6px;
+                                  border-top: 1px dashed var(--rule); padding-top: 5px; }
+.section-more .story--more .ask summary { font-size: 11px; }
+.section-more .story--more:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+@media (max-width: 920px) {
+  .section-more .more-list { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .section-more .story--more { grid-template-columns: 1fr;
+                               grid-template-areas: "title" "meta" "actions" "ask"; }
+  .section-more .story--more .actions { justify-content: flex-start; }
+}
 .empty-note, .section-note { margin: 0; padding: 12px 0; border-top: 1px solid var(--rule);
                              color: var(--ink-3); font: 13px/1.5 var(--font-sans); }
 .section-note a { color: var(--red); text-decoration: none; }
@@ -493,6 +527,8 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
   .act.active { background: var(--accent-soft); border-color: var(--accent);
                 color: var(--accent-strong); }
   .act.failed { border-color: var(--danger); color: var(--danger); }
+  .section-more .story--more .act { width: 32px; min-width: 32px; height: 32px; padding: 0; }
+  .section-more .story--more .act span { display: none; }
   .icon { width: 17px; height: 17px; stroke: currentColor; fill: none;
           stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
   .icon-sm { width: 15px; height: 15px; stroke: currentColor; fill: none;
@@ -586,7 +622,11 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
     .section-body { display: block; }
     .section-body .briefs { border-left: 0; border-right: 0; }
     .briefs { column-count: 2; column-gap: 6mm; }
-    .more-list { column-count: 1; }
+    .lead-col > .more-list { column-count: 1; }
+    .section-more { break-inside: auto; }
+    .more-head { break-after: avoid; }
+    .section-more .more-list { display: block; column-count: 2; column-gap: 6mm; }
+    .section-more .story--more { display: block; break-inside: avoid; }
     .story--brief { break-inside: avoid; border-top: 1px solid #ccc; padding: 2mm 0; }
     .story--brief:first-child { border-top: 0; padding-top: 0; }
     .empty-note, .section-note { border-top: 1px solid #999; color: #555; }

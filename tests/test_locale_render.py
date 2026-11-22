@@ -30,10 +30,26 @@ def _ranked() -> list[RankedItem]:
     ]
 
 
-def _html(tmp_path, locale: str) -> str:
+def _many_papers() -> list[RankedItem]:
+    return [
+        RankedItem(
+            item=make_item(
+                id=f"arxiv:2611.{i:05d}",
+                title=f"Paper {i}",
+                url=f"https://arxiv.org/abs/2611.{i:05d}",
+                source="arxiv",
+            ),
+            why="why",
+            section="papers",
+        )
+        for i in range(10)
+    ]
+
+
+def _html(tmp_path, locale: str, ranked=None) -> str:
     config = make_config(tmp_path)
     return render_digest(
-        _ranked(),
+        _ranked() if ranked is None else ranked,
         date="2026-11-21",
         mode="llm",
         degraded=False,
@@ -85,6 +101,19 @@ def test_section_titles_and_catalog_messages_per_locale(tmp_path):
     assert _messages(en)["story_save"] == "Save"
     assert _messages(ja)["story_save"] == "保存"
     assert _messages(ja)["overview_takeaway_marker"] == "要点:"
+
+
+def test_more_band_label_and_count_per_locale(tmp_path):
+    vi = _html(tmp_path / "vi", "vi", _many_papers())
+    en = _html(tmp_path / "en", "en", _many_papers())
+    ja = _html(tmp_path / "ja", "ja", _many_papers())
+
+    assert "Còn lại trong mục" in vi
+    assert "More in this section" in en
+    assert "このセクションの続き" in ja
+    assert "1 bài" in vi
+    assert "1 more" in en
+    assert "1件" in ja
 
 
 def test_chrome_has_no_cross_locale_sentinels(tmp_path):

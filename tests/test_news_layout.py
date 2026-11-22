@@ -159,6 +159,68 @@ def test_empty_digest_renders_without_crash(tmp_path):
     assert not re.search(r"<button[^>]*data-feedback=", html)
 
 
+def _all_in_section(section: str, count: int, source: str) -> list[RankedItem]:
+    return [_item(f"{section}:{i}", section, source) for i in range(count)]
+
+
+def test_more_band_follows_section_body_and_is_labelled(tmp_path):
+    html = _render(tmp_path, _all_in_section("papers", 30, "arxiv"))
+    papers = _section(html, "papers")
+    lead_start = papers.index('class="lead-col"')
+    briefs_start = papers.index('class="briefs"')
+    band_start = papers.index('class="section-more')
+
+    assert papers.index('class="section-body"') < band_start
+    assert briefs_start < band_start
+    assert "more-list" not in papers[lead_start:briefs_start]
+    assert 'role="group"' in papers
+    assert 'id="more-papers"' in papers
+    assert 'aria-labelledby="more-papers"' in papers
+    assert '<h3 id="more-papers">' in papers
+
+
+def test_more_band_counts_at_boundaries(tmp_path):
+    thirty = _section(
+        _render(tmp_path, _all_in_section("papers", 30, "arxiv")), "papers"
+    )
+    ten = _section(_render(tmp_path, _all_in_section("papers", 10, "arxiv")), "papers")
+    nine = _section(_render(tmp_path, _all_in_section("papers", 9, "arxiv")), "papers")
+
+    assert thirty.count('class="story story--brief"') == 6
+    assert thirty.count('class="story story--more"') == 21
+    assert thirty.count('class="section-more') == 1
+    assert "21 bài" in thirty
+
+    assert ten.count('class="story story--more"') == 1
+    assert ten.count('class="section-more') == 1
+    assert "1 bài" in ten
+
+    assert nine.count('class="story story--more"') == 0
+    assert nine.count('class="section-more') == 0
+
+
+def test_more_band_keeps_unique_headings_and_interactions(tmp_path):
+    ranked = (
+        _all_in_section("papers", 10, "arxiv")
+        + _all_in_section("tech_news", 10, "hn")
+        + _all_in_section("tools_releases", 10, "gh_vllm")
+    )
+    html = _render(tmp_path, ranked)
+
+    assert html.count('class="section-more') == 3
+    for section, key in (
+        ("papers", "more-papers"),
+        ("tech_news", "more-tech-news"),
+        ("tools_releases", "more-tools-releases"),
+    ):
+        part = _section(html, section)
+        assert part.count(f'id="{key}"') == 1
+        assert part.count(f'aria-labelledby="{key}"') == 1
+    assert html.count('data-ask="1"') == len(ranked)
+    assert len(re.findall(r"<button[^>]*data-feedback=", html)) == len(ranked) * 3
+    assert html.count('id="story-') == len(ranked)
+
+
 def test_most_read_rail_has_no_duplicate_feedback(tmp_path):
     ranked = _real_mix()
     html = _render(tmp_path, ranked)

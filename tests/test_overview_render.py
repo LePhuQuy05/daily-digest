@@ -105,6 +105,33 @@ def test_structured_overview_has_no_raw_markers_when_all_invalid(tmp_path):
     assert html.count('class="oref"') == len(ranked)  # rest covers all
 
 
+def test_overview_ref_can_target_an_item_in_the_more_band(tmp_path):
+    ranked = [
+        RankedItem(
+            item=make_item(
+                id=f"arxiv:2611.{i:05d}",
+                title=f"Paper {i}: A useful title",
+                url=f"https://arxiv.org/abs/2611.{i:05d}",
+                source="arxiv",
+            ),
+            why=f"why {i}",
+            section="papers",
+        )
+        for i in range(10)
+    ]
+    target = ranked[-1]
+    text = "Bài [[9]]."
+    points = ensure_coverage(parse_overview(text, ranked), ranked)
+
+    html = _render(tmp_path, ranked, overview=text, points=points)
+
+    assert f'href="#story-{target.item.id}"' in html
+    assert f'data-story-ref="{target.item.id}"' in html
+    assert f'id="story-{target.item.id}"' in html
+    more_start = html.index('class="section-more')
+    assert f'id="story-{target.item.id}"' in html[more_start:]
+
+
 def test_print_hides_references_and_rest():
     from daily_digest.util import PROJECT_ROOT
 
