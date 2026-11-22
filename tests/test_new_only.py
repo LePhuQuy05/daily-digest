@@ -105,6 +105,95 @@ def test_new_only_backfill_fills_to_top_n(tmp_path, monkeypatch):
     assert result.item_count == 5  # 2 unseen + 3 backfilled notable items
 
 
+def test_backfill_fills_short_digest_without_dropping_today(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    config.llm.top_n = 5
+    items = [
+        _paper("2611.10001", "Today one"),
+        _paper("2611.10002", "Today two"),
+        _paper("2611.20001", "Prev one"),
+        _paper("2611.20002", "Prev two"),
+        _paper("2611.20003", "Prev three"),
+    ]
+    _seed(
+        config,
+        {
+            "arxiv:2611.10001": DATE,
+            "arxiv:2611.10002": DATE,
+            "arxiv:2611.20001": "2026-11-18",
+            "arxiv:2611.20002": "2026-11-17",
+            "arxiv:2611.20003": "2026-11-16",
+        },
+    )
+    _patch(monkeypatch, items)
+
+    result = run_day(
+        config,
+        DATE,
+        llm_client=FakeLlmClient(llm_ok_json(8)),
+        force=True,
+        backfill=True,
+        notify_fn=lambda *a, **k: None,
+    )
+
+    assert result.exit_code == 0
+    assert result.item_count == 5
+    html = result.digest_path.read_text(encoding="utf-8")
+    for title in (
+        "Today one",
+        "Today two",
+        "Prev one",
+        "Prev two",
+        "Prev three",
+    ):
+        assert title in html
+    state = json.loads(config.state_path.read_text(encoding="utf-8"))
+    assert state["seen"]["arxiv:2611.20001"] == DATE
+
+
+def test_backfill_fills_editor_shortfall_from_previous_days(tmp_path, monkeypatch):
+    config = make_config(tmp_path)
+    config.llm.top_n = 5
+    items = [
+        _paper("2611.10001", "Today one"),
+        _paper("2611.10002", "Today two"),
+        _paper("2611.10003", "Today three"),
+        _paper("2611.10004", "Today four"),
+        _paper("2611.10005", "Today five"),
+        _paper("2611.20001", "Prev one"),
+        _paper("2611.20002", "Prev two"),
+        _paper("2611.20003", "Prev three"),
+    ]
+    _seed(
+        config,
+        {
+            "arxiv:2611.10001": DATE,
+            "arxiv:2611.10002": DATE,
+            "arxiv:2611.10003": DATE,
+            "arxiv:2611.10004": DATE,
+            "arxiv:2611.10005": DATE,
+            "arxiv:2611.20001": "2026-11-18",
+            "arxiv:2611.20002": "2026-11-17",
+            "arxiv:2611.20003": "2026-11-16",
+        },
+    )
+    _patch(monkeypatch, items)
+
+    result = run_day(
+        config,
+        DATE,
+        llm_client=FakeLlmClient(llm_ok_json(3)),
+        force=True,
+        backfill=True,
+        notify_fn=lambda *a, **k: None,
+    )
+
+    assert result.exit_code == 0
+    assert result.item_count == 5
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert "Prev one" in html or "Prev two" in html or "Prev three" in html
+
+
 def test_new_only_zero_unseen_leaves_state_and_artifacts_untouched(
     tmp_path, monkeypatch
 ):
@@ -191,3 +280,31 @@ def test_run_cli_accepts_new_only_and_implies_force(tmp_path, monkeypatch):
     assert exit_code == 0
     assert captured["new_only"] is True
     assert captured["force"] is True  # new-only must bypass the delivered-day skip
+
+
+def test_run_cli_accepts_backfill_and_implies_force(tmp_path, monkeypatch):
+    args = build_parser().parse_args(["run", "--backfill"])
+    assert args.backfill is True
+
+    config = make_config(tmp_path)
+    captured: dict = {}
+
+    def fake_run(*a, **kwargs):
+        captured.update(kwargs)
+        return RunResult(exit_code=0)
+
+    monkeypatch.setattr("daily_digest.cli.run_day", fake_run)
+    exit_code = cmd_run(
+        config,
+        argparse.Namespace(
+            date=None,
+            force=False,
+            new_only=False,
+            backfill=True,
+            no_notify=True,
+        ),
+    )
+
+    assert exit_code == 0
+    assert captured["backfill"] is True
+    assert captured["force"] is True

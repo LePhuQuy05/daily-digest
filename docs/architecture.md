@@ -31,7 +31,7 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 2. **Fetch** — source adapters run with bounded timeouts; failures are collected per source.
 3. **Normalize and merge** — items are canonicalized; the same paper from multiple sources becomes one item with provenance.
 4. **Filter and enrich** — the 7-day seen-set removes repeats; OpenAlex adds citation counts.
-5. **Rank** — the editor LLM selects the requested 1–30 items (default 12) and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable. A user size change reruns this stage and the writer, with a morning-digest backup before overwriting today's edition.
+5. **Rank** - the editor LLM selects the requested 1-30 items (default 12) and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable. A user size change reruns this stage and the writer, with a morning-digest backup before overwriting today's edition. If fewer fresh items (or fewer editor picks) are available, the size-change/backfill path tops up from notable previous-day items.
 6. **Summarize** — the writer LLM adds 2–3 sentence summaries and the day overview; raw abstracts and a heuristic overview are the fallback.
 7. **Render and deliver** — Jinja produces one self-contained HTML file; the popup and toast open it.
 

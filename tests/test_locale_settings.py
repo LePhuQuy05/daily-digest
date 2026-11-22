@@ -53,11 +53,34 @@ def test_apply_settings_saves_both_backs_up_and_spawns_one(tmp_path):
     assert result["saved"] is True
     assert result["spawned"] is True
     assert result["language"] == "ja"
-    assert calls == [["run", "--force", "--count", "16", "--lang", "ja"]]
+    assert calls == [["run", "--force", "--count", "16", "--lang", "ja", "--backfill"]]
     stored = json.loads(config.preferences_path.read_text(encoding="utf-8"))
     assert stored == {"digest_size": 16, "language": "ja"}
     backup = config.output_dir / f"digest-{day}-morning.html"
     assert backup.read_text(encoding="utf-8") == "OLD DIGEST"
+
+
+def test_apply_settings_respawns_short_digest_with_backfill(tmp_path):
+    config = make_config(tmp_path)
+    day = today_str()
+    source = config.output_dir / f"digest-{day}.html"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("SHORT DIGEST", encoding="utf-8")
+    config.preferences_path.write_text(
+        json.dumps({"digest_size": 30, "language": "vi"}), encoding="utf-8"
+    )
+    calls: list[list[str]] = []
+    bridge = _bridge(
+        config,
+        items={f"item:{i}": {} for i in range(16)},
+        spawn=lambda args: calls.append(args) or True,
+    )
+
+    result = bridge.apply_settings(30, "vi")
+
+    assert result["ok"] is True
+    assert result["spawned"] is True
+    assert calls == [["run", "--force", "--count", "30", "--lang", "vi", "--backfill"]]
 
 
 def test_apply_settings_uses_next_unique_backup(tmp_path):

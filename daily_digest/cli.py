@@ -65,8 +65,15 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
         http=httpx.Client(timeout=30.0, follow_redirects=True),
         llm_client=editor,
         summary_client=get_summarize_client(config, editor),
-        force=args.force or args.new_only or count is not None or language is not None,
+        force=(
+            args.force
+            or args.new_only
+            or getattr(args, "backfill", False)
+            or count is not None
+            or language is not None
+        ),
         new_only=args.new_only,
+        backfill=getattr(args, "backfill", False),
         notify_enabled=not args.no_notify,
         target=count,
         language=language,
@@ -422,6 +429,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--new-only",
         action="store_true",
         help="refresh with only unseen items (backfills from previous days if short)",
+    )
+    run.add_argument(
+        "--backfill",
+        action="store_true",
+        help="fill a short digest with notable items from previous days",
     )
     run.add_argument(
         "--no-notify", action="store_true", help="skip the toast (testing)"

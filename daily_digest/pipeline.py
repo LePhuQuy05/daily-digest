@@ -44,6 +44,7 @@ from daily_digest.ranking.heuristic import (
     balanced_pool,
     heuristic_order,
     heuristic_overview,
+    rank_heuristic,
 )
 from daily_digest.media import collect_images
 from daily_digest.ranking.llm import LlmClient, summarize_with_llm, writer_deadline
@@ -146,6 +147,7 @@ def run_day(
     llm_client: LlmClient | None = None,
     force: bool = False,
     new_only: bool = False,
+    backfill: bool = False,
     notify_enabled: bool = True,
     notify_fn: Callable[..., None] = notify,
     summary_client: LlmClient | None = None,
@@ -215,7 +217,7 @@ def run_day(
 
     # Nothing new since the last digest: leave state, artifacts and notifications
     # untouched. A failed source is NOT "nothing new" — it keeps the degraded exit.
-    if new_only and not fresh:
+    if new_only and not fresh and not backfill:
         LOG.info("new-only: no unseen items — leaving the current digest untouched")
         return RunResult(
             mode="nothing-new",
@@ -291,10 +293,10 @@ def run_day(
             exc,
         )
 
-    # 2d. New-only backfill: when fewer than top_n unseen items exist, top up
-    # from notable items shown on PREVIOUS days only (never today's morning
+    # 2d. Short-pool backfill: when fewer than target items are available, top
+    # up from notable items shown on PREVIOUS days only (never today's morning
     # digest). Muted topics stay muted; heuristic order keeps the strongest.
-    if new_only and len(fresh) < target:
+    if (new_only or backfill) and len(fresh) < target:
         previous = [
             item
             for item in items
@@ -302,12 +304,13 @@ def run_day(
         ]
         previous, _ = apply_mute(previous, config)
         need = target - len(fresh)
-        backfill = heuristic_order(previous, config, adjustments, locale)[:need]
-        if backfill:
-            fresh = merge_items([*fresh, *backfill])
+        backfilled = heuristic_order(previous, config, adjustments, locale)[:need]
+        if backfilled:
+            fresh = merge_items([*fresh, *backfilled])
             LOG.info(
-                "new-only: backfilled %d notable previous-day items (now %d/%d)",
-                len(backfill),
+                "%s: backfilled %d notable previous-day items (now %d/%d)",
+                "new-only" if new_only else "size",
+                len(backfilled),
                 len(fresh),
                 target,
             )
@@ -342,6 +345,27 @@ def run_day(
         target=target,
         locale=locale,
     )
+    if (new_only or backfill) and len(ranked) < target:
+        chosen = {item.item.id for item in ranked}
+        extras_pool = [
+            item
+            for item in items
+            if (shown := seen.get(item_uid(item)))
+            and shown != date
+            and item_uid(item) not in chosen
+        ]
+        extras_pool, _ = apply_mute(extras_pool, config)
+        need = target - len(ranked)
+        extras = rank_heuristic(extras_pool, config, adjustments, locale)[:need]
+        if extras:
+            ranked = [*ranked, *extras][:target]
+            LOG.info(
+                "backfill: added %d previous-day items after editor shortfall "
+                "(now %d/%d)",
+                len(extras),
+                len(ranked),
+                target,
+            )
     if len(ranked) < target:
         LOG.info(
             "digest size: requested %d, selected %d (candidate pool short)",

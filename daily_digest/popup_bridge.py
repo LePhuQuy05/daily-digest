@@ -486,7 +486,11 @@ class DigestBridge:
             previous_locale = resolve_locale(self.config, preferences)
             if normalized == previous_size and locale != previous_locale:
                 return self.set_language(locale)
-            if normalized == previous_size and locale == previous_locale:
+            if (
+                normalized == previous_size
+                and locale == previous_locale
+                and normalized == len(self.items)
+            ):
                 return {
                     "ok": True,
                     "saved": False,
@@ -539,6 +543,7 @@ class DigestBridge:
                         str(normalized),
                         "--lang",
                         locale,
+                        "--backfill",
                     ]
                 )
                 if not spawned:
@@ -689,7 +694,9 @@ class DigestBridge:
                     from daily_digest.popup import spawn_cli
 
                     spawn = spawn_cli
-                spawned = spawn(["run", "--force", "--count", str(normalized)])
+                spawned = spawn(
+                    ["run", "--force", "--count", str(normalized), "--backfill"]
+                )
                 if not spawned:
                     return {
                         "ok": False,

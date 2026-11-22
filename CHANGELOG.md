@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - First-class Vietnamese (`vi`), English (`en`), and Japanese (`ja`) locales for UI chrome and generated content; `vi` remains the default.
 - `run --lang` and `demo --lang`; `ja-JP`, `JA`, and `ja_JP` normalize to `ja`. `--lang` is a one-off override and implies `--force`.
 - Combined size + language settings dialog. One Apply writes both preferences atomically, creates a unique morning backup first, and spawns one rebuild.
+- Size changes and `run --backfill` now fill a short digest with notable previous-day items, including when the editor selects fewer than requested; the scheduled 09:00 run still uses the fresh pool only.
 - Masthead language selector for direct switching; demo mode navigates between pre-rendered vi/en/ja files.
 - `localize --lang` localizes today's selected edition without fetching or re-ranking; a versioned `output/editions/digest-YYYY-MM-DD.json` sidecar preserves ordered items, paper dates, overview points, pinned items, path, and HTML hash.
 - Japanese typography and print rules, localized AI-summary label, toast body, dates, section titles, and heuristic fallbacks.

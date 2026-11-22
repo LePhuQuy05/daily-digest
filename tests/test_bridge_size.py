@@ -50,7 +50,7 @@ def test_set_size_saves_and_spawns_exact_args(tmp_path):
     assert result["saved"] is True
     assert result["spawned"] is True
     assert result["size"] == 16
-    assert calls == [["run", "--force", "--count", "16"]]
+    assert calls == [["run", "--force", "--count", "16", "--backfill"]]
     assert (
         json.loads(config.preferences_path.read_text(encoding="utf-8"))["digest_size"]
         == 16
@@ -76,7 +76,7 @@ def test_set_size_is_idempotent_without_spawning(tmp_path):
     rerun = bridge.set_digest_size(12)
     assert rerun["ok"] is True
     assert rerun["spawned"] is True
-    assert calls == [["run", "--force", "--count", "12"]]
+    assert calls == [["run", "--force", "--count", "12", "--backfill"]]
 
 
 def test_archived_digest_refuses_size_change(tmp_path):
