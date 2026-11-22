@@ -25,9 +25,12 @@ sources:
   hf_papers: { enabled: true, max_items: 30 }
   arxiv:
     enabled: true
-    categories: [cs.CL, cs.LG, cs.AI]   # add e.g. cs.CV, cs.MA, stat.ML
-    max_per_category: 40
+    categories: [cs.CL, cs.LG, cs.AI, stat.ML, cs.RO, cs.SE, cs.CR]
+    max_per_category: 30                 # 15-30 keeps the firehose bounded
     pause_seconds: 3.0                   # arXiv rate limit
+    # Broad categories keep only title/abstract hits from this list.
+    filter_categories: [stat.ML, cs.RO, cs.SE, cs.CR]
+    # filter_topics: [LLM, language model, agent, ...]  # override if needed
   emergent_mind:
     # emergentmind.com — trending arXiv papers ranked by cross-platform attention
     # (X, HN, Reddit, YouTube). Keyless. Feed covers ALL arXiv subjects, so a
@@ -45,11 +48,13 @@ sources:
     max_items: 20          # maps to the feed's `limit` (1-200)
   feeds:
     # Curated RSS/Atom for Tech News + Tools & Releases. One configurable source
-    # covers 20 feeds by default: OpenAI, Google DeepMind, Google AI/Research,
-    # Microsoft Research, Hugging Face; The Verge AI, IEEE Spectrum AI,
-    # Ars Technica, MIT Technology Review; Simon Willison, Interconnects,
-    # Import AI; and GitHub releases for vLLM, Ollama, Transformers, Open WebUI,
-    # SGLang, Unsloth, ComfyUI. Each feed has its own cap/window and fails
+    # covers 31 feeds by default: OpenAI, Google DeepMind, Google AI/Research,
+    # Microsoft Research, Hugging Face; Epoch AI, Apple ML, Ai2, vLLM blog,
+    # PyTorch blog; Meta Engineering, Modal, Alignment Forum, METR, Vals AI,
+    # Transformer Circuits; The Verge AI, IEEE Spectrum AI, Ars Technica,
+    # MIT Technology Review; Simon Willison, Interconnects, Import AI; and
+    # GitHub releases for vLLM, Ollama, Transformers, Open WebUI, SGLang,
+    # Unsloth, ComfyUI. Each feed has its own cap/window and fails
     # independently. Omit `entries` to use the built-in curated list.
     enabled: true
     # To customize, provide the COMPLETE list (it replaces the defaults):

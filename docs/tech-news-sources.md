@@ -18,7 +18,7 @@ it is no longer the only non-paper source.
 - **Real summaries** — when a feed carries only a title, fetch the article's
   meta description or first substantive paragraph (bounded, best-effort).
 
-## Chosen feeds (25)
+## Chosen feeds (31)
 
 | Group | Source key | Feed | Section | Cap / age |
 | --- | --- | --- | --- | --- |
@@ -33,6 +33,12 @@ it is no longer the only non-paper source.
 | Research | `ai2_blog` | https://allenai.org/rss.xml | tech_news | 2 / 21d |
 | Engineering | `vllm_blog` | https://vllm.ai/blog/rss.xml | tech_news | 2 / 21d |
 | Engineering | `pytorch_blog` | https://pytorch.org/blog/feed.xml | tech_news | 2 / 14d + topic/exclude |
+| Engineering | `meta_engineering` | https://engineering.fb.com/feed/ | tech_news | 2 / 21d |
+| Engineering | `modal_blog` | https://modal.com/blog/atom.xml | tech_news | 2 / 21d |
+| Safety | `alignment_forum` | https://www.alignmentforum.org/feed.xml | tech_news | 2 / 14d |
+| Safety | `metr` | https://metr.org/feed.xml | tech_news | 1 / 30d |
+| Evals | `vals_ai` | https://www.vals.ai/blogs/rss.xml | tech_news | 2 / 14d |
+| Research | `transformer_circuits` | https://transformer-circuits.pub/feed.xml | tech_news | 1 / 60d |
 | Press | `the_verge_ai` | https://www.theverge.com/rss/ai-artificial-intelligence/index.xml | tech_news | 4 / 7d |
 | Press | `ieee_spectrum_ai` | https://spectrum.ieee.org/feeds/topic/artificial-intelligence.rss | tech_news | 4 / 14d |
 | Press | `ars_technica` | https://feeds.arstechnica.com/arstechnica/technology-lab | tech_news | 3 / 7d + AI filter |
@@ -109,7 +115,7 @@ Notes:
 
 ## 2026-11-22 expansion: research and engineering feeds
 
-Added five feeds from the source-expansion research:
+Added eleven feeds from the source-expansion research:
 
 - `epoch_ai` — quantitative compute/inference/chip analysis.
 - `apple_ml` — Apple Machine Learning research.
@@ -117,21 +123,33 @@ Added five feeds from the source-expansion research:
 - `vllm_blog` — inference/serving engineering, distinct from vLLM releases.
 - `pytorch_blog` — training/systems engineering; `require_topic=True` plus a
   title `exclude` list removes contributor-award/ambassador/community posts.
+- `meta_engineering` — ML systems/ranking infrastructure.
+- `modal_blog` — infra/sandbox engineering.
+- `alignment_forum` — safety/alignment research.
+- `metr` — independent capability/alignment evals.
+- `vals_ai` — third-party evals.
+- `transformer_circuits` — interpretability (low volume).
 
-All five are official keyless Atom/RSS feeds and return `tech_news`; the current
+All eleven are official keyless Atom/RSS feeds and return `tech_news`; the current
 `FeedEntry` schema does not allow a blog feed to target the `papers` section.
 Live verification on 2026-11-22:
 
 ```text
-feeds: 25/25 healthy
+feeds: 31/31 healthy
 epoch_ai: 2 items
 apple_ml: 3 items
 ai2_blog: 2 items
 vllm_blog: 2 items
 pytorch_blog: 2 items (technical posts after exclude)
+meta_engineering: 2 items
+modal_blog: 2 items
+alignment_forum: 2 items
+metr: 1 item
+vals_ai: 2 items
+transformer_circuits: 1 item
 ```
 
-Full suite after the expansion: **534 passed**.
+Full suite after the expansion: **535 passed**.
 
 ## Sprint follow-up: HN hydration, diversity, feed health (2026-11-19)
 

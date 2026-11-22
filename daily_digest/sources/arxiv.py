@@ -13,6 +13,7 @@ import httpx
 from daily_digest.config import ArxivCfg
 from daily_digest.model import Item
 from daily_digest.normalize import canonical_arxiv_id
+from daily_digest.relevance import matches_topics
 
 ARXIV_RSS_URL = "https://export.arxiv.org/rss/{category}"
 USER_AGENT = "daily-digest/0.1 (personal research digest tool)"
@@ -72,5 +73,12 @@ def fetch_arxiv(client: httpx.Client, cfg: ArxivCfg) -> list[Item]:
             time.sleep(cfg.pause_seconds)  # arXiv rate limit: ~1 request / 3s
         response = client.get(ARXIV_RSS_URL.format(category=category), headers=headers)
         response.raise_for_status()
-        items.extend(parse_rss(response.text, cfg.max_per_category))
+        parsed = parse_rss(response.text, cfg.max_per_category)
+        if category in cfg.filter_categories:
+            parsed = [
+                item
+                for item in parsed
+                if matches_topics(item.title, item.summary, cfg.filter_topics)
+            ]
+        items.extend(parsed)
     return items

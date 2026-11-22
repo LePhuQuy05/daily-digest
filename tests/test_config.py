@@ -11,7 +11,22 @@ def test_defaults_without_any_file(tmp_path):
     config = load_config(tmp_path / "missing.yaml")
     assert config.llm.model == "deepseek-v4.1-flash"
     assert config.llm.base_url == "https://opencode.ai/inference/go"
-    assert config.sources.arxiv.categories == ["cs.CL", "cs.LG", "cs.AI"]
+    assert config.sources.arxiv.categories == [
+        "cs.CL",
+        "cs.LG",
+        "cs.AI",
+        "stat.ML",
+        "cs.RO",
+        "cs.SE",
+        "cs.CR",
+    ]
+    assert config.sources.arxiv.max_per_category == 30
+    assert config.sources.arxiv.filter_categories == [
+        "stat.ML",
+        "cs.RO",
+        "cs.SE",
+        "cs.CR",
+    ]
     assert config.template_path.exists()
     assert config.state_path.name == "state.json"
 
@@ -112,6 +127,10 @@ def test_config_dataclass_defaults_are_independent():
         "cs.CL",
         "cs.LG",
         "cs.AI",
+        "stat.ML",
+        "cs.RO",
+        "cs.SE",
+        "cs.CR",
     ]  # no shared mutable state
 
 

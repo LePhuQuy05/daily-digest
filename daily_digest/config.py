@@ -84,9 +84,64 @@ class HfPapersCfg:
 @dataclass
 class ArxivCfg:
     enabled: bool = True
-    categories: list[str] = field(default_factory=lambda: ["cs.CL", "cs.LG", "cs.AI"])
-    max_per_category: int = 40
+    categories: list[str] = field(
+        default_factory=lambda: [
+            "cs.CL",
+            "cs.LG",
+            "cs.AI",
+            "stat.ML",
+            "cs.RO",
+            "cs.SE",
+            "cs.CR",
+        ]
+    )
+    max_per_category: int = 30
     pause_seconds: float = 3.0  # arXiv asks for ~1 request / 3 seconds
+    # Broad categories carry a lot of non-LLM noise; keep only AI/LLM-relevant
+    # announcements for these. The filter is title+abstract, not a model call.
+    filter_categories: list[str] = field(
+        default_factory=lambda: ["stat.ML", "cs.RO", "cs.SE", "cs.CR"]
+    )
+    filter_topics: list[str] = field(
+        default_factory=lambda: [
+            "LLM",
+            "large language model",
+            "language model",
+            "transformer",
+            "agent",
+            "agentic",
+            "reasoning",
+            "retrieval",
+            "RAG",
+            "fine-tuning",
+            "RLHF",
+            "alignment",
+            "inference",
+            "serving",
+            "quantization",
+            "multimodal",
+            "vision-language",
+            "diffusion",
+            "benchmark",
+            "evaluation",
+            "prompt",
+            "jailbreak",
+            "prompt injection",
+            "adversarial",
+            "code generation",
+            "tool use",
+            "mixture of experts",
+            "MoE",
+            "embedding",
+            "machine learning",
+            "deep learning",
+            "neural",
+            "robot",
+            "robotics",
+            "embodied",
+            "AI",
+        ]
+    )
 
 
 @dataclass
@@ -270,6 +325,48 @@ def _default_feeds() -> list[FeedEntry]:
                 "community highlights",
                 "winners and nominees",
             ),
+        ),
+        FeedEntry(
+            "meta_engineering",
+            "https://engineering.fb.com/feed/",
+            "Meta Engineering",
+            max_items=2,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "modal_blog",
+            "https://modal.com/blog/atom.xml",
+            "Modal",
+            max_items=2,
+            max_age_days=21,
+        ),
+        FeedEntry(
+            "alignment_forum",
+            "https://www.alignmentforum.org/feed.xml",
+            "Alignment Forum",
+            max_items=2,
+            max_age_days=14,
+        ),
+        FeedEntry(
+            "metr",
+            "https://metr.org/feed.xml",
+            "METR",
+            max_items=1,
+            max_age_days=30,
+        ),
+        FeedEntry(
+            "vals_ai",
+            "https://www.vals.ai/blogs/rss.xml",
+            "Vals AI",
+            max_items=2,
+            max_age_days=14,
+        ),
+        FeedEntry(
+            "transformer_circuits",
+            "https://transformer-circuits.pub/feed.xml",
+            "Transformer Circuits",
+            max_items=1,
+            max_age_days=60,
         ),
         # --- reputable tech press (AI-specific unless require_topic) --------
         FeedEntry(

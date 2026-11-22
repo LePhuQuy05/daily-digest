@@ -185,7 +185,7 @@ def test_default_feed_list_is_enabled_and_curated(tmp_path):
     names = {entry.name for entry in config.sources.feeds.entries}
 
     assert config.sources.feeds.enabled is True
-    assert len(config.sources.feeds.entries) >= 25
+    assert len(config.sources.feeds.entries) >= 31
     assert {
         "openai_news",
         "the_verge_ai",
@@ -195,6 +195,12 @@ def test_default_feed_list_is_enabled_and_curated(tmp_path):
         "ai2_blog",
         "vllm_blog",
         "pytorch_blog",
+        "meta_engineering",
+        "modal_blog",
+        "alignment_forum",
+        "metr",
+        "vals_ai",
+        "transformer_circuits",
     } <= names
     assert all(
         entry.url.startswith("https://") for entry in config.sources.feeds.entries
@@ -210,6 +216,16 @@ def test_source_expansion_feeds_are_bounded_and_labelled(tmp_path):
         "ai2_blog": ("https://allenai.org/rss.xml", 2, False),
         "vllm_blog": ("https://vllm.ai/blog/rss.xml", 2, False),
         "pytorch_blog": ("https://pytorch.org/blog/feed.xml", 2, True),
+        "meta_engineering": ("https://engineering.fb.com/feed/", 2, False),
+        "modal_blog": ("https://modal.com/blog/atom.xml", 2, False),
+        "alignment_forum": ("https://www.alignmentforum.org/feed.xml", 2, False),
+        "metr": ("https://metr.org/feed.xml", 1, False),
+        "vals_ai": ("https://www.vals.ai/blogs/rss.xml", 2, False),
+        "transformer_circuits": (
+            "https://transformer-circuits.pub/feed.xml",
+            1,
+            False,
+        ),
     }
     for name, (url, cap, require_topic) in expected.items():
         entry = entries[name]
@@ -224,6 +240,9 @@ def test_source_expansion_feeds_are_bounded_and_labelled(tmp_path):
     assert labels["ai2_blog"] == "Ai2"
     assert labels["vllm_blog"] == "vLLM"
     assert labels["pytorch_blog"] == "PyTorch"
+    assert labels["meta_engineering"] == "Meta Engineering"
+    assert labels["alignment_forum"] == "Alignment Forum"
+    assert labels["vals_ai"] == "Vals AI"
 
 
 def test_yaml_can_override_the_feed_list(tmp_path):

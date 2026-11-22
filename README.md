@@ -50,11 +50,11 @@ It is also a small reliability lab for LLM orchestration. Every model call has a
 
 | | |
 |---|---|
-| **Sources** | 6 source families / 25 curated feeds: Hacker News, Hugging Face Daily Papers, arXiv, Emergent Mind, alphaXiv, AI-lab blogs, research/engineering blogs, tech press, GitHub releases |
+| **Sources** | 6 source families / 31 curated feeds: Hacker News, Hugging Face Daily Papers, arXiv, Emergent Mind, alphaXiv, AI-lab blogs, research/engineering blogs, safety/evals, tech press, GitHub releases |
 | **Curation** | An **editor** LLM ranks a user-selectable 1–30 items (default 12) and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview in Vietnamese, English, or Japanese (`vi` default) |
 | **Interface** | Native `pywebview` window: inline citations, save/undo, thumbs feedback, grounded Q&A, light/dark themes, print layout |
 | **Reliability** | Source-level isolation, heuristic ranking without an API key, raw-abstract fallback when the writer fails, atomic digest writes |
-| **Quality** | **534 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
+| **Quality** | **535 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
 | **Stack** | Python 3.12 · `httpx` · `Jinja2` · `pywebview` · `pystray` · Pillow · `uv` |
 | **What it demonstrates** | LLM orchestration, failure isolation, product-minded UI, and test discipline |
 
@@ -101,7 +101,7 @@ The pipeline is deliberately boring: fetch, normalize, rank, summarize, render, 
 | **Offline mocked tests** | Live integration tests in CI | Fast, deterministic, no network or desktop side effects; failure modes are explicit. | Real APIs and native toast/window behavior are not covered. |
 | **Pinned model ids and prompts** | A “latest” model alias | Reproducible behavior and meaningful golden-prompt tests. | Model upgrades are a deliberate change. |
 
-**What I would do differently:** build the fixture-backed demo and a small ranking-quality eval before expanding to 20 feeds, and put notifiers behind an interface so delivery is not Windows-only.
+**What I would do differently:** build the fixture-backed demo and a small ranking-quality eval before expanding the feed set, and put notifiers behind an interface so delivery is not Windows-only.
 
 ## The interactive layer
 
@@ -120,7 +120,7 @@ uv run pytest -o addopts=''
 
 The suite is fully offline: HTTP and LLM calls are mocked with `respx` and fakes, and desktop integrations are isolated. It covers source adapters, ranking and fallbacks, rendering and XSS escaping, the JavaScript bridge, saved/feedback flows, overview coverage, and UI token/print invariants.
 
-- **534 tests**, currently green on Windows.
+- **535 tests**, currently green on Windows.
 - GitHub Actions runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are locked in `uv.lock`; CI installs with `uv sync --locked`.
 - The digest pipeline has explicit tests for LLM failure, missing keys, writer failure, `summarize: false`, and heuristic-only mode.
@@ -214,8 +214,8 @@ Copy `config.example.yaml` to `config.yaml` (git-ignored), then edit only what y
 
 - `interests.topics` — what the ranker optimizes for
 - `interests.mute` / `interests.always` — deterministic keyword rules; mute wins
-- `sources.*.enabled` / `sources.arxiv.categories` — add `cs.CV`, `stat.ML`, …
-- `sources.feeds.entries` — override the 25 curated RSS/Atom feeds
+- `sources.*.enabled` / `sources.arxiv.categories` — add `cs.CV`, `cs.MA`, …
+- `sources.feeds.entries` — override the 31 curated RSS/Atom feeds
 - `llm.top_n` — default digest size (`12`; user can choose 1–30 in the popup or with `--count`)
 - `llm.max_pool` — editor candidate pool; effective size is capped by this
 - `llm.model` / `llm.summarize_model` — editor and writer models
@@ -257,7 +257,7 @@ daily-digest/
 │  ├─ popup_bridge.py   # JS ↔ Python bridge
 │  └─ tray.py           # native tray, shortcuts, icon generation
 ├─ templates/           # HTML, CSS, and vanilla JS (no build step)
-├─ tests/               # 534 offline tests
+├─ tests/               # 535 offline tests
 ├─ docs/                # source catalog, UI research, implementation plans
 ├─ config.example.yaml
 ├─ preferences.json     # user size preference (git-ignored)

@@ -6,8 +6,11 @@
 > (`docs/paper-sources.md`, `docs/tech-news-sources.md`), rồi probe trực tiếp
 > RSS/Atom/API bằng HTTP ngày **2026-11-22**. Các URL không truy cập được hoặc
 > không có feed đều được ghi rõ là chưa xác minh/loại.
-> **Status:** top 5 đã triển khai ngày 2026-11-22 (`epoch_ai`, `apple_ml`,
-> `ai2_blog`, `vllm_blog`, `pytorch_blog`); 25/25 feed healthy.
+> **Status:** đã triển khai 11 feed ngày 2026-11-22 (`epoch_ai`, `apple_ml`,
+> `ai2_blog`, `vllm_blog`, `pytorch_blog`, `meta_engineering`, `modal_blog`,
+> `alignment_forum`, `metr`, `vals_ai`, `transformer_circuits`) và 4 category
+> arXiv mới (`stat.ML`, `cs.RO`, `cs.SE`, `cs.CR`) với cap 30 + filter LLM;
+> 31/31 feed healthy.
 > **Kết luận ngắn:** thêm 10 aggregator nữa **không** giải quyết được bài toán
 > 30 bài/ngày, vì phần lớn sẽ trả về cùng arXiv id và bị dedup. Cần thêm nguồn
 > **nội dung gốc** (lab/engineering/safety/benchmark), thêm **category arXiv**
