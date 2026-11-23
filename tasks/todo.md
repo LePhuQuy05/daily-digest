@@ -85,7 +85,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** None  
 **Files likely touched:** `templates/newsroom.css.j2`, `tests/test_ui_tokens.py`  
-**Estimated scope:** Small
+**Estimated scope:** Small  
+**Completed:** `39fa813` — 44 UI token tests pass
 
 ## Task 5: Top fold hero 7/5 + Most Read 5
 
