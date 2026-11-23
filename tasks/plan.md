@@ -34,13 +34,13 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 
 - [x] Task 1: `SectionBrief.segments` + sidecar + mechanical fallback (`5a75d43`)
 - [x] Task 2: Writer inline briefs + validation + prompt + localize (`34f7c46`)
-- [ ] Task 3: Render brief inline refs trong cột hẹp
+- [x] Task 3: Render brief inline refs trong cột hẹp (`9b7277d`)
 
 ### Checkpoint: Brief system
-- [ ] Old snapshot vẫn load/render
-- [ ] 30 uid coverage
-- [ ] vi/en/ja fallback
-- [ ] Tests pass
+- [x] Old snapshot vẫn load/render
+- [x] 30 uid coverage
+- [x] vi/en/ja fallback
+- [x] Tests pass
 
 ### Phase 2: Page skeleton
 

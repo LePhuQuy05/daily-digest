@@ -58,7 +58,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 1, Task 2  
 **Files likely touched:** `templates/digest.html.j2`, `templates/newsroom.css.j2`, `tests/test_section_briefs.py`  
-**Estimated scope:** Small/Medium
+**Estimated scope:** Small/Medium  
+**Completed:** `9b7277d` — 567 tests pass
 
 ## Checkpoint: Brief system
 
