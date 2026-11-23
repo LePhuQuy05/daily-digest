@@ -149,7 +149,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 3, Task 5  
 **Files likely touched:** `templates/digest.html.j2`, `templates/newsroom.css.j2`, `tests/test_news_layout.py`  
-**Estimated scope:** Medium
+**Estimated scope:** Medium  
+**Completed:** `acfa0de` — 567 tests pass
 
 ## Task 8: Tools index 3 cột
 
