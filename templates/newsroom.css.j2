@@ -287,6 +287,13 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 [data-theme="dark"] .story-media img { background: #EAE6DD; filter: brightness(0.92); }
 [data-theme="dark"] .story-media--og img { filter: none; }
 [data-theme="dark"] .story--cover .story-media img { background: var(--cover-bg); }
+[data-theme="dark"] .story--typographic { color: #111; }
+[data-theme="dark"] .story--typographic::before,
+[data-theme="dark"] .story--typographic .kicker { color: rgba(0, 0, 0, 0.58); }
+[data-theme="dark"] .story--typographic .story-title a,
+[data-theme="dark"] .story--typographic .why,
+[data-theme="dark"] .story--typographic .summary { color: rgba(0, 0, 0, 0.86); }
+[data-theme="dark"] .story--typographic .summary.ai::before { color: #111; opacity: 0.7; }
 .story--lead .story-title { font-size: 26px; }
 .story--secondary { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .story--secondary .story-title { font-size: 24px; }
@@ -308,6 +315,8 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
         color: var(--ink-3); font: 500 12px/1.4 var(--font-sans); }
 .story--typographic .meta { color: rgba(255, 255, 255, 0.9);
                             border-top-color: rgba(255, 255, 255, 0.28); }
+[data-theme="dark"] .story--typographic .meta { color: rgba(0, 0, 0, 0.86);
+                                                border-top-color: rgba(0, 0, 0, 0.24); }
 .meta span + span::before { content: "·"; margin-right: 8px; color: var(--rule-strong); }
 .tag-new { color: var(--red); font-weight: 700; letter-spacing: 0.06em; }
 .tag-new::before { content: none !important; }
@@ -592,6 +601,7 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
   }
   .act:disabled { opacity: 0.55; cursor: default; transform: none; }
   .story--typographic .act { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
+  [data-theme="dark"] .story--typographic .act { color: #111; border-color: rgba(0, 0, 0, 0.35); }
   .act.done { background: var(--accent); border-color: var(--accent); color: #ffffff;
               font-weight: 600; }
   .act.done .icon { stroke: #ffffff; }
