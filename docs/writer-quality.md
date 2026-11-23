@@ -74,6 +74,11 @@ drops 0 times, and failed writer calls 0 times.
 Deterministic gates pass for all three locales. Blind human review is not yet
 recorded, so `writer_v2` remains **false** on the scheduled path.
 
+Large digests still avoid the single-call truncation trap: `llm.auto_batch_long`
+(default `true`) switches to the writer-v2 12-item batching path when the digest
+has more than 16 items. The short path (≤16) stays byte-identical to the
+original one-call writer.
+
 en/ja fixtures under `tests/fixtures/quality/` prove the metrics discriminate
 specific localized output from generic English output.
 
@@ -98,11 +103,12 @@ When enabled, the writer:
 - trims overlong v2 summaries at a sentence/word boundary and logs it instead
   of silently cutting mid-sentence;
 - marks partial batches degraded and renders a `writer_partial` notice;
+- writes one bounded section briefing per non-empty section in a single call;
 - runs under one monotonic deadline.
 
 The current-edition `localize` path uses the same writer, so a language switch
 still preserves the ordered item set and never fetches/ranks. It recomputes
-writer/overview degradation on every run; stale `localize_fallback` state is
+writer/section-brief degradation on every run; stale `localize_fallback` state is
 discarded, while failed sources and heuristic mode still keep the digest
 degraded.
 

@@ -28,14 +28,20 @@ from daily_digest.i18n import (
     t,
 )
 from daily_digest.lock import FileLock, LockError
-from daily_digest.model import RankedItem, RunResult
+from daily_digest.model import Notice, RankedItem, RunResult
 from daily_digest.overview import (
+    complete_section_briefs,
     ensure_coverage,
     heuristic_overview_points,
     parse_overview,
 )
 from daily_digest.ranking.heuristic import heuristic_overview, heuristic_why
-from daily_digest.ranking.llm import _extract_json, summarize_with_llm, writer_deadline
+from daily_digest.ranking.llm import (
+    _extract_json,
+    summarize_with_llm,
+    write_section_briefs,
+    writer_deadline,
+)
 from daily_digest.util import LOG, atomic_write_text, load_json, save_json, today_str
 from daily_digest.render import write_digest
 
@@ -43,6 +49,7 @@ MAX_WHY = 140
 MAX_WHY_JA = 80
 WHY_INPUT_CHARS = 1200
 WHY_INPUT_CHARS_JA = 400
+LOCALIZE_BUDGET_SECONDS = 10 * 60
 
 LOCALIZE_WHY_PROMPT = (
     "You localize an editor's one-line rationale for a daily tech digest. "
@@ -175,25 +182,13 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def _notice_for(
-    edition: Edition, locale: str, localize_degraded: bool
-) -> tuple[str, str, dict[str, object]]:
-    parts: list[str] = []
-    # A previous localize fallback describes that attempt, not the source
-    # edition. Recompute it from this run instead of carrying stale state.
-    carried_key = (
-        edition.notice_key if edition.notice_key != "localize_fallback" else ""
-    )
-    if carried_key:
-        parts.append(t(locale, carried_key, **dict(edition.notice_params)))
-    if localize_degraded:
-        parts.append(t(locale, "localize_fallback"))
-        return " ".join(parts), "localize_fallback", {}
-    return (
-        " ".join(parts),
-        carried_key,
-        dict(edition.notice_params) if carried_key else {},
-    )
+def _notice_line(notice: Notice, locale: str) -> str:
+    """Localize one structured notice, falling back to its stored text."""
+    if notice.key:
+        rendered = t(locale, notice.key, **dict(notice.params))
+        if rendered != notice.key:
+            return rendered
+    return notice.text
 
 
 def _localize_edition_unlocked(
@@ -263,9 +258,10 @@ def _localize_edition_unlocked(
     )
     localize_degraded = localize_degraded or not why_ok
 
+    localize_deadline = time.monotonic() + LOCALIZE_BUDGET_SECONDS
     overview = ""
     if config.llm.summarize and _chat(writer_client) is not None and localized:
-        with writer_deadline(time.monotonic() + 12 * 60):
+        with writer_deadline(localize_deadline):
             localized, overview = summarize_with_llm(
                 localized, _chat(writer_client), config, reader_context, loc
             )
@@ -280,11 +276,38 @@ def _localize_edition_unlocked(
     if not points and localized:
         localize_degraded = True
         points = heuristic_overview_points(localized, config, loc)
+    writer_attempted = (
+        config.llm.summarize and _chat(writer_client) is not None and bool(localized)
+    )
+    writer_incomplete = False
     if localized and (
         not any(item.llm_summary for item in localized)
-        or (config.llm.writer_v2 and not all(item.llm_summary for item in localized))
+        or (
+            (
+                config.llm.writer_v2
+                or (config.llm.auto_batch_long and len(localized) > 16)
+            )
+            and not all(item.llm_summary for item in localized)
+        )
     ):
         localize_degraded = True
+        writer_incomplete = writer_attempted
+
+    section_briefs = ()
+    if config.llm.section_briefs and localized:
+        briefs = ()
+        if config.llm.summarize and _chat(writer_client) is not None:
+            brief_deadline = localize_deadline
+            with writer_deadline(brief_deadline):
+                briefs = write_section_briefs(
+                    localized,
+                    _chat(writer_client),
+                    config,
+                    reader_context=reader_context,
+                    locale=loc,
+                    deadline=brief_deadline,
+                )
+        section_briefs = complete_section_briefs(briefs, localized, config, loc)
 
     if backup:
         try:
@@ -292,9 +315,38 @@ def _localize_edition_unlocked(
         except OSError as exc:
             return RunResult(exit_code=2, message=f"backup failed: {exc}")
 
-    notice_text, notice_key, notice_params = _notice_for(
-        edition, loc, localize_degraded
+    carried = [
+        notice
+        for notice in edition.notices
+        if notice.key not in ("writer_partial", "localize_fallback")
+    ]
+    if (
+        not carried
+        and edition.notice_key
+        and edition.notice_key
+        not in (
+            "writer_partial",
+            "localize_fallback",
+        )
+    ):
+        carried.append(
+            Notice(
+                key=edition.notice_key,
+                params=dict(edition.notice_params),
+                text=edition.notice_text,
+            )
+        )
+    if localize_degraded:
+        carried.append(
+            Notice(key="localize_fallback", text=t(loc, "localize_fallback"))
+        )
+    if writer_incomplete:
+        carried.append(Notice(key="writer_partial", text=t(loc, "writer_partial")))
+    notice_text = " ".join(
+        line for line in (_notice_line(notice, loc) for notice in carried) if line
     )
+    notice_key = carried[0].key if len(carried) == 1 else ""
+    notice_params = dict(carried[0].params) if len(carried) == 1 else {}
     images = extract_images_from_html(html_text)
     localized_edition = dataclasses.replace(
         edition,
@@ -302,6 +354,8 @@ def _localize_edition_unlocked(
         ranked=tuple(localized),
         overview=overview,
         overview_points=tuple(points),
+        section_briefs=section_briefs,
+        notices=tuple(carried),
         notice_text=notice_text,
         notice_key=notice_key,
         notice_params=notice_params,

@@ -6,6 +6,7 @@ zero items from healthy sources) · 2 fatal (config, all sources failed).
 
 from __future__ import annotations
 
+import dataclasses
 import shutil
 import time
 from collections.abc import Callable
@@ -18,7 +19,13 @@ from daily_digest.config import Config
 from daily_digest.article import hydrate_hn_links
 from daily_digest.backup import backup_digest
 from daily_digest.digest_size import load_preferences, resolve_digest_size
-from daily_digest.edition import Edition, render_edition, save_edition, with_artifact
+from daily_digest.edition import (
+    Edition,
+    load_edition,
+    render_edition,
+    save_edition,
+    with_artifact,
+)
 from daily_digest.enrich import enrich_citations
 from daily_digest.feedback import (
     FeedbackAggregate,
@@ -29,10 +36,11 @@ from daily_digest.feedback import (
     topic_adjustments,
 )
 from daily_digest.i18n import resolve_locale, t
-from daily_digest.model import Item, RunResult, SECTIONS
+from daily_digest.model import Item, Notice, RankedItem, RunResult, SECTIONS
 from daily_digest.normalize import item_uid
 from daily_digest.notify import notify
 from daily_digest.overview import (
+    complete_section_briefs,
     ensure_coverage,
     heuristic_overview_points,
     parse_overview,
@@ -42,19 +50,23 @@ from daily_digest.profile import load_profile
 from daily_digest.ranking import select
 from daily_digest.ranking.heuristic import (
     balanced_pool,
-    heuristic_order,
     heuristic_overview,
     rank_heuristic,
 )
 from daily_digest.media import collect_images
-from daily_digest.ranking.llm import LlmClient, summarize_with_llm, writer_deadline
+from daily_digest.ranking.llm import (
+    LlmClient,
+    summarize_with_llm,
+    write_section_briefs,
+    writer_deadline,
+)
 from daily_digest.render import write_digest
 from daily_digest.rules import apply_mute, log_mute_summary
 from daily_digest.sources import SourceError, enabled_sources, fetch_all
 from daily_digest.util import LOG, load_json, save_json, today_str
 
 
-RUN_BUDGET_SECONDS = 12 * 60
+RUN_BUDGET_SECONDS = 10 * 60
 
 
 def merge_items(items: list[Item]) -> list[Item]:
@@ -139,6 +151,79 @@ def _persist_edition(
     return edition
 
 
+def build_backfill_pool(
+    config: Config,
+    items: list[Item],
+    seen: dict[str, str],
+    date: str,
+    *,
+    exclude_uids: set[str] | None = None,
+) -> list[Item]:
+    """Return historical items older than yesterday, newest first.
+
+    Sources are today's fetch (for items shown before yesterday) and local
+    edition sidecars from date-2 backwards. Yesterday is never reused.
+    """
+    excluded = set(exclude_uids or ())
+    day = datetime.strptime(date, "%Y-%m-%d").date()
+    yesterday = (day - timedelta(days=1)).strftime("%Y-%m-%d")
+    candidates: list[Item] = []
+    yesterday_snapshot = load_edition(config.output_dir, yesterday)
+    yesterday_uids = (
+        {ranked_item.item.id for ranked_item in yesterday_snapshot.ranked}
+        if yesterday_snapshot is not None
+        else set()
+    )
+
+    for item in items:
+        uid = item_uid(item)
+        shown = seen.get(uid)
+        if not shown or shown == date or shown == yesterday or uid in yesterday_uids:
+            continue
+        if uid not in excluded:
+            candidates.append(item)
+
+    days = max(2, int(getattr(config.digest, "backfill_days", 60) or 60))
+    for offset in range(2, days + 1):
+        old_date = (day - timedelta(days=offset)).strftime("%Y-%m-%d")
+        snapshot = load_edition(config.output_dir, old_date)
+        if snapshot is None:
+            continue
+        for ranked_item in snapshot.ranked:
+            uid = item_uid(ranked_item.item)
+            if uid in excluded or seen.get(uid) == date or uid in yesterday_uids:
+                continue
+            candidates.append(ranked_item.item)
+
+    unique: dict[str, Item] = {}
+    for item in candidates:
+        uid = item_uid(item)
+        shown = seen.get(uid)
+        if shown == yesterday or shown == date or uid in yesterday_uids:
+            continue
+        unique.setdefault(uid, item)
+    return list(unique.values())
+
+
+def _top_up_ranked(
+    ranked: list[RankedItem],
+    pool: list[Item],
+    target: int,
+    config: Config,
+    adjustments: dict[str, float],
+    locale: str,
+) -> list[RankedItem]:
+    chosen = {item_uid(item.item) for item in ranked}
+    candidates = [item for item in pool if item_uid(item) not in chosen]
+    candidates, _ = apply_mute(candidates, config)
+    need = target - len(ranked)
+    if need <= 0 or not candidates:
+        return ranked
+    extras = rank_heuristic(candidates, config, adjustments, locale)[:need]
+    extras = [dataclasses.replace(item, backfilled=True) for item in extras]
+    return [*ranked, *extras][:target]
+
+
 def run_day(
     config: Config,
     date: str | None = None,
@@ -148,6 +233,8 @@ def run_day(
     force: bool = False,
     new_only: bool = False,
     backfill: bool = False,
+    auto_backfill: bool = False,
+    allow_backfill: bool = True,
     notify_enabled: bool = True,
     notify_fn: Callable[..., None] = notify,
     summary_client: LlmClient | None = None,
@@ -293,28 +380,6 @@ def run_day(
             exc,
         )
 
-    # 2d. Short-pool backfill: when fewer than target items are available, top
-    # up from notable items shown on PREVIOUS days only (never today's morning
-    # digest). Muted topics stay muted; heuristic order keeps the strongest.
-    if (new_only or backfill) and len(fresh) < target:
-        previous = [
-            item
-            for item in items
-            if (shown := seen.get(item_uid(item))) and shown != date
-        ]
-        previous, _ = apply_mute(previous, config)
-        need = target - len(fresh)
-        backfilled = heuristic_order(previous, config, adjustments, locale)[:need]
-        if backfilled:
-            fresh = merge_items([*fresh, *backfilled])
-            LOG.info(
-                "%s: backfilled %d notable previous-day items (now %d/%d)",
-                "new-only" if new_only else "size",
-                len(backfilled),
-                len(fresh),
-                target,
-            )
-
     pool = balanced_pool(fresh, config, config.llm.max_pool, adjustments, locale)
 
     # 2b. Citation enrichment (OpenAlex, keyless, one batched request): gives the
@@ -336,36 +401,39 @@ def run_day(
             type(exc).__name__,
             exc,
         )
-    ranked, mode = select(
-        pool,
-        llm_client,
-        config,
-        reader_context,
-        adjustments,
-        target=target,
-        locale=locale,
-    )
-    if (new_only or backfill) and len(ranked) < target:
-        chosen = {item.item.id for item in ranked}
-        extras_pool = [
-            item
-            for item in items
-            if (shown := seen.get(item_uid(item)))
-            and shown != date
-            and item_uid(item) not in chosen
-        ]
-        extras_pool, _ = apply_mute(extras_pool, config)
-        need = target - len(ranked)
-        extras = rank_heuristic(extras_pool, config, adjustments, locale)[:need]
-        if extras:
-            ranked = [*ranked, *extras][:target]
+    with writer_deadline(deadline):
+        ranked, mode = select(
+            pool,
+            llm_client,
+            config,
+            reader_context,
+            adjustments,
+            target=target,
+            locale=locale,
+        )
+    requested_count = target
+    if (
+        allow_backfill
+        and (auto_backfill or backfill or new_only)
+        and len(ranked) < target
+    ):
+        exclude = {item_uid(item) for item in fresh}
+        backfill_pool = build_backfill_pool(
+            config, items, seen, date, exclude_uids=exclude
+        )
+        before = len(ranked)
+        ranked = _top_up_ranked(
+            ranked, backfill_pool, target, config, adjustments, locale
+        )
+        added = len(ranked) - before
+        if added:
             LOG.info(
-                "backfill: added %d previous-day items after editor shortfall "
-                "(now %d/%d)",
-                len(extras),
+                "backfill: added %d items older than yesterday (now %d/%d)",
+                added,
                 len(ranked),
                 target,
             )
+    backfilled_count = sum(1 for item in ranked if item.backfilled)
     if len(ranked) < target:
         LOG.info(
             "digest size: requested %d, selected %d (candidate pool short)",
@@ -403,17 +471,58 @@ def run_day(
         overview_points = heuristic_overview_points(ranked, config, locale)
     writer_notice_text = ""
     writer_notice_key = ""
-    if config.llm.writer_v2 and ranked:
+    writer_ran = config.llm.summarize and summary_client is not None
+    if (
+        writer_ran
+        and ranked
+        and (config.llm.writer_v2 or (config.llm.auto_batch_long and len(ranked) > 16))
+    ):
         covered = sum(1 for item in ranked if item.llm_summary)
         if covered < len(ranked):
             degraded = True
             writer_notice_key = "writer_partial"
             writer_notice_text = t(locale, writer_notice_key)
             LOG.warning(
-                "writer v2 wrote %d/%d summaries; digest is degraded",
+                "writer wrote %d/%d summaries; digest is degraded",
                 covered,
                 len(ranked),
             )
+
+    section_briefs = ()
+    if config.llm.section_briefs and ranked:
+        llm_briefs = ()
+        if summary_client is not None and time.monotonic() < deadline:
+            with writer_deadline(deadline):
+                llm_briefs = write_section_briefs(
+                    ranked,
+                    summary_client.chat,
+                    config,
+                    reader_context=reader_context,
+                    locale=locale,
+                    deadline=deadline,
+                )
+        section_briefs = complete_section_briefs(llm_briefs, ranked, config, locale)
+        LOG.info(
+            "section briefs: %d LLM + %d total",
+            len(llm_briefs),
+            len(section_briefs),
+        )
+
+    notices: list[Notice] = []
+    if len(ranked) < target:
+        notices.append(
+            Notice(
+                key="notice_shortfall",
+                params={"actual": len(ranked), "requested": target},
+            )
+        )
+    if writer_notice_key:
+        notices.append(
+            Notice(
+                key=writer_notice_key,
+                text=writer_notice_text,
+            )
+        )
 
     # 3c. "Nhìn lại": pinned saves (cap + overflow note), minus any uid that is
     # already in today's ranked (the fresher in-section card wins).
@@ -428,7 +537,12 @@ def run_day(
     if config.media.enabled and config.media.llm_review:
         vision_client = summary_client or llm_client
         media_chat = vision_client.chat if vision_client else None
-    images = collect_images(ranked, config, chat=media_chat)
+    if time.monotonic() >= deadline:
+        LOG.warning("run budget exceeded before media; skipping images")
+        images = {}
+    else:
+        with writer_deadline(deadline):
+            images = collect_images(ranked, config, chat=media_chat)
 
     # 4. Render + archive atomically. The digest_data blob embeds the item
     # snapshots + date so popup-process features (feedback, ask) are self-pairing.
@@ -444,6 +558,10 @@ def run_day(
         overview_points=tuple(overview_points),
         notice_text=writer_notice_text,
         notice_key=writer_notice_key,
+        requested_count=requested_count,
+        backfilled_count=backfilled_count,
+        section_briefs=section_briefs,
+        notices=tuple(notices),
         pinned=tuple(pinned),
         pinned_overflow=pinned_overflow,
         images=images,

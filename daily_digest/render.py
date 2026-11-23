@@ -22,9 +22,9 @@ from daily_digest.i18n import (
     t,
 )
 from daily_digest.media import ImageAsset
-from daily_digest.model import RankedItem
+from daily_digest.model import Notice, RankedItem
 from daily_digest.normalize import safe_href
-from daily_digest.overview import OverviewPoint
+from daily_digest.overview import OverviewPoint, SectionBrief
 from daily_digest.source_labels import SOURCE_LABELS
 from daily_digest.util import atomic_write_text, today_str
 
@@ -90,6 +90,10 @@ def render_digest(
     overview_label: str | None = None,
     overview_points: Sequence[OverviewPoint] = (),
     notice: str = "",
+    requested_count: int = 0,
+    backfilled_count: int = 0,
+    section_briefs: Sequence[SectionBrief] = (),
+    notices: Sequence[Notice] = (),
     digest_data: dict | None = None,
     pinned: list[dict] = (),
     pinned_overflow: int = 0,
@@ -106,6 +110,15 @@ def render_digest(
     front_page = build_front_page(ranked)
     strings = locale_strings(locale)
     resolved_overview_label = overview_label or t(locale, "overview_label")
+    notice_lines: list[str] = []
+    for entry in notices:
+        line = entry.text
+        if entry.key:
+            rendered = t(locale, entry.key, **dict(entry.params))
+            if rendered != entry.key:
+                line = rendered
+        if line:
+            notice_lines.append(line)
     return tpl.render(
         date=date,
         date_long=format_date_long(date, locale),
@@ -117,6 +130,11 @@ def render_digest(
         overview_label=resolved_overview_label,
         overview_points=overview_points,
         notice=notice,
+        requested_count=requested_count,
+        backfilled_count=backfilled_count,
+        section_briefs=section_briefs,
+        section_brief_map={brief.section: brief for brief in section_briefs},
+        notice_lines=notice_lines,
         digest_data=digest_data,
         pinned=list(pinned),
         pinned_overflow=pinned_overflow,

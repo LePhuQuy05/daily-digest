@@ -277,11 +277,14 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .story--secondary .summary { -webkit-line-clamp: 6; }
 .summary.ai::before { content: var(--label-ai-summary, "AI SUMMARY"); display: block; font: 700 9px/1.4 var(--font-sans);
                       letter-spacing: 0.12em; color: var(--red); margin-bottom: 3px; }
+.summary--missing { color: var(--ink-3); font-style: italic; }
 .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px;
         color: var(--ink-3); font: 500 12px/1.4 var(--font-sans); }
 .meta span + span::before { content: "·"; margin-right: 8px; color: var(--rule-strong); }
 .tag-new { color: var(--red); font-weight: 700; letter-spacing: 0.06em; }
 .tag-new::before { content: none !important; }
+.tag-prev { color: var(--ink-3); font-style: italic; }
+.tag-prev::before { content: none !important; }
 .story .actions { margin-top: 10px; }
 .story .ask { margin-top: 8px; }
 .story:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
@@ -360,12 +363,14 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
                            grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
                            column-gap: 28px; align-items: start; grid-auto-rows: min-content; }
 .section-more .story--more { display: grid; grid-template-columns: minmax(0, 1fr) 112px;
-                             grid-template-areas: "title actions" "meta actions" "ask ask";
+                             grid-template-areas: "title actions" "meta actions" "summary summary" "ask ask";
                              align-items: start; min-width: 0; padding: 10px 0;
                              border-top: 1px solid var(--rule); }
 .section-more .story--more .story-title { grid-area: title; font-size: 15.5px; line-height: 1.3; }
 .section-more .story--more .meta { grid-area: meta; margin-top: 4px; font-size: 11px;
                                    gap: 3px 10px; }
+.section-more .story--more .summary { grid-area: summary; margin-top: 6px; font-size: 13.5px;
+                                      -webkit-line-clamp: unset; overflow: visible; }
 .section-more .story--more .actions { grid-area: actions; margin-top: 0;
                                       justify-content: flex-end; flex-wrap: nowrap;
                                       gap: 4px; }
@@ -380,13 +385,23 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
 }
 @media (max-width: 760px) {
   .section-more .story--more { grid-template-columns: 1fr;
-                               grid-template-areas: "title" "meta" "actions" "ask"; }
+                               grid-template-areas: "title" "meta" "summary" "actions" "ask"; }
   .section-more .story--more .actions { justify-content: flex-start; }
 }
 .empty-note, .section-note { margin: 0; padding: 12px 0; border-top: 1px solid var(--rule);
                              color: var(--ink-3); font: 13px/1.5 var(--font-sans); }
 .section-note a { color: var(--red); text-decoration: none; }
 .section-note a:hover { text-decoration: underline; }
+.section-summary { margin: 0 0 14px; padding: 9px 12px; border-left: 3px solid var(--red);
+                   background: var(--paper-warm); }
+.section-summary-text { margin: 0; color: var(--ink-2); font: 14.5px/1.55 var(--font-serif); }
+.section-summary-refs { margin-top: 6px; font: 500 12px/1.6 var(--font-sans); }
+.section-summary-coverage { margin-top: 4px; }
+.section-summary-coverage summary { cursor: pointer; color: var(--ink-3);
+                                   font: 500 11px/1.5 var(--font-sans); }
+.coverage-line { margin: 4px 0 0; font: 500 11.5px/1.7 var(--font-sans); }
+.status-strip .status-line { margin: 2px 0; }
+.status-strip .status-line + .status-line { border-top: 1px solid var(--rule); padding-top: 4px; }
 
 @media (min-width: 1100px) {
   .section-front--grid .briefs { grid-template-columns: 1fr 1fr; column-gap: 20px; }
@@ -597,6 +612,10 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
     .rail .overview.briefing { display: block; border-top: 2px solid #111;
                                border-bottom: 1px solid #999; padding: 3mm 0; margin: 3mm 0; }
     .rail .pinned-block { border-top: 1px solid #111; margin-top: 3mm; }
+    .section-summary { margin: 0 0 3mm; padding: 0 0 0 3mm; border-left: 1.5pt solid #111;
+                       background: none; }
+    .section-summary-text { color: #111; font-size: 8.5pt; line-height: 1.4; }
+    .section-summary-refs, .section-summary-coverage { display: none !important; }
     .story { break-inside: avoid; }
     .story-title { color: #111; font-size: 13pt; }
     .story--lead .story-title, .story--secondary .story-title { font-size: 12pt; }
@@ -605,6 +624,8 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
                overflow: hidden; color: #333; font-size: 8.5pt; line-height: 1.35; }
     .story--hero .summary { -webkit-line-clamp: 5; }
     .story--lead .summary, .story--secondary .summary { -webkit-line-clamp: 4; }
+    .section-more .story--more .summary { display: block; -webkit-line-clamp: unset;
+                                         overflow: visible; }
     .why { color: #333; font-size: 8.5pt; line-height: 1.3; }
     .story--cover .story-lede { display: block; }
     .story--cover .story-head { position: static; margin: 0; padding: 0;

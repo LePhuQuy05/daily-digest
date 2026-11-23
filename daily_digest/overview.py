@@ -21,7 +21,7 @@ from daily_digest.i18n import (
     t,
     takeaway_marker,
 )
-from daily_digest.model import SECTIONS, RankedItem
+from daily_digest.model import SECTIONS, RankedItem, Section
 
 MAX_POINTS = 5
 REST_CHUNK = 8
@@ -48,6 +48,21 @@ class OverviewSegment:
 class OverviewPoint:
     segments: tuple[OverviewSegment, ...]
     kind: Literal["theme", "rest", "takeaway"] = "theme"
+
+
+SECTION_BRIEF_MAX = 360
+SECTION_BRIEF_MAX_JA = 240
+SECTION_BRIEF_REFS = 3
+
+
+@dataclass(frozen=True)
+class SectionBrief:
+    """A bounded per-section summary plus anchor coverage for that section."""
+
+    section: Section
+    text: str
+    refs: tuple[OverviewRef, ...] = ()
+    coverage_refs: tuple[OverviewRef, ...] = ()
 
 
 def short_label(title: str, number: int, locale: str = "vi") -> str:
@@ -268,3 +283,105 @@ def heuristic_overview_points(
             )
         points.append(OverviewPoint(segments=tuple(segments), kind="theme"))
     return tuple(points)
+
+
+def section_brief_cap(locale: str = "vi") -> int:
+    return (
+        SECTION_BRIEF_MAX_JA
+        if (normalize_locale(locale) or "vi") == "ja"
+        else SECTION_BRIEF_MAX
+    )
+
+
+def truncate_section_brief(text: str, locale: str = "vi") -> str:
+    """Cap a section brief at a sentence or word boundary."""
+    cap = section_brief_cap(locale)
+    cleaned = " ".join(text.split())
+    if len(cleaned) <= cap:
+        return cleaned
+    cut = cleaned[:cap]
+    last_sentence = max((cut.rfind(ch) for ch in "\u3002\uff01\uff1f.!?"), default=-1)
+    if last_sentence >= cap // 2:
+        return cut[: last_sentence + 1].rstrip()
+    last_space = cut.rfind(" ")
+    if last_space >= cap // 2:
+        return cut[:last_space].rstrip()
+    return cut.rstrip()
+
+
+def section_items(
+    ranked: Sequence[RankedItem], section: Section
+) -> list[tuple[int, RankedItem]]:
+    return [
+        (index, item) for index, item in enumerate(ranked) if item.section == section
+    ]
+
+
+def heuristic_section_briefs(
+    ranked: Sequence[RankedItem], config: Config, locale: str = "vi"
+) -> tuple[SectionBrief, ...]:
+    """Deterministic fallback: one bounded brief per non-empty section."""
+    loc = normalize_locale(locale) or "vi"
+    briefs: list[SectionBrief] = []
+    for section in SECTIONS:
+        items = section_items(ranked, section)
+        if not items:
+            continue
+        titles = " \u00b7 ".join(item.item.title for _, item in items[:3])
+        text = t(loc, "section_brief_fallback").format(n=len(items), titles=titles)
+        refs = tuple(
+            _ref_for(ranked, index, loc) for index, _ in items[:SECTION_BRIEF_REFS]
+        )
+        coverage = tuple(
+            _ref_for(ranked, index, loc) for index, _ in items[SECTION_BRIEF_REFS:]
+        )
+        briefs.append(
+            SectionBrief(
+                section=section,
+                text=truncate_section_brief(text, loc),
+                refs=refs,
+                coverage_refs=coverage,
+            )
+        )
+    return tuple(briefs)
+
+
+def complete_section_briefs(
+    briefs: Sequence[SectionBrief],
+    ranked: Sequence[RankedItem],
+    config: Config,
+    locale: str = "vi",
+) -> tuple[SectionBrief, ...]:
+    """Fill missing sections and guarantee every section item has an anchor."""
+    loc = normalize_locale(locale) or "vi"
+    by_section = {
+        brief.section: brief
+        for brief in briefs
+        if brief.section in SECTIONS and brief.text.strip()
+    }
+    fallback = {
+        brief.section: brief for brief in heuristic_section_briefs(ranked, config, loc)
+    }
+    out: list[SectionBrief] = []
+    for section in SECTIONS:
+        items = section_items(ranked, section)
+        if not items:
+            continue
+        brief = by_section.get(section) or fallback[section]
+        ref_uids = {ref.uid for ref in brief.refs}
+        coverage = list(brief.coverage_refs)
+        coverage_uids = {ref.uid for ref in coverage}
+        for index, item in items:
+            uid = item.item.id
+            if uid not in ref_uids and uid not in coverage_uids:
+                coverage.append(_ref_for(ranked, index, loc))
+                coverage_uids.add(uid)
+        out.append(
+            SectionBrief(
+                section=section,
+                text=truncate_section_brief(brief.text, loc),
+                refs=brief.refs,
+                coverage_refs=tuple(coverage),
+            )
+        )
+    return tuple(out)

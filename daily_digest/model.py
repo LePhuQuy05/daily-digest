@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -45,6 +46,16 @@ class RankedItem:
     llm_summary: str = (
         ""  # written by the summarizer LLM; empty -> fall back to item.summary
     )
+    backfilled: bool = False  # came from a previous-day archive
+
+
+@dataclass(frozen=True)
+class Notice:
+    """One localized-at-render status message; params are format arguments."""
+
+    key: str
+    params: Mapping[str, object] = field(default_factory=dict)
+    text: str = ""
 
 
 @dataclass

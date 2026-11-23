@@ -22,11 +22,12 @@ from pathlib import Path
 from daily_digest.config import Config
 from daily_digest.i18n import normalize_locale
 from daily_digest.media import ImageAsset
-from daily_digest.model import Item, RankedItem, Section
+from daily_digest.model import Item, Notice, RankedItem, Section
 from daily_digest.overview import (
     OverviewPoint,
     OverviewRef,
     OverviewSegment,
+    SectionBrief,
 )
 from daily_digest.render import build_digest_data, render_digest
 from daily_digest.source_labels import labels_for
@@ -51,6 +52,10 @@ class Edition:
     notice_key: str = ""
     notice_params: Mapping[str, object] = field(default_factory=dict)
     notice_text: str = ""
+    requested_count: int = 0
+    backfilled_count: int = 0
+    section_briefs: tuple[SectionBrief, ...] = ()
+    notices: tuple[Notice, ...] = ()
     pinned: tuple[dict, ...] = ()
     pinned_overflow: int = 0
     images: Mapping[str, ImageAsset] = field(default_factory=dict)
@@ -112,6 +117,10 @@ def render_edition(edition: Edition, config: Config) -> str:
         model_name=edition.model_name,
         template=config.template_path,
         notice=edition.notice_text,
+        requested_count=edition.requested_count,
+        backfilled_count=edition.backfilled_count,
+        section_briefs=edition.section_briefs,
+        notices=edition.notices,
         digest_data=build_digest_data(
             list(edition.ranked), list(edition.pinned), edition.date
         ),
@@ -143,6 +152,7 @@ def _ranked_to_dict(ranked_item: RankedItem) -> dict:
         "why": ranked_item.why,
         "section": ranked_item.section,
         "llm_summary": ranked_item.llm_summary,
+        "backfilled": ranked_item.backfilled,
     }
 
 
@@ -167,6 +177,78 @@ def _overview_to_dict(point: OverviewPoint) -> dict:
     }
 
 
+def _int_or_zero(value: object) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _ref_to_dict(ref: OverviewRef) -> dict:
+    return {"uid": ref.uid, "label": ref.label, "title": ref.title}
+
+
+def _ref_from_dict(data: object) -> OverviewRef | None:
+    if not isinstance(data, dict) or "uid" not in data:
+        return None
+    return OverviewRef(
+        uid=str(data["uid"]),
+        label=str(data.get("label", "")),
+        title=str(data.get("title", "")),
+    )
+
+
+def _section_brief_to_dict(brief: SectionBrief) -> dict:
+    return {
+        "section": brief.section,
+        "text": brief.text,
+        "refs": [_ref_to_dict(ref) for ref in brief.refs],
+        "coverage_refs": [_ref_to_dict(ref) for ref in brief.coverage_refs],
+    }
+
+
+def _section_brief_from_dict(data: object) -> SectionBrief | None:
+    if not isinstance(data, dict):
+        return None
+    section = data.get("section")
+    if section not in ("papers", "tech_news", "tools_releases"):
+        return None
+    refs = [
+        ref
+        for entry in data.get("refs", [])
+        if (ref := _ref_from_dict(entry)) is not None
+    ]
+    coverage = [
+        ref
+        for entry in data.get("coverage_refs", [])
+        if (ref := _ref_from_dict(entry)) is not None
+    ]
+    return SectionBrief(
+        section=section,
+        text=str(data.get("text", "")),
+        refs=tuple(refs),
+        coverage_refs=tuple(coverage),
+    )
+
+
+def _notice_to_dict(notice: Notice) -> dict:
+    return {
+        "key": notice.key,
+        "params": dict(notice.params),
+        "text": notice.text,
+    }
+
+
+def _notice_from_dict(data: object) -> Notice | None:
+    if not isinstance(data, dict) or not data.get("key"):
+        return None
+    return Notice(
+        key=str(data["key"]),
+        params=dict(data.get("params") or {}),
+        text=str(data.get("text", "")),
+    )
+
+
 def edition_to_dict(edition: Edition) -> dict:
     return {
         "version": edition.schema_version,
@@ -187,6 +269,12 @@ def edition_to_dict(edition: Edition) -> dict:
         "notice_key": edition.notice_key,
         "notice_params": dict(edition.notice_params),
         "notice_text": edition.notice_text,
+        "requested_count": edition.requested_count,
+        "backfilled_count": edition.backfilled_count,
+        "section_briefs": [
+            _section_brief_to_dict(brief) for brief in edition.section_briefs
+        ],
+        "notices": [_notice_to_dict(notice) for notice in edition.notices],
         "pinned": [dict(entry) for entry in edition.pinned],
         "pinned_overflow": edition.pinned_overflow,
     }
@@ -229,6 +317,7 @@ def _ranked_from_dict(data: dict) -> RankedItem:
         why=str(data.get("why", "")),
         section=section,
         llm_summary=str(data.get("llm_summary", "")),
+        backfilled=bool(data.get("backfilled", False)),
     )
 
 
@@ -290,6 +379,18 @@ def load_edition(output_dir: Path, date: str) -> Edition | None:
             notice_key=str(payload.get("notice_key", "")),
             notice_params=dict(payload.get("notice_params", {})),
             notice_text=str(payload.get("notice_text", "")),
+            requested_count=_int_or_zero(payload.get("requested_count")),
+            backfilled_count=_int_or_zero(payload.get("backfilled_count")),
+            section_briefs=tuple(
+                brief
+                for entry in payload.get("section_briefs", [])
+                if (brief := _section_brief_from_dict(entry)) is not None
+            ),
+            notices=tuple(
+                notice
+                for entry in payload.get("notices", [])
+                if (notice := _notice_from_dict(entry)) is not None
+            ),
             pinned=tuple(
                 dict(entry)
                 for entry in payload.get("pinned", [])

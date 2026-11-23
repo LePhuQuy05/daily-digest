@@ -26,11 +26,14 @@
   {{ story_head(item, variant) }}
   {% endif %}
   {% set summary_text = item.llm_summary or item.item.summary %}
-  {% if variant != "more" and summary_text %}
+  {% if summary_text %}
   <p class="summary{% if item.llm_summary %} ai{% endif %}">{{ summary_text }}</p>
+  {% else %}
+  <p class="summary summary--missing">{{ t.summary_unavailable }}</p>
   {% endif %}
   <div class="meta">
     <span>{{ source_names.get(item.item.source, item.item.source) }}</span>
+    {% if item.backfilled %}<span class="tag-prev">{{ t.story_previous }}</span>{% endif %}
     {% if item.section == "papers" and item.item.published %}<span class="paper-date">{{ item.item.published | short_date }}</span>{% endif %}
     {% if item.item.points %}<span>{{ t.story_points.format(n=item.item.points) }}</span>{% endif %}
     {% if item.item.citations %}<span>{{ t.story_citations.format(n=item.item.citations) }}</span>{% endif %}
@@ -81,7 +84,7 @@
 
 {% macro rail() %}
 <aside class="rail">
-  {% if overview %}
+  {% if overview and not section_briefs %}
   <section class="overview briefing" id="briefing" aria-label="{{ overview_label }}">
     <div class="briefing-head">
       <div class="kicker">{{ overview_label | upper }}</div>

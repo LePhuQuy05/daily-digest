@@ -574,6 +574,8 @@ class LlmCfg:
     summarize: bool = True  # writer LLM on/off
     summary_max_words: int = 70
     writer_v2: bool = False  # staged writer: separate item/overview calls
+    auto_batch_long: bool = True  # >16 items: batch summaries through writer v2
+    section_briefs: bool = True  # bounded per-section summaries
     overview_language: str = "vi"  # language of the day-overview card ("vi", "en", ...)
     # F4: free-text context about the reader's current work, injected into prompts.
     # Empty profile_file disables it. Missing/unreadable file -> warning + "".
@@ -596,6 +598,7 @@ class LlmCfg:
 class DigestCfg:
     output_dir: str = "output"
     template: str = "templates/digest.html.j2"
+    backfill_days: int = 60  # how far to search local edition sidecars
 
 
 @dataclass

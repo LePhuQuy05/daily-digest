@@ -18,6 +18,7 @@ from daily_digest.edition import (
     with_artifact,
 )
 from daily_digest.cli import build_parser, cmd_localize
+from daily_digest.i18n import t
 from daily_digest.localize import localize_edition
 from daily_digest.edition import localize_status_path
 from daily_digest.lock import FileLock
@@ -194,6 +195,31 @@ def test_localize_clears_stale_fallback_state(tmp_path):
     assert saved.notice_text == ""
     html = result.digest_path.read_text(encoding="utf-8")
     assert '<div class="status-strip notice">' not in html
+
+
+def test_localize_drops_stale_writer_partial_when_summaries_complete(tmp_path):
+    config, date, _ = _setup(
+        tmp_path,
+        notice_key="writer_partial",
+        notice_text=t("vi", "writer_partial"),
+    )
+
+    result = localize_edition(
+        config,
+        date,
+        "en",
+        editor_client=FakeLlmClient(EDITOR_OK),
+        writer_client=FakeLlmClient(WRITER_OK),
+        backup=False,
+    )
+
+    assert result.exit_code == 0
+    saved = load_edition(config.output_dir, date)
+    assert saved is not None
+    assert saved.notice_key == ""
+    assert saved.notice_text == ""
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert 'class="status-strip notice"' not in html
 
 
 def test_localize_keeps_source_failure_degraded(tmp_path):

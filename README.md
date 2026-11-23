@@ -32,7 +32,7 @@ Single-user and Windows-first by design — not a multi-tenant news platform or 
 
 </details>
 
-The overview card cites articles **inline at the point of mention**. Clicking a reference scrolls to the matching card, focuses it, and highlights it for 2.5 seconds. Every selected item is guaranteed to appear at least once — a deterministic `Còn lại hôm nay` (“remaining today”) line covers anything the writer missed. Print hides the interactive references and keeps the broadsheet layout.
+Each section opens with a **bounded section brief** that cites its strongest items inline. Clicking a reference scrolls to the matching card, focuses it, and highlights it for 2.5 seconds. The remaining items in the section stay available under a compact coverage list, so every selected item still has an anchor. Older snapshots without section briefs keep the legacy day-overview rail. Print hides the interactive references and keeps the broadsheet layout.
 
 **Cover hero:** when the lead has a landscape OG image, the lead becomes a magazine cover — a 16:9 photo with a 70% ink wash, serif display type, a crimson rule, and a print-visible credit. The treatment is gated to OG images for now; arXiv charts keep the current figure plate rather than being cropped.
 
@@ -51,10 +51,10 @@ It is also a small reliability lab for LLM orchestration. Every model call has a
 | | |
 |---|---|
 | **Sources** | 6 source families / 31 curated feeds: Hacker News, Hugging Face Daily Papers, arXiv, Emergent Mind, alphaXiv, AI-lab blogs, research/engineering blogs, safety/evals, tech press, GitHub releases |
-| **Curation** | An **editor** LLM ranks a user-selectable 1–30 items (default 12) and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and a day overview in Vietnamese, English, or Japanese (`vi` default) |
+| **Curation** | An **editor** LLM ranks a user-selectable 1–30 items (default 12) and writes a one-line “why it matters”; a **writer** LLM writes 2–3 sentence summaries and one bounded brief per section in Vietnamese, English, or Japanese (`vi` default) |
 | **Interface** | Native `pywebview` window: inline citations, save/undo, thumbs feedback, grounded Q&A, light/dark themes, print layout |
 | **Reliability** | Source-level isolation, heuristic ranking without an API key, raw-abstract fallback when the writer fails, atomic digest writes |
-| **Quality** | **541 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
+| **Quality** | **563 offline tests** with mocked HTTP and LLM calls; CI runs on Windows; no network or desktop side effects in tests |
 | **Stack** | Python 3.12 · `httpx` · `Jinja2` · `pywebview` · `pystray` · Pillow · `uv` |
 | **What it demonstrates** | LLM orchestration, failure isolation, product-minded UI, and test discipline |
 
@@ -70,8 +70,8 @@ flowchart LR
     E -->|offline| G[Heuristic ranker]
     F --> H{Writer LLM}
     G --> H
-    H -->|ok| I[Summaries + overview]
-    H -->|offline| J[Raw abstracts + heuristic overview]
+    H -->|ok| I[Summaries + section briefs]
+    H -->|offline| J[Raw abstracts + heuristic section briefs]
     I --> K[Render single-file HTML]
     J --> K
     K --> L[Popup window + toast]
@@ -85,7 +85,7 @@ The pipeline is deliberately boring: fetch, normalize, rank, summarize, render, 
 | One feed is down | Other sources continue; `daily-digest health` shows per-feed status |
 | Editor LLM times out / 401 | Keyword + points + recency heuristic still selects a digest |
 | Writer LLM fails | Raw abstracts remain; the digest is still readable |
-| Writer omits an item from the overview | `ensure_coverage` appends a `Còn lại hôm nay` reference line |
+| Section brief omits an item | `coverage_refs` keeps every item in the section reachable by anchor |
 | Process dies mid-write | Atomic writes keep the previous good `latest.html` intact |
 
 ## Engineering decisions
@@ -120,7 +120,7 @@ uv run pytest -o addopts=''
 
 The suite is fully offline: HTTP and LLM calls are mocked with `respx` and fakes, and desktop integrations are isolated. It covers source adapters, ranking and fallbacks, rendering and XSS escaping, the JavaScript bridge, saved/feedback flows, overview coverage, and UI token/print invariants.
 
-- **541 tests**, currently green on Windows.
+- **563 tests**, currently green on Windows.
 - GitHub Actions runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are locked in `uv.lock`; CI installs with `uv sync --locked`.
 - The digest pipeline has explicit tests for LLM failure, missing keys, writer failure, `summarize: false`, and heuristic-only mode.
@@ -164,7 +164,8 @@ No key yet? The real pipeline still runs with heuristic ranking and marks the di
 | `uv run daily-digest run` | Fetch → rank → render → popup + toast (idempotent per day) |
 | `uv run daily-digest run --force` | Rebuild today’s digest |
 | `uv run daily-digest run --force --count N` | Rebuild today with up to N items (1–30); implies `--force` |
-| `uv run daily-digest run --force --count N --backfill` | Fill a short digest with notable previous-day items |
+| `uv run daily-digest run --force --count N --backfill` | Fill a short digest from history older than yesterday |
+| `uv run daily-digest run --force --no-backfill` | Keep today's fresh pool only, even when a size is stored |
 | `uv run daily-digest run --force --lang ja` | Fresh rebuild in Japanese; implies `--force` |
 | `uv run daily-digest localize --lang ja` | Localize today's selected edition; no fetch/rank |
 | `uv run daily-digest run --force --new-only` | Refresh with unseen items only; backfills if short |
@@ -195,7 +196,8 @@ The digest shows **12 items by default**, and you can choose **1–30**:
 - In the popup, click **Đổi** next to the dateline count, choose a size, then **Áp dụng**. This saves the preference in `preferences.json` and reruns the editor + writer.
 - Or use `uv run daily-digest run --count 16` for a one-off rebuild without changing the stored preference.
 - **Đặt lại** removes the stored preference and returns to `config.llm.top_n` / 12.
-- A size change reruns the pipeline with backfill: if there are fewer than N fresh items, it adds notable items shown on previous days to reach N. It can still come up short only when that previous-day pool is exhausted. The same-day digest is backed up as `digest-YYYY-MM-DD-morning[-N].html`.
+- A size change reruns the pipeline with **automatic historical fill**. If there are fewer than N fresh items, it adds notable items from **day-2 or earlier** until N or the archive is exhausted. It never reuses yesterday's items. The same-day digest is backed up as `digest-YYYY-MM-DD-morning[-N].html`; the dateline shows `actual/requested` when history runs short and `+N older` for filled slots.
+- The 09:00 task uses the stored size automatically; no daily **Áp dụng** click is needed. Pass `--no-backfill` to keep a run fresh-only.
 
 ![Digest size dialog — zero-key demo preview](docs/screenshots/size-dialog.png)
 
@@ -220,6 +222,9 @@ Copy `config.example.yaml` to `config.yaml` (git-ignored), then edit only what y
 - `llm.max_pool` — editor candidate pool; effective size is capped by this
 - `llm.model` / `llm.summarize_model` — editor and writer models
 - `llm.writer_v2` — staged item/overview writer; keep `false` until the quality gates in `docs/writer-quality.md` pass
+- `llm.auto_batch_long` — batch item summaries through writer v2 when a digest has more than 16 items (default `true`)
+- `llm.section_briefs` — bounded per-section briefs replace the global day-overview rail (default `true`; `false` restores the legacy rail)
+- `digest.backfill_days` — how far back automatic historical fill searches local edition sidecars (default `60`)
 - `llm.overview_language` — legacy one-time locale fallback (`vi`, `en`, `ja`); `preferences.json.language` wins after a settings save
 - `notify.popup` / `notify.enabled` — delivery channels
 - `schedule.time` — default `09:00`
@@ -250,14 +255,14 @@ daily-digest/
 │  ├─ sources/          # one adapter per source family
 │  ├─ ranking/          # editor prompt, heuristic fallback, diversity
 │  ├─ pipeline.py       # orchestration, idempotency, fallback policy
-│  ├─ overview.py       # citation parsing + coverage guarantees
+│  ├─ overview.py       # section briefs, citation parsing, coverage guarantees
 │  ├─ digest_size.py    # size policy + local preference
 │  ├─ demo.py           # zero-key fixture digest
 │  ├─ render.py         # Jinja → single-file HTML
 │  ├─ popup_bridge.py   # JS ↔ Python bridge
 │  └─ tray.py           # native tray, shortcuts, icon generation
 ├─ templates/           # HTML, CSS, and vanilla JS (no build step)
-├─ tests/               # 541 offline tests
+├─ tests/               # 563 offline tests
 ├─ docs/                # source catalog, UI research, implementation plans
 ├─ config.example.yaml
 ├─ preferences.json     # user size preference (git-ignored)

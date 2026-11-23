@@ -144,13 +144,14 @@ def test_writer_v2_item_batch_failure_keeps_other_batches(tmp_path):
             "not json",
             "still not json",
             _items_payload(12, 1),
+            '{"items": []}',
             _overview_payload(),
         ]
     )
 
     ranked, overview = summarize_with_llm(_ranked(13), chat, config, locale="en")
 
-    assert len(chat.calls) == 4
+    assert len(chat.calls) == 5  # 2 failed batch calls + batch 2 + repair + overview
     assert all(not item.llm_summary for item in ranked[:12])
     assert ranked[12].llm_summary == "Summary 12"
     assert overview
@@ -175,12 +176,17 @@ def test_writer_v2_transport_failure_isolated_to_batch(tmp_path):
     config = make_config(tmp_path)
     config.llm.writer_v2 = True
     chat = ScriptedChat(
-        [LlmError("endpoint down"), _items_payload(12, 1), _overview_payload()]
+        [
+            LlmError("endpoint down"),
+            _items_payload(12, 1),
+            '{"items": []}',
+            _overview_payload(),
+        ]
     )
 
     ranked, overview = summarize_with_llm(_ranked(13), chat, config, locale="en")
 
-    assert len(chat.calls) == 3
+    assert len(chat.calls) == 4  # failed batch + batch 2 + repair + overview
     assert all(not item.llm_summary for item in ranked[:12])
     assert ranked[12].llm_summary == "Summary 12"
     assert "Two themes" in overview

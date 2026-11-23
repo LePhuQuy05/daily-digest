@@ -45,10 +45,15 @@ def test_new_only_drops_same_day_and_previous_seen_then_backfills(
         _paper("2611.10003", "New three"),
         _paper("2611.10004", "Seen this morning"),
         _paper("2611.10005", "Notable from yesterday"),
+        _paper("2611.10006", "Notable from two days ago"),
     ]
     _seed(
         config,
-        {"arxiv:2611.10004": DATE, "arxiv:2611.10005": "2026-11-18"},
+        {
+            "arxiv:2611.10004": DATE,
+            "arxiv:2611.10005": "2026-11-18",
+            "arxiv:2611.10006": "2026-11-17",
+        },
     )
     _patch(monkeypatch, items)
     notified: list = []
@@ -65,11 +70,13 @@ def test_new_only_drops_same_day_and_previous_seen_then_backfills(
     assert result.exit_code == 0 and result.mode == "llm"
     html = result.digest_path.read_text(encoding="utf-8")
     assert "New one" in html and "New two" in html and "New three" in html
-    assert "Notable from yesterday" in html  # backfill: fewer than top_n new
+    assert "Notable from two days ago" in html  # older history may backfill
+    assert "Notable from yesterday" not in html  # yesterday is never reused
     assert "Seen this morning" not in html  # never re-show today's digest
+    assert result.item_count == 4  # 3 fresh + 1 older; 6 requested
     state = json.loads(config.state_path.read_text(encoding="utf-8"))
     assert state["seen"]["arxiv:2611.10001"] == DATE
-    assert state["seen"]["arxiv:2611.10005"] == DATE  # backfilled today -> seen today
+    assert state["seen"]["arxiv:2611.10006"] == DATE  # backfilled today -> seen today
 
 
 def test_new_only_backfill_fills_to_top_n(tmp_path, monkeypatch):
@@ -81,13 +88,15 @@ def test_new_only_backfill_fills_to_top_n(tmp_path, monkeypatch):
         _paper("2611.20001", "Prev one"),
         _paper("2611.20002", "Prev two"),
         _paper("2611.20003", "Prev three"),
+        _paper("2611.20004", "Prev yesterday"),
     ]
     _seed(
         config,
         {
-            "arxiv:2611.20001": "2026-11-18",
-            "arxiv:2611.20002": "2026-11-17",
-            "arxiv:2611.20003": "2026-11-16",
+            "arxiv:2611.20001": "2026-11-17",
+            "arxiv:2611.20002": "2026-11-16",
+            "arxiv:2611.20003": "2026-11-15",
+            "arxiv:2611.20004": "2026-11-18",
         },
     )
     _patch(monkeypatch, items)
@@ -102,7 +111,9 @@ def test_new_only_backfill_fills_to_top_n(tmp_path, monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert result.item_count == 5  # 2 unseen + 3 backfilled notable items
+    assert result.item_count == 5  # 2 unseen + 3 older-than-yesterday items
+    html = result.digest_path.read_text(encoding="utf-8")
+    assert "Prev yesterday" not in html
 
 
 def test_backfill_fills_short_digest_without_dropping_today(tmp_path, monkeypatch):
@@ -114,15 +125,17 @@ def test_backfill_fills_short_digest_without_dropping_today(tmp_path, monkeypatc
         _paper("2611.20001", "Prev one"),
         _paper("2611.20002", "Prev two"),
         _paper("2611.20003", "Prev three"),
+        _paper("2611.20004", "Prev yesterday"),
     ]
     _seed(
         config,
         {
             "arxiv:2611.10001": DATE,
             "arxiv:2611.10002": DATE,
-            "arxiv:2611.20001": "2026-11-18",
-            "arxiv:2611.20002": "2026-11-17",
-            "arxiv:2611.20003": "2026-11-16",
+            "arxiv:2611.20001": "2026-11-17",
+            "arxiv:2611.20002": "2026-11-16",
+            "arxiv:2611.20003": "2026-11-15",
+            "arxiv:2611.20004": "2026-11-18",
         },
     )
     _patch(monkeypatch, items)
@@ -147,6 +160,7 @@ def test_backfill_fills_short_digest_without_dropping_today(tmp_path, monkeypatc
         "Prev three",
     ):
         assert title in html
+    assert "Prev yesterday" not in html
     state = json.loads(config.state_path.read_text(encoding="utf-8"))
     assert state["seen"]["arxiv:2611.20001"] == DATE
 
@@ -282,7 +296,7 @@ def test_run_cli_accepts_new_only_and_implies_force(tmp_path, monkeypatch):
     assert captured["force"] is True  # new-only must bypass the delivered-day skip
 
 
-def test_run_cli_accepts_backfill_and_implies_force(tmp_path, monkeypatch):
+def test_run_cli_accepts_backfill_without_forcing_redo(tmp_path, monkeypatch):
     args = build_parser().parse_args(["run", "--backfill"])
     assert args.backfill is True
 
@@ -307,4 +321,4 @@ def test_run_cli_accepts_backfill_and_implies_force(tmp_path, monkeypatch):
 
     assert exit_code == 0
     assert captured["backfill"] is True
-    assert captured["force"] is True
+    assert captured["force"] is False  # --backfill no longer implies --force

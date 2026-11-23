@@ -28,13 +28,22 @@ from daily_digest.i18n import (
     takeaway_marker,
     truncate_overview,
 )
-from daily_digest.model import Item, RankedItem
+from daily_digest.model import Item, RankedItem, SECTIONS
+from daily_digest.overview import (
+    SECTION_BRIEF_REFS,
+    OverviewRef,
+    SectionBrief,
+    section_brief_cap,
+    short_label,
+    truncate_section_brief,
+)
 from daily_digest.ranking.heuristic import default_section
 from daily_digest.ranking.writer_prompts import (
     item_summary_limit,
     item_system_prompt,
     overview_system_prompt,
     overview_target_range,
+    section_briefs_system_prompt,
 )
 from daily_digest.source_labels import SOURCE_LABELS, labels_for
 from daily_digest.util import LOG
@@ -531,6 +540,65 @@ def write_item_summaries(
         summaries.update(batch_summaries)
         if len(batch_summaries) < len(batch):
             all_ok = False
+
+    missing = [index for index in index_map if index not in summaries]
+    if missing and (deadline is None or time.monotonic() < deadline):
+        missing_set = set(missing)
+        repair_messages: list[dict] = [
+            {
+                "role": "system",
+                "content": item_system_prompt(
+                    loc,
+                    topics=", ".join(config.interests.topics),
+                    reader_context=reader_context,
+                    limit=limit,
+                ),
+            },
+            {
+                "role": "user",
+                "content": "\n".join(
+                    _summary_line(index, ranked[index], labels, loc)
+                    for index in missing
+                ),
+            },
+        ]
+
+        def parse_repair(text: str) -> dict[int, str]:
+            payload = _extract_json(text)
+            parsed = _validate_summaries(payload, index_map, loc, sentence_aware=True)
+            return {
+                index: value for index, value in parsed.items() if index in missing_set
+            }
+
+        repair_text = ""
+        try:
+            repair_text = chat(repair_messages)
+            summaries.update(parse_repair(repair_text))
+        except LlmError as exc:
+            LOG.warning("writer v2 repair call failed: %s", exc)
+        except (ValueError, json.JSONDecodeError) as first_error:
+            LOG.debug(
+                "writer v2 repair invalid (%s); asking for one repair", first_error
+            )
+            repair_messages.extend(
+                [
+                    {"role": "assistant", "content": repair_text},
+                    {
+                        "role": "user",
+                        "content": f"Your previous answer was not valid JSON ({first_error}). "
+                        "Respond again with ONLY the JSON object.",
+                    },
+                ]
+            )
+            try:
+                repair_text = chat(repair_messages)
+                summaries.update(parse_repair(repair_text))
+            except LlmError as exc:
+                LOG.warning("writer v2 repair retry failed: %s", exc)
+            except (ValueError, json.JSONDecodeError) as second_error:
+                LOG.warning("writer v2 repair failed: %s", second_error)
+        if any(index not in summaries for index in missing):
+            all_ok = False
     return (
         [
             dataclasses.replace(item, llm_summary=summaries.get(index, ""))
@@ -620,6 +688,140 @@ def write_overview(
     return overview
 
 
+def _validate_section_briefs(
+    payload: dict,
+    ranked: list[RankedItem],
+    locale: str = "vi",
+) -> tuple[SectionBrief, ...]:
+    loc = normalize_locale(locale) or "vi"
+    entries = payload.get("sections")
+    if not isinstance(entries, list):
+        raise ValueError("'sections' is not a list")
+    briefs: list[SectionBrief] = []
+    seen_sections: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        section = entry.get("section")
+        if section not in SECTIONS or section in seen_sections:
+            continue
+        text = " ".join(str(entry.get("text", "")).split())
+        if not text:
+            continue
+        if fails_kana_gate(text, loc):
+            LOG.warning("ja section brief for %s dropped by kana gate", section)
+            continue
+        text = truncate_section_brief(text, loc)
+        refs: list[OverviewRef] = []
+        seen_refs: set[int] = set()
+        raw_refs = entry.get("refs", [])
+        if not isinstance(raw_refs, list):
+            raw_refs = []
+        for raw in raw_refs:
+            try:
+                index = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if (
+                index in seen_refs
+                or not 0 <= index < len(ranked)
+                or ranked[index].section != section
+            ):
+                continue
+            seen_refs.add(index)
+            item = ranked[index]
+            refs.append(
+                OverviewRef(
+                    uid=item.item.id,
+                    label=short_label(item.item.title, index + 1, loc),
+                    title=item.item.title,
+                )
+            )
+            if len(refs) >= SECTION_BRIEF_REFS:
+                break
+        briefs.append(
+            SectionBrief(
+                section=section,
+                text=text,
+                refs=tuple(refs),
+            )
+        )
+        seen_sections.add(section)
+    return tuple(briefs)
+
+
+def write_section_briefs(
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    config: Config,
+    *,
+    reader_context: str = "",
+    locale: str = "vi",
+    deadline: float | None = None,
+) -> tuple[SectionBrief, ...]:
+    """One batched call for bounded per-section briefs; () on failure."""
+    if not ranked or not config.llm.section_briefs:
+        return ()
+    if deadline is not None and time.monotonic() >= deadline:
+        LOG.warning("writer deadline exceeded before section briefs")
+        return ()
+    loc = normalize_locale(locale) or "vi"
+    lines = []
+    for index, item in enumerate(ranked):
+        summary = " ".join((item.llm_summary or item.item.summary).split())[:400]
+        lines.append(
+            f"[{index}] ({item.section}) {item.item.title}\n    summary: {summary}"
+        )
+    messages: list[dict] = [
+        {
+            "role": "system",
+            "content": section_briefs_system_prompt(
+                loc,
+                topics=", ".join(config.interests.topics),
+                reader_context=reader_context,
+                cap=section_brief_cap(loc),
+            ),
+        },
+        {"role": "user", "content": "\n".join(lines)},
+    ]
+
+    def parse(text: str) -> tuple[SectionBrief, ...]:
+        return _validate_section_briefs(_extract_json(text), ranked, loc)
+
+    text = ""
+    try:
+        text = chat(messages)
+        briefs = parse(text)
+    except LlmError as exc:
+        LOG.warning("section briefs call failed: %s", exc)
+        return ()
+    except (ValueError, json.JSONDecodeError) as first_error:
+        LOG.debug("section briefs invalid (%s); asking for one repair", first_error)
+        LOG.debug("section briefs response prefix: %.500r", text)
+        messages.extend(
+            [
+                {"role": "assistant", "content": text},
+                {
+                    "role": "user",
+                    "content": f"Your previous answer was not valid JSON ({first_error}). "
+                    "Respond again with ONLY the JSON object.",
+                },
+            ]
+        )
+        try:
+            text = chat(messages)
+            briefs = parse(text)
+        except LlmError as exc:
+            LOG.warning("section briefs repair call failed: %s", exc)
+            return ()
+        except (ValueError, json.JSONDecodeError) as second_error:
+            LOG.warning("section briefs failed: %s", second_error)
+            return ()
+    if not briefs:
+        LOG.warning("section briefs returned no usable sections")
+    return briefs
+
+
 def _summarize_v2(
     ranked: list[RankedItem],
     chat: ChatFn,
@@ -661,7 +863,7 @@ def summarize_with_llm(
     """
     if not ranked:
         return ranked, ""
-    if config.llm.writer_v2:
+    if config.llm.writer_v2 or (config.llm.auto_batch_long and len(ranked) > 16):
         return _summarize_v2(ranked, chat, config, reader_context, locale)
     loc = normalize_locale(locale) or "vi"
     language = PROMPT_LANGUAGE[loc]
@@ -773,9 +975,16 @@ class LlmClient:
         }
         backoffs = (2, 8)
         last_error: Exception | None = None
+        deadline = _WRITER_DEADLINE.get()
         for attempt in range(self.config.llm.max_retries + 1):
+            timeout = self.config.llm.timeout_seconds
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise LlmError("writer deadline exceeded before LLM call")
+                timeout = min(timeout, max(0.1, remaining))
             try:
-                with httpx.Client(timeout=self.config.llm.timeout_seconds) as client:
+                with httpx.Client(timeout=timeout) as client:
                     response = client.post(self.url, headers=headers, json=body)
                 if response.status_code in (401, 403, 404):
                     detail = response.text[:200]
@@ -816,6 +1025,12 @@ class LlmClient:
                 last_error = exc
                 if attempt < self.config.llm.max_retries:
                     delay = backoffs[min(attempt, len(backoffs) - 1)]
+                    if deadline is not None and time.monotonic() + delay >= deadline:
+                        LOG.warning(
+                            "writer deadline leaves no time to retry (%ss needed)",
+                            delay,
+                        )
+                        break
                     LOG.warning(
                         "LLM attempt %d failed (%s); retrying in %ss",
                         attempt + 1,

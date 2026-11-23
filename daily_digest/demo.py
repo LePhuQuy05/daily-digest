@@ -19,7 +19,11 @@ from daily_digest.config import Config
 from daily_digest.i18n import normalize_locale, t
 from daily_digest.media import ImageAsset
 from daily_digest.model import Item, RankedItem, Section
-from daily_digest.overview import ensure_coverage, parse_overview
+from daily_digest.overview import (
+    ensure_coverage,
+    heuristic_section_briefs,
+    parse_overview,
+)
 from daily_digest.render import build_digest_data, render_digest
 from daily_digest.util import atomic_write_text
 
@@ -439,6 +443,7 @@ def render_demo(
         overview=overview,
         overview_label=t(loc, "overview_label"),
         overview_points=points,
+        section_briefs=heuristic_section_briefs(ranked, config, loc),
         notice=t(loc, "demo_notice"),
         digest_data=build_digest_data(ranked, [], DEMO_DATE),
         pinned=[],

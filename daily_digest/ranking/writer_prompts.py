@@ -147,3 +147,26 @@ def overview_system_prompt(
         + "\nRespond with ONLY a JSON object:\n"
         '{"overview": "<overview>"}'
     )
+
+
+def section_briefs_system_prompt(
+    locale: str, *, topics: str, reader_context: str, cap: int
+) -> str:
+    loc = _loc(locale)
+    context = f"\nReader context: {reader_context}" if reader_context else ""
+    return (
+        f"You write short section briefings for a daily AI/tech digest. "
+        f"Reader interests: {topics}.{context}\n"
+        f"{STYLE_CARDS[loc]}\n"
+        "Write one briefing for EACH section that has items: papers, tech_news, "
+        "tools_releases. Two or three sentences, at most "
+        f"{cap} characters. Name the strongest concrete results or releases and "
+        "say what connects the items in that section. Do not repeat item titles "
+        "verbatim. Cite at most three items per section using their absolute "
+        "item numbers in refs.\n"
+        f"Write every briefing in {PROMPT_LANGUAGE[loc]}.\n"
+        + "\n".join(ANTI_PATTERNS[loc])
+        + "\nRespond with ONLY a JSON object:\n"
+        '{"sections": [{"section": "papers", "text": "<briefing>", '
+        '"refs": [<absolute item numbers>]}]}'
+    )

@@ -17,7 +17,7 @@ def test_demo_renders_offline_digest_with_coverage(tmp_path):
     assert "Chế độ demo" in html
     assert "Biên tập: demo" in html
     assert html.count('class="oref"') >= 9
-    assert "Còn lại hôm nay" in html
+    assert html.count('class="section-summary"') == 3
     assert "[[" not in html
     assert html.count('data-uid="') == 9
     assert 'story--cover"' in html
@@ -34,7 +34,7 @@ def test_demo_japanese_locale(tmp_path):
     assert '<html lang="ja" dir="ltr">' in html
     assert "AIニュース" in html
     assert "論文" in html
-    assert "要点:" in html
+    assert html.count('class="section-summary"') == 3
     assert "Chế độ demo" not in html
 
 

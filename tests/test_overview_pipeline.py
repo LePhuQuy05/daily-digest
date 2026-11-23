@@ -39,6 +39,7 @@ def _writer(overview: str = "Bài [[0]] và [[1]].\n\nĐiểm cần nhớ: ưu t
 def _run(tmp_path, monkeypatch, *, llm_client, summary_client, summarize=True):
     config = make_config(tmp_path)
     config.llm.summarize = summarize
+    config.llm.section_briefs = False  # this module covers the legacy global rail
     monkeypatch.setattr(pipeline, "fetch_all", lambda client, cfg: (_items(), []))
     return run_day(
         config,

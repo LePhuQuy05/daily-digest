@@ -41,7 +41,7 @@
     </div>
     <h1 class="wordmark"><span class="stamp">AI</span>Daily AI Digest</h1>
     <div class="dateline">
-      <span>{{ date_long or date }} · {{ t.dateline_stories.format(n=total) }} <button id="size-open" class="size-trigger bridge-only" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="size-modal" title="{{ t.size_trigger_title }}">{{ t.settings_change }}</button></span>
+      <span>{{ date_long or date }} · {{ t.dateline_stories.format(n=total) }}{% if requested_count > total %} · {{ t.dateline_shortfall.format(actual=total, requested=requested_count) }}{% endif %}{% if backfilled_count %} · {{ t.dateline_backfilled.format(n=backfilled_count) }}{% endif %} <button id="size-open" class="size-trigger bridge-only" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="size-modal" title="{{ t.size_trigger_title }}">{{ t.settings_change }}</button></span>
       <span>{{ t.dateline_editor.format(name=(model_name if mode == "llm" else t.mode_demo if mode == "demo" else t.mode_empty if mode == "empty" else t.mode_heuristic)) }}</span>
     </div>
   </header>
@@ -55,7 +55,9 @@
     <span class="section-nav-indicator" aria-hidden="true"></span>
   </nav>
 
-  {% if notice %}
+  {% if notice_lines %}
+  <div class="status-strip notice">{% if notice_lines %}{{ notice_lines[0] }}{% for line in notice_lines[1:] %}<p class="status-line">{{ line }}</p>{% endfor %}{% endif %}</div>
+  {% elif notice %}
   <div class="status-strip notice">{{ notice }}</div>
   {% endif %}
   {% if degraded %}
@@ -95,6 +97,25 @@
       <h2>{{ section_titles.get(section_key, section.title) }}</h2>
       <span class="count">{{ t.section_count.format(n=section.total) }}{% if section.total > shown %} · {{ t.section_above.format(n=section.total - shown) }}{% endif %}</span>
     </div>
+    {% set brief = section_brief_map.get(section_key) %}
+    {% if brief %}
+    <div class="section-summary">
+      <p class="section-summary-text">{{ brief.text }}</p>
+      {% if brief.refs %}
+      <div class="section-summary-refs">
+        {% for ref in brief.refs %}<a class="oref" href="#story-{{ ref.uid }}" data-story-ref="{{ ref.uid }}" title="{{ ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=ref.title) }}">{{ ref.label }}</a>{% if not loop.last %}<span aria-hidden="true"> · </span>{% endif %}{% endfor %}
+      </div>
+      {% endif %}
+      {% if brief.coverage_refs %}
+      <details class="section-summary-coverage">
+        <summary>{{ t.section_coverage_all.format(n=brief.coverage_refs | length) }}</summary>
+        {% for chunk in brief.coverage_refs | batch(8, none) %}
+        <p class="coverage-line">{% for ref in chunk if ref %}<a class="oref" href="#story-{{ ref.uid }}" data-story-ref="{{ ref.uid }}" title="{{ ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=ref.title) }}">{{ ref.label }}</a>{% if not loop.last %}<span aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
+        {% endfor %}
+      </details>
+      {% endif %}
+    </div>
+    {% endif %}
 
     {% if section.total == 0 %}
     <p class="empty-note">{{ t.section_empty }}</p>

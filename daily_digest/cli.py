@@ -11,7 +11,12 @@ from pathlib import Path
 
 from daily_digest.config import Config, ConfigError, load_config, redacted_config_dict
 from daily_digest.demo import render_demo
-from daily_digest.digest_size import MAX_DIGEST_SIZE, MIN_DIGEST_SIZE
+from daily_digest.digest_size import (
+    MAX_DIGEST_SIZE,
+    MIN_DIGEST_SIZE,
+    load_preferences,
+    stored_digest_size,
+)
 from daily_digest.i18n import LocaleError, require_locale
 from daily_digest.localize import localize_edition
 from daily_digest.pipeline import run_day
@@ -59,6 +64,11 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
     editor = get_llm_client(config)
     count = getattr(args, "count", None)
     language = getattr(args, "lang", None)
+    preferences = load_preferences(config.preferences_path)
+    explicit_size = stored_digest_size(preferences) is not None or count is not None
+    no_backfill = bool(getattr(args, "no_backfill", False))
+    auto_backfill = explicit_size and not no_backfill
+    backfill = bool(getattr(args, "backfill", False)) and not no_backfill
     result = run_day(
         config,
         date=args.date,
@@ -66,14 +76,12 @@ def cmd_run(config: Config, args: argparse.Namespace) -> int:
         llm_client=editor,
         summary_client=get_summarize_client(config, editor),
         force=(
-            args.force
-            or args.new_only
-            or getattr(args, "backfill", False)
-            or count is not None
-            or language is not None
+            args.force or args.new_only or count is not None or language is not None
         ),
         new_only=args.new_only,
-        backfill=getattr(args, "backfill", False),
+        backfill=backfill,
+        auto_backfill=auto_backfill,
+        allow_backfill=not no_backfill,
         notify_enabled=not args.no_notify,
         target=count,
         language=language,
@@ -434,6 +442,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--backfill",
         action="store_true",
         help="fill a short digest with notable items from previous days",
+    )
+    run.add_argument(
+        "--no-backfill",
+        action="store_true",
+        help="disable automatic historical fill for this run",
     )
     run.add_argument(
         "--no-notify", action="store_true", help="skip the toast (testing)"

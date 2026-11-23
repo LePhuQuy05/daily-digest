@@ -365,6 +365,7 @@ class NotifyRecorder:
 
 def test_run_day_enriches_digest_with_llm_summaries(tmp_path, monkeypatch):
     config = make_config(tmp_path)
+    config.llm.section_briefs = False  # this test covers the legacy global rail
     monkeypatch.setattr(pipeline, "fetch_all", lambda client, cfg: (_items(), []))
     summaries = _summary_json(
         {0: "WRITER-SUM-0", 1: "WRITER-SUM-1", 2: "WRITER-SUM-2", 3: "WRITER-SUM-3"},
@@ -391,6 +392,7 @@ def test_run_day_overview_falls_back_to_mechanical_when_writer_fails(
     tmp_path, monkeypatch
 ):
     config = make_config(tmp_path)  # overview_language: vi (default)
+    config.llm.section_briefs = False  # this test covers the global fallback rail
     monkeypatch.setattr(pipeline, "fetch_all", lambda client, cfg: (_items(), []))
 
     result = run_day(
@@ -411,6 +413,7 @@ def test_run_day_overview_falls_back_to_mechanical_when_writer_fails(
 def test_run_day_overview_without_summary_client_is_mechanical(tmp_path, monkeypatch):
     config = make_config(tmp_path)
     config.llm.overview_language = "en"
+    config.llm.section_briefs = False  # this test covers the global fallback rail
     monkeypatch.setattr(pipeline, "fetch_all", lambda client, cfg: (_items(), []))
 
     result = run_day(

@@ -83,6 +83,8 @@ llm:
   summarize: true              # writer on/off (false -> show raw abstracts)
   summary_max_words: 70
   writer_v2: false            # staged writer; keep false until quality gates pass
+  auto_batch_long: true       # >16 items: writer-v2 12-item batches (avoids truncation)
+  section_briefs: true        # bounded brief per section replaces the global overview rail
   overview_language: vi        # legacy one-time fallback; preferences.json.language wins after a settings save (vi / en / ja)
   profile_file: profile.md     # F4: đoạn "về bạn" nạp vào prompt ("" để tắt)
   profile_max_chars: 600
@@ -118,6 +120,7 @@ media:
 digest:
   output_dir: output
   template: templates/digest.html.j2
+  backfill_days: 60        # how far back automatic historical fill looks in output/editions
 
 notify:
   enabled: true
