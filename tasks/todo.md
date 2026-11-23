@@ -258,9 +258,9 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 - [x] `uv build` → wheel + sdist built.
 - [x] `uv run daily-digest demo --no-open` → exit 0.
 - [x] `uv run daily-digest run --force --date 2026-11-23 --no-notify` → exit 0; 19/7/4 sections; 6 images; briefs 1130/517/473 chars, all targets met.
-- [x] `gh run watch` → CI 45185499028 green (1m1s).
+- [x] `gh run watch` → CI 45188343185 green (46s).
 
 **Dependencies:** All  
 **Files likely touched:** `README.md`, `CHANGELOG.md`, docs, tests  
 **Estimated scope:** Medium  
-**Completed:** `45f8439` — real run + screenshots + CI green
+**Completed:** `7534ab1` — real run + screenshots + CI green
