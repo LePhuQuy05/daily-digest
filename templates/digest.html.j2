@@ -147,6 +147,13 @@
       </div>
       {% endif %}
     </div>
+    {% elif section_key == "tools_releases" %}
+    <div class="section-body section-body--tools">
+      <div class="tools-index">
+        {{ story(section.lead, "brief") }}
+        {% for r in section.briefs[:6] %}{{ story(r, "brief") }}{% endfor %}
+      </div>
+    </div>
     {% else %}
     <div class="section-body">
       <div class="lead-col">

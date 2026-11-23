@@ -481,9 +481,9 @@ def test_typographic_cover_modules_without_images(tmp_path):
         ranked,
         section_briefs=heuristic_section_briefs(ranked, make_config(tmp_path)),
     )
-    assert html.count('story--typographic"') == 7
+    assert html.count('story--typographic"') == 6
     assert html.count('class="story story--feature ') == 4
-    assert html.count('class="story story--lead ') == 2
+    assert html.count('class="story story--lead ') == 1
     assert "cover-pair" in html
     assert '<section class="most-read">' in html
     assert 'id="briefing"' not in html
