@@ -24,6 +24,7 @@ from datetime import datetime
 
 import httpx
 
+from daily_digest import __version__
 from daily_digest.config import AlphaxivCfg
 from daily_digest.model import Item
 from daily_digest.normalize import canonical_arxiv_id, find_arxiv_id
@@ -205,7 +206,7 @@ def fetch_alphaxiv(client: httpx.Client, cfg: AlphaxivCfg) -> list[Item]:
         "params": {
             "protocolVersion": _MCP_PROTOCOL_VERSION,
             "capabilities": {},
-            "clientInfo": {"name": "daily-digest", "version": "0.1.0"},
+            "clientInfo": {"name": "daily-digest", "version": __version__},
         },
     }
     init_response, session_id = _post_rpc(client, api_key, init_body, None)

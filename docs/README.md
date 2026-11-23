@@ -13,7 +13,7 @@ The README is the tour; these notes are the details.
 
 - [Contributing](../CONTRIBUTING.md) — setup, tests, PR expectations
 - [Security policy](../SECURITY.md) — reporting and threat model notes
-- [Changelog](../CHANGELOG.md) — v0.1.0 feature set
+- [Changelog](../CHANGELOG.md) — release history
 - Social preview asset: [screenshots/social-preview.png](screenshots/social-preview.png) — upload manually in GitHub repository settings
 
 ## Design
