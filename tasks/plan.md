@@ -56,7 +56,7 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 
 - [x] Task 6: Research layout (lead + briefs + more 3 cột) (`6e99939`)
 - [x] Task 7: Tech layout (2 feature + list) (`acfa0de`)
-- [ ] Task 8: Tools index 3 cột
+- [x] Task 8: Tools index 3 cột (`a15238b`)
 
 ### Checkpoint: Section layouts
 - [ ] 3 layout khác nhau đúng spec

@@ -168,11 +168,12 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 3, Task 5  
 **Files likely touched:** `templates/digest.html.j2`, `templates/newsroom.css.j2`, `tests/test_news_layout.py`  
-**Estimated scope:** Small/Medium
+**Estimated scope:** Small/Medium  
+**Completed:** `a15238b` — 567 tests pass
 
 ## Checkpoint: Section layouts
 
-- [ ] 3 layout khác nhau đúng spec.
+- [x] 3 layout khác nhau đúng spec.
 - [ ] 30 item một occurrence.
 - [ ] Tests + screenshots.
 - [ ] Human review.
