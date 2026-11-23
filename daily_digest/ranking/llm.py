@@ -739,9 +739,10 @@ def _validate_section_briefs(
                 len(missing),
             )
             tail = t(loc, "section_brief_coverage_tail")
+            separator = "" if not text else ("\n\n" if text.count("\n\n") < 2 else " ")
             segments = list(segments)
-            segments.append(OverviewSegment(text=("\n\n" if text else "") + tail))
-            text = f"{text}\n\n{tail}".strip()
+            segments.append(OverviewSegment(text=separator + tail))
+            text = f"{text}{separator}{tail}".strip()
             for offset, (index, item) in enumerate(missing):
                 if offset:
                     segments.append(OverviewSegment(text=" \u00b7 "))

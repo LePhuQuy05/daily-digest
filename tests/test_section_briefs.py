@@ -586,6 +586,24 @@ def test_complete_keeps_expanded_brief_above_legacy_cap(tmp_path):
     assert len(completed[0].text) >= 800
 
 
+def test_missing_ref_tail_stays_inside_three_paragraphs(tmp_path):
+    config = make_config(tmp_path)
+    ranked = [_item(i, "papers") for i in range(4)]
+    filler = "Noi dung chi tiet va dan chung cu the. " * 8
+    text = f"{filler} [[0]]\n\n{filler} [[1]]\n\n{filler} [[2]]"
+    briefs = write_section_briefs(
+        ranked,
+        FakeLlmClient(_section_payload("papers", text)).chat,
+        config,
+        locale="vi",
+    )
+
+    assert len(briefs) == 1
+    assert briefs[0].text.count("\n\n") == 2
+    ref_uids = {s.ref.uid for s in briefs[0].segments if s.ref is not None}
+    assert ref_uids == {r.item.id for r in ranked}
+
+
 def test_section_brief_caps_at_three_paragraphs(tmp_path):
     config = make_config(tmp_path)
     ranked = [_item(i, "papers") for i in range(21)]

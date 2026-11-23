@@ -254,7 +254,7 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 - [x] CI success.
 
 **Verification:**
-- [x] `uv run pytest -o addopts='' -p no:cacheprovider -q` → 572 passed.
+- [x] `uv run pytest -o addopts='' -p no:cacheprovider -q` → 573 passed.
 - [x] `uv build` → wheel + sdist built.
 - [x] `uv run daily-digest demo --no-open` → exit 0.
 - [x] `uv run daily-digest run --force --date 2026-11-23 --no-notify` → exit 0; 19/7/4 sections; 6 images; briefs 1130/517/473 chars, all targets met.
