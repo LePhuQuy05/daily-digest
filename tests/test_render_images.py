@@ -1,4 +1,4 @@
-"""Render-level tests: images only on hero + section leads."""
+"""Render-level tests: article images on hero, section leads, and briefs."""
 
 from __future__ import annotations
 
@@ -60,21 +60,21 @@ def _asset(
     )
 
 
-def test_images_only_hero_and_section_lead(tmp_path):
+def test_images_on_hero_leads_and_briefs(tmp_path):
     html = _render(
         tmp_path,
         images={
             "p0": _asset("p0"),
             "p1": _asset("p1"),  # secondary: must be ignored
             "p2": _asset("p2", "arxiv_svg"),  # papers lead: shown
-            "p3": _asset("p3"),  # brief: ignored
+            "p3": _asset("p3"),  # brief: shown as a thumbnail
         },
     )
-    assert html.count('class="story-media') == 2
-    assert html.count('src="data:image/jpeg;base64,AAAA"') == 2
-    assert "Alt p0" in html and "Alt p2" in html
-    assert "Alt p1" not in html and "Alt p3" not in html
-    assert "Hình: arXiv:p0" in html and "Hình: arXiv:p2" in html
+    assert html.count('class="story-media') == 3
+    assert html.count('src="data:image/jpeg;base64,AAAA"') == 3
+    assert "Alt p0" in html and "Alt p2" in html and "Alt p3" in html
+    assert "Alt p1" not in html
+    assert 'class="story story--brief story--has-media"' in html
 
 
 def test_portrait_figure_uses_tall_mat(tmp_path):

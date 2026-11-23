@@ -31,14 +31,14 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 2. **Fetch** — source adapters run with bounded timeouts; failures are collected per source.
 3. **Normalize and merge** — items are canonicalized; the same paper from multiple sources becomes one item with provenance.
 4. **Filter and enrich** — the 7-day seen-set removes repeats; OpenAlex adds citation counts.
-5. **Rank** - the editor LLM selects the requested 1-30 items (default 12) and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable. A user size change reruns this stage and the writer, with a morning-digest backup before overwriting today's edition. If fewer fresh items (or fewer editor picks) are available, the size-change/backfill path tops up from notable previous-day items.
-6. **Summarize** — the writer LLM adds 2–3 sentence summaries and the day overview; raw abstracts and a heuristic overview are the fallback.
+5. **Rank** - the editor LLM selects the requested 1-30 items (default 12) and writes a one-line justification; a keyword/points/recency ranker takes over if the editor is unavailable. A user size change reruns this stage and the writer, with a morning-digest backup before overwriting today's edition. If fewer fresh items (or fewer editor picks) are available, historical fill tops up from day-2 or earlier, never yesterday.
+6. **Summarize** — the writer LLM adds 2–3 sentence summaries and one bounded brief per section; raw abstracts and deterministic section briefs are the fallback. Digests over 16 items use 12-item writer batches so one truncation cannot lose every summary.
 7. **Render and deliver** — Jinja produces one self-contained HTML file; the popup and toast open it.
 
 ### Localize vs fresh run
 
 - **Fresh run** (`run`, `run --count`, `run --lang`, refresh) fetches, filters, ranks, summarizes, and may select a different set.
-- **Localize** (`localize`, language selector) loads `output/editions/digest-YYYY-MM-DD.json`, reads images from the current HTML, regenerates `why`/summaries/overview/chrome in the target locale, and writes the same edition.
+- **Localize** (`localize`, language selector) loads `output/editions/digest-YYYY-MM-DD.json`, reads images from the current HTML, regenerates `why`/summaries/section briefs/chrome in the target locale, and writes the same edition.
 - The sidecar stores ordered items, wall-clock `published` dates, overview points, pinned items, run metadata, actual `html_relpath`, and an exact-byte HTML hash. `digest_data` keeps its existing shape.
 - If the sidecar is missing/corrupt, a legacy edition is reconstructed from `digest_data` + HTML; if that cannot preserve the item set, localize refuses. It never silently re-ranks for language-only.
 
@@ -49,10 +49,10 @@ One app locale (`vi`, `en`, or `ja`) drives UI chrome, generated content, dates,
 | Missing API key | Heuristic ranking; digest marked degraded; exit `1` |
 | One source unavailable | Continue with the remaining sources; `health` reports per-feed status |
 | Editor timeout / 401 | Heuristic ranking; no empty digest |
-| Writer timeout / invalid JSON | Keep raw abstracts and a deterministic overview |
+| Writer timeout / invalid JSON | Keep raw abstracts and deterministic section briefs |
 | Localize failure | Keep the old HTML, restore the previous language preference, show a localized error |
 | Localize missing/corrupt snapshot | Reconstruct from digest_data + HTML or refuse; never re-rank |
-| Writer omits an item from the overview | `ensure_coverage` adds a `Còn lại hôm nay` reference line |
+| Section brief omits an item | `coverage_refs` lists every remaining item as a visible anchor link |
 | `latest.html` locked / process dies | Atomic write; keep the previous good file |
 | Feed text contains instructions | Treat as data; model output is parsed as JSON, never executed; HTML is escaped |
 

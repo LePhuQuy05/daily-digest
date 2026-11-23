@@ -493,6 +493,10 @@ def collect_images(
     for section in page.sections:
         if section.lead:
             targets.append(section.lead)
+        if section.briefs:
+            targets.append(section.briefs[0])
+    for section in page.sections:
+        targets.extend(section.briefs[1:])
     seen: set[str] = set()
     assets: dict[str, ImageAsset] = {}
     used_bytes = 0
@@ -501,7 +505,9 @@ def collect_images(
         headers={"User-Agent": USER_AGENT},
         follow_redirects=False,
     ) as client:
-        for item in targets[: config.media.max_images]:
+        for item in targets:
+            if len(assets) >= config.media.max_images:
+                break
             uid = item.item.id
             if uid in seen:
                 continue

@@ -9,7 +9,7 @@
 {% endmacro %}
 
 {% macro story(item, variant="brief") %}
-{% set img = images.get(item.item.id) if images and variant in ("hero", "lead") else none %}
+{% set img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief") else none %}
 {% set cover = (variant == "hero" and img is not none and img.kind == "og" and img.credit != "" and img.height > 0 and img.width >= img.height * 1.25) %}
 <article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" tabindex="-1">
   {% if variant == "hero" %}<div class="story-lede">{% endif %}
@@ -82,6 +82,13 @@
 {% endif %}
 {% endmacro %}
 
+{% macro source_line() %}
+<div class="source-line">
+  {{ t.source_prefix }}
+  {% for source, count in front_page.source_counts.items() %}{{ source_names.get(source, source) }} {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}
+</div>
+{% endmacro %}
+
 {% macro rail() %}
 <aside class="rail">
   {% if overview and not section_briefs %}
@@ -117,9 +124,6 @@
   </section>
   {% endif %}
 
-  <div class="source-line">
-    {{ t.source_prefix }}
-    {% for source, count in front_page.source_counts.items() %}{{ source_names.get(source, source) }} {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}
-  </div>
+  {{ source_line() }}
 </aside>
 {% endmacro %}

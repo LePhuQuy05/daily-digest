@@ -107,12 +107,13 @@ feedback:
 
 media:
   # Optional real article images (arXiv figures + custom article OG).
-  # Only hero + section leads; no HF page-1 cards, no auto GitHub banners,
-  # no LLM-generated images. Failures never block the digest.
+  # Targets hero, section leads, then the first briefs per section; no HF
+  # page-1 cards, no auto GitHub banners, no LLM-generated images.
+  # Failures never block the digest.
   enabled: true
   max_images: 6
   llm_review: true            # DeepSeek V4.1 Flash checks suitability (vision)
-  include_in_print: false     # keep the 3-page print broadsheet text-only
+  include_in_print: false     # keep the print broadsheet text-only
   cache_dir: output/media
   width: 1180
   quality: 85

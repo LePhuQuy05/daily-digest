@@ -50,8 +50,8 @@ class OverviewPoint:
     kind: Literal["theme", "rest", "takeaway"] = "theme"
 
 
-SECTION_BRIEF_MAX = 360
-SECTION_BRIEF_MAX_JA = 240
+SECTION_BRIEF_MAX = 600
+SECTION_BRIEF_MAX_JA = 360
 SECTION_BRIEF_REFS = 3
 
 

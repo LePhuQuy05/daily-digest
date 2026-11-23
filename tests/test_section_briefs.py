@@ -100,6 +100,9 @@ def test_section_briefs_replace_global_rail_and_cover_every_uid(tmp_path):
     assert html.count('class="section-summary"') == 3
     assert 'id="briefing"' not in html
     assert "legacy overview" not in html
+    assert "top-fold top-fold--wide" in html
+    assert '<aside class="rail">' not in html
+    assert html.count('class="source-line"') == 1
     assert html.count('class="oref"') == 30
     for item in ranked:
         assert f'data-story-ref="{item.item.id}"' in html
@@ -128,7 +131,7 @@ def test_section_brief_validation_drops_wrong_section_and_extra_refs(tmp_path):
 
     assert len(briefs) == 2
     papers = next(brief for brief in briefs if brief.section == "papers")
-    assert len(papers.text) <= 360
+    assert len(papers.text) <= 600
     assert [ref.uid for ref in papers.refs] == [
         ranked[0].item.id,
         ranked[3].item.id,
@@ -241,6 +244,8 @@ def test_old_snapshot_without_briefs_renders_legacy_rail(tmp_path):
     )
     assert 'id="briefing"' in html
     assert 'class="overview-point' in html
+    assert '<aside class="rail">' in html
+    assert 'class="source-line"' in html
 
 
 def test_section_briefs_keep_backfilled_flag_through_localize(tmp_path):

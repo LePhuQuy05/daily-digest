@@ -67,23 +67,25 @@
   </div>
   {% endif %}
 
-  {% from "partials/_story.html.j2" import story, pinned_item, rail, most_read with context %}
+  {% from "partials/_story.html.j2" import story, pinned_item, rail, most_read, source_line with context %}
 
+  {% set rail_content = (overview and not section_briefs) or pinned or pinned_overflow %}
   {% if front_page.lead %}
-  <div class="top-fold">
+  <div class="top-fold{% if not rail_content %} top-fold--wide{% endif %}">
     <div class="hero-col">
       {{ story(front_page.lead, "hero") }}
       {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
       {{ most_read() }}
     </div>
-    {{ rail() }}
+    {% if rail_content %}{{ rail() }}{% endif %}
   </div>
   {% else %}
-  <div class="top-fold top-fold--empty">
+  <div class="top-fold top-fold--empty{% if not rail_content %} top-fold--wide{% endif %}">
     <div class="empty-note">{{ t.empty_none }}</div>
-    {{ rail() }}
+    {% if rail_content %}{{ rail() }}{% endif %}
   </div>
   {% endif %}
+  {% if not rail_content %}{{ source_line() }}{% endif %}
 
   {% for section in front_page.sections %}
   {% set section_key = section.key %}
@@ -107,12 +109,12 @@
       </div>
       {% endif %}
       {% if brief.coverage_refs %}
-      <details class="section-summary-coverage">
-        <summary>{{ t.section_coverage_all.format(n=brief.coverage_refs | length) }}</summary>
+      <div class="section-summary-coverage">
+        <span class="coverage-label">{{ t.section_coverage_all.format(n=brief.coverage_refs | length) }}</span>
         {% for chunk in brief.coverage_refs | batch(8, none) %}
         <p class="coverage-line">{% for ref in chunk if ref %}<a class="oref" href="#story-{{ ref.uid }}" data-story-ref="{{ ref.uid }}" title="{{ ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=ref.title) }}">{{ ref.label }}</a>{% if not loop.last %}<span aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
         {% endfor %}
-      </details>
+      </div>
       {% endif %}
     </div>
     {% endif %}
