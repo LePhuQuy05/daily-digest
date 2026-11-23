@@ -121,12 +121,15 @@ def test_og_landscape_hero_gets_cover(tmp_path):
 
 
 def test_arxiv_portrait_square_and_missing_credit_do_not_get_cover(tmp_path):
-    cases = (
-        {"p0": _asset("p0", kind="arxiv_img")},
+    arxiv_hero = _hero(_render(tmp_path, images={"p0": _asset("p0", kind="arxiv_img")}))
+    assert "story--cover" not in arxiv_hero
+    assert "story--typographic" in arxiv_hero
+    assert "<figcaption>" not in arxiv_hero
+
+    for images in (
         {"p0": _asset("p0", width=800, height=1000)},
         {"p0": _asset("p0", width=1000, height=1000)},
-    )
-    for images in cases:
+    ):
         hero = _hero(_render(tmp_path, images=images))
         assert "story--cover" not in hero
         assert "<figcaption>" in hero  # normal hero keeps its credit

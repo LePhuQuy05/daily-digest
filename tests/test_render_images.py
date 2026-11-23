@@ -66,7 +66,7 @@ def test_images_on_hero_features_leads_and_briefs(tmp_path):
     html = _render(
         tmp_path,
         images={
-            "p0": _asset("p0"),
+            "p0": _asset("p0", "og"),
             "p1": _asset("p1"),  # secondary feature: shown below cover
             "p2": _asset("p2", "arxiv_svg"),  # papers lead: shown
             "p3": _asset("p3"),  # papers brief: shown
@@ -84,9 +84,10 @@ def test_portrait_figure_uses_tall_mat(tmp_path):
     html = _render(
         tmp_path,
         images={
-            "p0": _asset("p0", width=750, height=1000),
-            "p2": _asset("p2"),
+            "p2": _asset("p2", width=750, height=1000),
+            "p3": _asset("p3"),
         },
+        with_briefs=True,
     )
     assert (
         html.count('class="story-media story-media--arxiv_img story-media--portrait"')

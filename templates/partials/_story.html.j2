@@ -9,9 +9,10 @@
 {% endmacro %}
 
 {% macro story(item, variant="brief") %}
-{% set img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief", "feature") else none %}
+{% set raw_img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief", "feature") else none %}
+{% set img = raw_img if (variant != "hero" or (raw_img is not none and raw_img.kind == "og")) else none %}
 {% set cover = (variant == "hero" and img is not none and img.kind == "og" and img.credit != "" and img.height > 0 and img.width >= img.height * 1.25) %}
-{% set typographic = (not img and variant in ("hero", "feature", "lead")) %}
+{% set typographic = (not img and variant == "hero") %}
 <article class="story story--{{ variant }} story--sec-{{ item.section }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}{% if typographic %} story--typographic{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" data-section-label="{{ section_titles.get(item.section, item.section) }}" tabindex="-1">
   {% if variant == "hero" %}<div class="story-lede">{% endif %}
   {% if img %}
