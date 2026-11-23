@@ -101,7 +101,7 @@ def test_section_briefs_replace_global_rail_and_cover_every_uid(tmp_path):
     assert 'class="section-summary-refs"' not in html
     assert 'id="briefing"' not in html
     assert "legacy overview" not in html
-    assert "top-fold top-fold--wide" in html
+    assert "top-fold top-fold--cover" in html
     assert '<aside class="rail">' not in html
     assert html.count('class="source-line"') == 1
     assert html.count('class="oref"') == 30

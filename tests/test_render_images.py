@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
+from daily_digest.overview import heuristic_section_briefs
 from daily_digest.render import render_digest
 from helpers import make_config, make_item
 
@@ -22,7 +23,7 @@ def _item(uid: str, section: str) -> RankedItem:
     )
 
 
-def _render(tmp_path, images=None):
+def _render(tmp_path, images=None, with_briefs=False):
     config = make_config(tmp_path)
     ranked = [
         _item("p0", "papers"),
@@ -41,6 +42,7 @@ def _render(tmp_path, images=None):
         template=config.template_path,
         overview="Tổng hợp hôm nay.",
         overview_label="Tổng hợp hôm nay",
+        section_briefs=heuristic_section_briefs(ranked, config) if with_briefs else (),
         images=images,
     )
 
@@ -65,10 +67,11 @@ def test_images_on_hero_features_leads_and_briefs(tmp_path):
         tmp_path,
         images={
             "p0": _asset("p0"),
-            "p1": _asset("p1"),  # secondary feature: shown
-            "p2": _asset("p2", "arxiv_svg"),  # tertiary feature: shown
-            "p3": _asset("p3"),  # papers lead: shown
+            "p1": _asset("p1"),  # secondary feature: shown below cover
+            "p2": _asset("p2", "arxiv_svg"),  # papers lead: shown
+            "p3": _asset("p3"),  # papers brief: shown
         },
+        with_briefs=True,
     )
     assert html.count('class="story-media') == 4
     assert html.count('src="data:image/jpeg;base64,AAAA"') == 4

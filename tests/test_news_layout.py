@@ -80,7 +80,7 @@ def test_most_read_links_point_to_existing_story_anchors(tmp_path):
     start = html.index('<section class="most-read">')
     end = html.index("</section>", start)
     rail = html[start:end]
-    for item in ranked[2:5]:
+    for item in ranked[2:7]:
         uid = item.item.id
         assert f'href="#story-{uid}"' in rail
         assert f'id="story-{uid}"' in html

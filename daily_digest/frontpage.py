@@ -63,6 +63,6 @@ def build_front_page(ranked: Sequence[RankedItem]) -> FrontPage:
         lead=lead,
         secondary=secondary,
         sections=tuple(sections),
-        most_read=tuple(items[2:5]),
+        most_read=tuple(items[2:7]),
         source_counts=dict(Counter(item.item.source for item in items)),
     )

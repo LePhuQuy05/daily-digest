@@ -211,6 +211,10 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 /* ===================== top fold: hero + rail ===================== */
 .top-fold { display: grid; grid-template-columns: minmax(0, 8fr) minmax(280px, 4fr);
             gap: 24px; margin: 22px 0 30px; align-items: start; }
+.top-fold--cover { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.cover-aside { min-width: 0; }
+.cover-aside .most-read { margin-top: 0; }
+.cover-secondary { margin: 4px 0 30px; }
 .top-fold--wide { grid-template-columns: 1fr; }
 .top-fold--wide + .source-line { margin: -16px 0 28px; padding-top: 8px;
                                 border-top: 1px solid var(--rule); }
