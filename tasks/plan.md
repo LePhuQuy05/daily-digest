@@ -65,7 +65,7 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 
 ### Phase 4: Images, responsive, print
 
-- [ ] Task 9: OG/photo 16:9 + figure 4:3 + typographic fallback
+- [x] Task 9: OG/photo 16:9 + figure 4:3 + typographic fallback (`419f97d`)
 - [ ] Task 10: Responsive 320/768/1024/1440
 - [ ] Task 11: Dark + print/A4 + contrast
 

@@ -194,7 +194,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 5  
 **Files likely touched:** `templates/partials/_story.html.j2`, `templates/newsroom.css.j2`, `tests/test_render_images.py`  
-**Estimated scope:** Medium
+**Estimated scope:** Medium  
+**Completed:** `419f97d` — 567 tests pass
 
 ## Task 10: Responsive 320/768/1024/1440
 
