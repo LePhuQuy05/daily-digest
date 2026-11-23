@@ -104,7 +104,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 4  
 **Files likely touched:** `daily_digest/frontpage.py`, `templates/digest.html.j2`, `tests/test_front_page.py`, `tests/test_news_layout.py`  
-**Estimated scope:** Medium
+**Estimated scope:** Medium  
+**Completed:** `639559d` — 567 tests pass
 
 ## Checkpoint: Skeleton
 

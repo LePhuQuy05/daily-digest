@@ -45,7 +45,7 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 ### Phase 2: Page skeleton
 
 - [x] Task 4: Grid/type/spacing tokens + section head (`39fa813`)
-- [ ] Task 5: Top fold hero 7/5 + Most Read 5; secondary về section
+- [x] Task 5: Top fold hero 7/5 + Most Read 5; secondary feature below (`639559d`)
 
 ### Checkpoint: Skeleton
 - [ ] 1280 first viewport có một điểm nhấn
