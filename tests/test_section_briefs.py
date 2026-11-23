@@ -469,3 +469,13 @@ def test_six_typographic_cover_modules_without_images(tmp_path):
     assert "cover-pair" in html
     assert '<section class="most-read">' in html
     assert 'id="briefing"' not in html
+
+
+def test_heuristic_brief_segments_cover_every_uid(tmp_path):
+    ranked = _mixed(12)
+    briefs = heuristic_section_briefs(ranked, make_config(tmp_path))
+    for brief in briefs:
+        item_uids = {r.item.id for r in ranked if r.section == brief.section}
+        ref_uids = {s.ref.uid for s in brief.segments if s.ref is not None}
+        assert ref_uids == item_uids
+        assert brief.segments[0].text

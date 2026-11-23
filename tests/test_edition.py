@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -22,7 +23,12 @@ from daily_digest.edition import (
 from daily_digest.i18n import locale_strings
 from daily_digest.media import ImageAsset
 from daily_digest.model import RankedItem
-from daily_digest.overview import OverviewPoint, OverviewRef, OverviewSegment
+from daily_digest.overview import (
+    OverviewPoint,
+    OverviewRef,
+    OverviewSegment,
+    SectionBrief,
+)
 from daily_digest.util import PROJECT_ROOT
 from helpers import FakeLlmClient, llm_ok_json, make_config, make_item
 
@@ -320,3 +326,48 @@ print(hashlib.sha256(html.encode("utf-8")).hexdigest())
         )
         hashes.append(output.strip())
     assert hashes[0] == hashes[1]
+
+
+def test_section_brief_segments_roundtrip_and_old_snapshot(tmp_path):
+    config = make_config(tmp_path)
+    item = make_item(
+        id="arxiv:2611.00441",
+        title="Segment paper",
+        url="https://arxiv.org/abs/2611.00441",
+        source="arxiv",
+        summary="abstract",
+    )
+    ref = OverviewRef(uid=item.id, label="Segment", title=item.title)
+    brief = SectionBrief(
+        section="papers",
+        text="Old text",
+        refs=(ref,),
+        coverage_refs=(),
+        segments=(
+            OverviewSegment(text="Paper: "),
+            OverviewSegment(ref=ref),
+            OverviewSegment(text="."),
+        ),
+    )
+    edition = Edition(
+        date="2026-11-23",
+        locale="vi",
+        ranked=(RankedItem(item=item, why="why", section="papers"),),
+        mode="llm",
+        model_name="test",
+        section_briefs=(brief,),
+    )
+    save_edition(edition, config.output_dir)
+    loaded = load_edition(config.output_dir, "2026-11-23")
+    assert loaded is not None
+    assert loaded.section_briefs[0].segments[1].ref.uid == item.id
+    assert loaded.section_briefs[0].segments[0].text == "Paper: "
+
+    path = snapshot_path(config.output_dir, "2026-11-23")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    del payload["section_briefs"][0]["segments"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    old = load_edition(config.output_dir, "2026-11-23")
+    assert old is not None
+    assert old.section_briefs[0].segments == ()
+    assert old.section_briefs[0].text == "Old text"

@@ -198,12 +198,29 @@ def _ref_from_dict(data: object) -> OverviewRef | None:
     )
 
 
+def _segment_to_dict(segment: OverviewSegment) -> dict:
+    return {
+        "text": segment.text,
+        "ref": _ref_to_dict(segment.ref) if segment.ref is not None else None,
+    }
+
+
+def _segment_from_dict(data: object) -> OverviewSegment | None:
+    if not isinstance(data, dict):
+        return None
+    return OverviewSegment(
+        text=str(data.get("text", "")),
+        ref=_ref_from_dict(data.get("ref")),
+    )
+
+
 def _section_brief_to_dict(brief: SectionBrief) -> dict:
     return {
         "section": brief.section,
         "text": brief.text,
         "refs": [_ref_to_dict(ref) for ref in brief.refs],
         "coverage_refs": [_ref_to_dict(ref) for ref in brief.coverage_refs],
+        "segments": [_segment_to_dict(segment) for segment in brief.segments],
     }
 
 
@@ -223,11 +240,17 @@ def _section_brief_from_dict(data: object) -> SectionBrief | None:
         for entry in data.get("coverage_refs", [])
         if (ref := _ref_from_dict(entry)) is not None
     ]
+    segments = [
+        segment
+        for entry in data.get("segments", [])
+        if (segment := _segment_from_dict(entry)) is not None
+    ]
     return SectionBrief(
         section=section,
         text=str(data.get("text", "")),
         refs=tuple(refs),
         coverage_refs=tuple(coverage),
+        segments=tuple(segments),
     )
 
 

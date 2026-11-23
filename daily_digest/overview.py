@@ -57,12 +57,13 @@ SECTION_BRIEF_REFS = 3
 
 @dataclass(frozen=True)
 class SectionBrief:
-    """A bounded per-section summary plus anchor coverage for that section."""
+    """A bounded per-section summary plus inline refs and anchor coverage."""
 
     section: Section
     text: str
     refs: tuple[OverviewRef, ...] = ()
     coverage_refs: tuple[OverviewRef, ...] = ()
+    segments: tuple[OverviewSegment, ...] = ()
 
 
 def short_label(title: str, number: int, locale: str = "vi") -> str:
@@ -329,6 +330,15 @@ def heuristic_section_briefs(
             continue
         titles = " \u00b7 ".join(item.item.title for _, item in items[:3])
         text = t(loc, "section_brief_fallback").format(n=len(items), titles=titles)
+        segments: list[OverviewSegment] = [
+            OverviewSegment(
+                text=t(loc, "section_brief_fallback_prefix").format(n=len(items))
+            )
+        ]
+        for offset, (index, _item) in enumerate(items):
+            if offset:
+                segments.append(OverviewSegment(text=" \u00b7 "))
+            segments.append(OverviewSegment(ref=_ref_for(ranked, index, loc)))
         refs = tuple(
             _ref_for(ranked, index, loc) for index, _ in items[:SECTION_BRIEF_REFS]
         )
@@ -341,6 +351,7 @@ def heuristic_section_briefs(
                 text=truncate_section_brief(text, loc),
                 refs=refs,
                 coverage_refs=coverage,
+                segments=tuple(segments),
             )
         )
     return tuple(briefs)
@@ -382,6 +393,7 @@ def complete_section_briefs(
                 text=truncate_section_brief(brief.text, loc),
                 refs=brief.refs,
                 coverage_refs=tuple(coverage),
+                segments=brief.segments,
             )
         )
     return tuple(out)
