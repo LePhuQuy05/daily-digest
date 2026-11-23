@@ -121,7 +121,7 @@ Ví dụ CSS:
 - **Section brief:** inline refs, 800–1,200 chars for large section, all uids mentioned.
 - **Accessibility:** heading order, button names, contrast tokens, no color-only.
 - **Responsive/print:** manual Playwright + A4 PDF; no browser dependency in pytest.
-- **Regression:** 564 tests + new tests; CI Windows.
+- **Regression:** 571 tests + new tests; CI Windows.
 
 Coverage: giữ hành vi hiện có; không giảm test. Không dùng screenshot test tự động nếu chưa có dependency.
 
@@ -287,7 +287,7 @@ Coverage: giữ hành vi hiện có; không giảm test. Không dùng screenshot
 - [ ] Ảnh OG 16:9; figure 4:3; không ảnh giả.
 - [ ] 320/768/1024/1440 không tràn ngang; 320 không multi-column.
 - [ ] Dark mode contrast đạt; print ≤6 trang A4.
-- [ ] 564 test hiện có + test mới xanh; `uv build`; demo exit 0; CI xanh.
+- [ ] 571 test hiện có + test mới xanh; `uv build`; demo exit 0; CI xanh.
 
 ## Out of Scope (Deferred)
 
@@ -298,6 +298,18 @@ Coverage: giữ hành vi hiện có; không giảm test. Không dùng screenshot
 - **Thay wordmark/palette section** — giữ hiện tại; nếu muốn đổi, spec delta.
 - **Browser test dependency** — không thêm Playwright vào project; QA ngoài.
 - **Animation/phức tạp JS** — không cần cho V1.
+
+## Implementation notes (2026-11-23)
+
+- `SectionBrief.segments` is additive; sidecars round-trip it, and old snapshots
+  fall back to `text` + refs line.
+- Briefs below the section minimum trigger one expansion call. Mechanical
+  fallback still guarantees every uid when the writer fails.
+- A paper figure on the hero is rendered as a labelled 4:3 plate below the
+  typographic head. It is not a cover; only OG/photo landscape gets `story--cover`.
+- The secondary feature sits below the top fold in a 7/5 text + figure split.
+- Print keeps full More summaries, drops images/refs/actions, uses 9.2pt body,
+  and fits 30 items in 6 A4 pages on the 2026-11-23 run.
 
 ## Open Questions
 

@@ -59,15 +59,15 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 - [x] Task 8: Tools index 3 cột (`a15238b`)
 
 ### Checkpoint: Section layouts
-- [ ] 3 layout khác nhau đúng spec
-- [ ] 30 item một occurrence
-- [ ] Tests pass + screenshot
+- [x] 3 layout khác nhau đúng spec
+- [x] 30 item một occurrence
+- [x] Tests pass + screenshot
 
 ### Phase 4: Images, responsive, print
 
-- [x] Task 9: OG/photo 16:9 + figure 4:3 + typographic fallback (`419f97d`)
+- [x] Task 9: OG/photo 16:9 + figure 4:3 + typographic fallback (`419f97d`, hero plate `3f7454a`)
 - [x] Task 10: Responsive 320/768/1024/1440 (`0c7917f`)
-- [x] Task 11: Dark + print/A4 + contrast (`0c7917f`)
+- [x] Task 11: Dark + print/A4 + contrast (`0c7917f`, print tune `3f7454a`)
 
 ### Checkpoint: UI complete
 - [x] 320/768/1024/1440 no overflow

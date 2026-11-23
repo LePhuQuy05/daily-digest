@@ -247,19 +247,19 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 **Description:** Chạy full suite/build/demo/real run; screenshots; cập nhật README/CHANGELOG/docs; commit + push; CI xanh.
 
 **Acceptance criteria:**
-- [ ] Full suite pass.
-- [ ] Build pass.
-- [ ] Demo exit 0.
-- [ ] Real 30-item run + screenshots.
+- [x] Full suite pass.
+- [x] Build pass.
+- [x] Demo exit 0.
+- [x] Real 30-item run + screenshots.
 - [ ] CI success.
 
 **Verification:**
-- [ ] `uv run pytest -o addopts='' -p no:cacheprovider -q`
-- [ ] `uv build`
-- [ ] `uv run daily-digest demo --no-open`
-- [ ] `uv run daily-digest run --force --date 2026-11-23 --no-notify`
+- [x] `uv run pytest -o addopts='' -p no:cacheprovider -q` → 571 passed.
+- [x] `uv build` → wheel + sdist built.
+- [x] `uv run daily-digest demo --no-open` → exit 0.
+- [x] `uv run daily-digest run --force --date 2026-11-23 --no-notify` → exit 0; 21/6/3 sections; 6 images; briefs 1195/722/419 chars, all targets met.
 - [ ] `gh run watch`
 
 **Dependencies:** All  
 **Files likely touched:** `README.md`, `CHANGELOG.md`, docs, tests  
-**Estimated scope:** Medium
+**Estimated scope:** Medium  

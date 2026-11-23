@@ -59,7 +59,7 @@ Kết quả là mắt không biết nhìn đâu trước, các khối màu trôn
 - Ảnh thật, alt text, width/height đầy đủ.
 - 320/768/1024/1440 không tràn ngang; console không lỗi.
 - Dark mode contrast đã đạt; print text-only 6 trang A4.
-- Nền tảng kỹ thuật tốt: token, test 564, CI xanh.
+- Nền tảng kỹ thuật tốt: token, test 571, CI xanh.
 
 ---
 
@@ -298,7 +298,7 @@ Kiểm tra: 320/768/1024/1440, không horizontal scroll, không console error.
 - [ ] 320/768/1024/1440 không tràn ngang; 320 không multi-column.
 - [ ] Contrast body ≥4.5:1, large ≥3:1.
 - [ ] Print ≤6 trang A4; không ảnh/màu.
-- [ ] Existing 564 tests + test layout mới xanh; CI xanh.
+- [ ] Existing 571 tests + test layout mới xanh; CI xanh.
 
 ---
 
