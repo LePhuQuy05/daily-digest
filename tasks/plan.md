@@ -33,7 +33,7 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 ### Phase 1: Brief system (critical path)
 
 - [x] Task 1: `SectionBrief.segments` + sidecar + mechanical fallback (`5a75d43`)
-- [ ] Task 2: Writer inline briefs + validation + prompt + localize
+- [x] Task 2: Writer inline briefs + validation + prompt + localize (`34f7c46`)
 - [ ] Task 3: Render brief inline refs trong cột hẹp
 
 ### Checkpoint: Brief system

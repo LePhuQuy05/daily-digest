@@ -39,7 +39,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 1  
 **Files likely touched:** `daily_digest/ranking/llm.py`, `daily_digest/ranking/writer_prompts.py`, `daily_digest/pipeline.py`, `daily_digest/localize.py`, `tests/test_section_briefs.py`  
-**Estimated scope:** Large (5 files; do not add more)
+**Estimated scope:** Large (5 files; do not add more)  
+**Completed:** `34f7c46` — 566 tests pass
 
 ## Task 3: Render brief inline refs trong cột hẹp
 
