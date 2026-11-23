@@ -48,9 +48,9 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 - [x] Task 5: Top fold hero 7/5 + Most Read 5; secondary feature below (`639559d`)
 
 ### Checkpoint: Skeleton
-- [ ] 1280 first viewport có một điểm nhấn
-- [ ] Không còn rail trống/full-width brief
-- [ ] Tests pass
+- [x] 1280 first viewport có một điểm nhấn
+- [x] Không còn rail trống/full-width brief
+- [x] Tests pass
 
 ### Phase 3: Section layouts
 
