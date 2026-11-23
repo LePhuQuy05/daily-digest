@@ -76,7 +76,7 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 
 ### Phase 5: QA
 
-- [x] Task 12: Full regression, demo, real run, docs/changelog, CI (`ebecad6`, CI 45179930614)
+- [x] Task 12: Full regression, demo, real run, docs/changelog, CI (`45f8439`, CI 45185499028)
 
 ## Risks and Mitigations
 
