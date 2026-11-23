@@ -19,7 +19,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** None  
 **Files likely touched:** `daily_digest/overview.py`, `daily_digest/edition.py`, `tests/test_section_briefs.py`, `tests/test_edition.py`  
-**Estimated scope:** Medium
+**Estimated scope:** Medium  
+**Completed:** `5a75d43` — 566 tests pass
 
 ## Task 2: Writer inline briefs + validation + prompt + localize
 
