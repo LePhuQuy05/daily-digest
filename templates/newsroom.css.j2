@@ -451,10 +451,12 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
                              color: var(--ink-3); font: 13px/1.5 var(--font-sans); }
 .section-note a { color: var(--red); text-decoration: none; }
 .section-note a:hover { text-decoration: underline; }
-.section-summary { margin: 0 0 18px; padding: 14px 16px 12px;
-                   border-left: 4px solid var(--section-color, var(--red));
-                   background: color-mix(in srgb, var(--section-color, var(--red)) 8%, var(--paper)); }
-.section-summary-text { margin: 0; color: var(--ink-2); font: 15.5px/1.6 var(--font-serif); }
+.section-summary { margin: 0 0 22px; padding: 4px 0 4px 14px;
+                   max-width: 66ch;
+                   border-left: 3px solid var(--section-color, var(--red));
+                   background: none; }
+.section-summary-text { margin: 0; color: var(--ink-2); font: 15.5px/1.65 var(--font-serif);
+                        white-space: pre-line; }
 .section-summary-refs { margin-top: 8px; font: 600 12px/1.6 var(--font-sans); }
 .section-summary-coverage { margin-top: 6px; border-top: 1px dashed var(--rule); padding-top: 6px; }
 .coverage-label { display: block; margin-bottom: 2px; color: var(--ink-3);

@@ -708,7 +708,10 @@ def _validate_section_briefs(
         section_items = [item for item in ranked if item.section == section]
         if not section_items:
             continue
-        text = " ".join(str(entry.get("text", "")).split())
+        raw_text = str(entry.get("text", "")).replace("\r\n", "\n").replace("\r", "\n")
+        text = re.sub(r"[ \t]+", " ", raw_text)
+        text = re.sub(r"\n[ \t]+", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
         if not text:
             continue
         if fails_kana_gate(text, loc):

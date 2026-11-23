@@ -109,6 +109,9 @@
     {% set brief = section_brief_map.get(section_key) %}
     {% if brief %}
     <div class="section-summary">
+      {% if brief.segments %}
+      <p class="section-summary-text">{% for seg in brief.segments %}{{ seg.text }}{% if seg.ref %}<a class="oref" href="#story-{{ seg.ref.uid }}" data-story-ref="{{ seg.ref.uid }}" title="{{ seg.ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=seg.ref.title) }}">{{ seg.ref.label }}</a>{% endif %}{% endfor %}</p>
+      {% else %}
       <p class="section-summary-text">{{ brief.text }}</p>
       {% if brief.refs %}
       <div class="section-summary-refs">
@@ -122,6 +125,7 @@
         <p class="coverage-line">{% for ref in chunk if ref %}<a class="oref" href="#story-{{ ref.uid }}" data-story-ref="{{ ref.uid }}" title="{{ ref.title }}" aria-label="{{ t.overview_jump_aria.format(title=ref.title) }}">{{ ref.label }}</a>{% if not loop.last %}<span aria-hidden="true"> · </span>{% endif %}{% endfor %}</p>
         {% endfor %}
       </div>
+      {% endif %}
       {% endif %}
     </div>
     {% endif %}

@@ -357,7 +357,10 @@ def truncate_section_brief(
         if item_count is not None
         else section_brief_cap(locale)
     )
-    cleaned = " ".join(text.split())
+    cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = re.sub(r"[ \t]+", " ", cleaned)
+    cleaned = re.sub(r"\n[ \t]+", "\n", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
     if len(cleaned) <= cap:
         return cleaned
     cut = cleaned[:cap]

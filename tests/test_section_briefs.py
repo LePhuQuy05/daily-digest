@@ -98,6 +98,7 @@ def test_section_briefs_replace_global_rail_and_cover_every_uid(tmp_path):
     html = _render(tmp_path, ranked, section_briefs=briefs, overview="legacy overview")
 
     assert html.count('class="section-summary"') == 3
+    assert 'class="section-summary-refs"' not in html
     assert 'id="briefing"' not in html
     assert "legacy overview" not in html
     assert "top-fold top-fold--wide" in html
@@ -496,3 +497,34 @@ def test_heuristic_brief_segments_cover_every_uid(tmp_path):
         ref_uids = {s.ref.uid for s in brief.segments if s.ref is not None}
         assert ref_uids == item_uids
         assert brief.segments[0].text
+
+
+def test_section_brief_preserves_paragraphs_and_rejects_partial(tmp_path):
+    config = make_config(tmp_path)
+    ranked = _mixed(12)
+    payload = {
+        "sections": [
+            {
+                "section": "papers",
+                "text": "Doan mot [[0]] [[3]].\n\nDoan hai [[6]] [[9]].",
+            }
+        ]
+    }
+    briefs = write_section_briefs(
+        ranked, FakeLlmClient(json.dumps(payload)).chat, config, locale="vi"
+    )
+    assert len(briefs) == 1
+    assert "\n\n" in briefs[0].text
+    assert len(briefs[0].segments) >= 4
+
+    partial = {"sections": [{"section": "papers", "text": "Chi mot bai [[0]]."}]}
+    rejected = write_section_briefs(
+        ranked, FakeLlmClient(json.dumps(partial)).chat, config, locale="vi"
+    )
+    assert rejected == ()
+    fallback = complete_section_briefs(rejected, ranked, config, "vi")
+    assert len(fallback) == 3
+    for brief in fallback:
+        item_uids = {r.item.id for r in ranked if r.section == brief.section}
+        ref_uids = {s.ref.uid for s in brief.segments if s.ref is not None}
+        assert ref_uids == item_uids
