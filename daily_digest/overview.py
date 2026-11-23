@@ -469,7 +469,7 @@ def complete_section_briefs(
         out.append(
             SectionBrief(
                 section=section,
-                text=truncate_section_brief(brief.text, loc),
+                text=truncate_section_brief(brief.text, loc, len(items)),
                 refs=brief.refs,
                 coverage_refs=tuple(coverage),
                 segments=brief.segments,

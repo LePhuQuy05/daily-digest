@@ -565,3 +565,19 @@ def test_short_section_brief_survives_failed_expansion(tmp_path):
     assert len(briefs) == 1
     assert len(briefs[0].text) < 800
     assert len(chat.calls) == 2
+
+
+def test_complete_keeps_expanded_brief_above_legacy_cap(tmp_path):
+    config = make_config(tmp_path)
+    ranked = [_item(i, "papers") for i in range(21)]
+    long = _section_payload(
+        "papers",
+        ("Noi dung mo rong co dan chung cu the. " * 26).strip()
+        + "\n\n"
+        + _refs_upto(21),
+    )
+    briefs = write_section_briefs(ranked, FakeLlmClient(long).chat, config, locale="vi")
+    completed = complete_section_briefs(briefs, ranked, config, "vi")
+
+    assert len(completed) == 1
+    assert len(completed[0].text) >= 800
