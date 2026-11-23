@@ -74,8 +74,14 @@
   <div class="top-fold{% if not rail_content %} top-fold--wide{% endif %}">
     <div class="hero-col">
       {{ story(front_page.lead, "hero") }}
-      {% if front_page.secondary %}{{ story(front_page.secondary, "secondary") }}{% endif %}
+      {% if front_page.secondary %}
+      <div class="cover-pair{% if not front_page.most_read %} cover-pair--single{% endif %}">
+        {{ story(front_page.secondary, "feature") }}
+        {{ most_read() }}
+      </div>
+      {% else %}
       {{ most_read() }}
+      {% endif %}
     </div>
     {% if rail_content %}{{ rail() }}{% endif %}
   </div>
@@ -89,6 +95,7 @@
 
   {% for section in front_page.sections %}
   {% set section_key = section.key %}
+  {% set first_section = loop.first %}
   {% set shown = (1 if section.lead else 0) + (section.briefs | length) %}
   {% set more_items = section.briefs[6:] %}
   {% set more_count = (section.briefs | length) - 6 %}
@@ -130,7 +137,7 @@
       </div>
       {% if section.briefs %}
       <div class="briefs">
-        {% for r in section.briefs[:6] %}{{ story(r, "brief") }}{% endfor %}
+        {% for r in section.briefs[:6] %}{% if first_section and loop.first %}{{ story(r, "feature") }}{% else %}{{ story(r, "brief") }}{% endif %}{% endfor %}
       </div>
       {% endif %}
     </div>

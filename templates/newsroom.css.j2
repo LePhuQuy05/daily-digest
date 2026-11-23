@@ -208,8 +208,31 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .kicker { margin: 0 0 8px; font: 700 10.5px/1.4 var(--font-sans);
           letter-spacing: 0.12em; text-transform: uppercase; color: var(--red); }
 .story { min-width: 0; }
+.story--sec-papers { --story-accent: var(--section-papers); }
+.story--sec-tech_news { --story-accent: var(--section-news); }
+.story--sec-tools_releases { --story-accent: var(--section-tools); }
+.cover-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 24px; margin-top: 28px; align-items: start; }
+.cover-pair--single { grid-template-columns: minmax(0, 1fr); }
+.story--feature { border-top: 3px solid var(--story-accent, var(--red)); padding-top: 12px; }
+.story--feature .summary { -webkit-line-clamp: 5; }
+.story--feature .story-media img { aspect-ratio: 16 / 10; }
+.story--typographic { position: relative; overflow: hidden; padding: 22px 22px 18px;
+                      background: var(--story-accent, var(--red)); color: #fff; }
+.story--typographic::before { content: attr(data-section-label); display: block;
+                              margin-bottom: 12px; color: rgba(255, 255, 255, 0.72);
+                              font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.16em;
+                              text-transform: uppercase; }
+.story--typographic .kicker { color: rgba(255, 255, 255, 0.72); }
+.story--typographic .story-title a { color: #fff; }
+.story--typographic .why, .story--typographic .summary {
+  color: rgba(255, 255, 255, 0.9);
+}
+.story--typographic .summary.ai::before { color: #fff; opacity: 0.7; }
 .story-title { margin: 0; font: 700 38px/1.08 var(--font-serif);
                letter-spacing: -0.02em; }
+.story--hero .story-title { font-size: clamp(38px, 5.4vw, 58px); }
+.story--feature .story-title { font-size: clamp(24px, 2.8vw, 32px); }
 .story-title a { color: var(--ink); text-decoration: none; }
 .story-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .story-media { margin: 0 0 14px; }
@@ -283,6 +306,8 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .summary--missing { color: var(--ink-3); font-style: italic; }
 .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 10px;
         color: var(--ink-3); font: 500 12px/1.4 var(--font-sans); }
+.story--typographic .meta { color: rgba(255, 255, 255, 0.9);
+                            border-top-color: rgba(255, 255, 255, 0.28); }
 .meta span + span::before { content: "·"; margin-right: 8px; color: var(--rule-strong); }
 .tag-new { color: var(--red); font-weight: 700; letter-spacing: 0.06em; }
 .tag-new::before { content: none !important; }
@@ -327,6 +352,11 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
                overflow: hidden; }
 .most-read a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.cover-pair .most-read { margin-top: 0; padding: 18px 18px 14px; background: var(--ink); }
+.cover-pair .most-read h2 { color: var(--paper); }
+.cover-pair .most-read a { color: var(--paper); }
+.cover-pair .most-read li { border-bottom-color: rgba(255, 255, 255, 0.22); }
+.cover-pair .most-read li::before { color: var(--paper); opacity: 0.5; }
 .source-line { color: var(--ink-3); font: 11px/1.4 var(--font-sans); letter-spacing: 0.04em; }
 
 /* ===================== section fronts ===================== */
@@ -337,9 +367,9 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .section-head { display: flex; align-items: baseline; gap: 10px; border-top: 1px solid var(--rule);
                 border-left: 2px solid var(--section-color, var(--red));
                 padding: 10px 0 0 10px; margin-bottom: 12px; }
-.section-head .idx { font: 700 18px/1 var(--font-serif); color: var(--red); }
+.section-head .idx { font: 700 18px/1 var(--font-serif); color: var(--section-color, var(--red)); }
 .section-head h2 { display: inline-block; margin: 0; padding-bottom: 4px;
-                   border-bottom: 3px solid var(--red); font: 700 22px/1.2 var(--font-serif); }
+                   border-bottom: 3px solid var(--section-color, var(--red)); font: 700 22px/1.2 var(--font-serif); }
 .section-head .count { margin-left: auto; color: var(--ink-3); font: 500 11px/1.4 var(--font-sans);
                        letter-spacing: 0.08em; text-transform: uppercase; }
 .section-body { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
@@ -347,7 +377,10 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .section-front--band .section-body { display: block; }
 .section-front--band .story--lead .story-title { font-size: 28px; }
 .briefs { display: grid; gap: 0; align-content: start; }
-.story--brief { padding: 11px 0; border-top: 1px solid var(--rule); }
+.briefs .story--feature { grid-column: 1 / -1; padding-left: 14px;
+                          border-left: 4px solid var(--story-accent, var(--red)); }
+.story--brief { padding: 11px 0 11px 12px; border-top: 1px solid var(--rule);
+                border-left: 3px solid var(--story-accent, var(--rule)); }
 .story--brief:first-child { border-top: 0; padding-top: 0; }
 .story--brief.story--has-media { display: grid; grid-template-columns: minmax(0, 1fr) 112px;
                                  grid-template-areas: "title media" "why media"
@@ -369,10 +402,10 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .lead-col > .more-list .story:first-child { border-top: 0; }
 
 /* Section-tail index: overflow briefs become a full-width, compact band. */
-.section-more { margin-top: 22px; padding-top: 10px; border-top: 3px solid var(--rule-strong); }
+.section-more { margin-top: 22px; padding-top: 10px; border-top: 3px solid var(--section-color, var(--rule-strong)); }
 .section-more .more-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 6px; }
 .section-more .more-head h3 { margin: 0; font: 700 11px/1.4 var(--font-sans);
-                letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+                letter-spacing: 0.12em; text-transform: uppercase; color: var(--section-color, var(--ink-2)); }
 .section-more .more-count { margin-left: auto; color: var(--ink-3); font: 500 10.5px/1.4 var(--font-sans);
               letter-spacing: 0.08em; text-transform: uppercase; }
 .section-more .more-list { display: grid;
@@ -380,8 +413,9 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
                            column-gap: 28px; align-items: start; grid-auto-rows: min-content; }
 .section-more .story--more { display: grid; grid-template-columns: minmax(0, 1fr) 112px;
                              grid-template-areas: "title actions" "meta actions" "summary summary" "ask ask";
-                             align-items: start; min-width: 0; padding: 10px 0;
-                             border-top: 1px solid var(--rule); }
+                             align-items: start; min-width: 0; padding: 10px 0 10px 12px;
+                             border-top: 1px solid var(--rule);
+                             border-left: 2px solid var(--story-accent, var(--rule)); }
 .section-more .story--more .story-title { grid-area: title; font-size: 15.5px; line-height: 1.3; }
 .section-more .story--more .meta { grid-area: meta; margin-top: 4px; font-size: 11px;
                                    gap: 3px 10px; }
@@ -408,10 +442,11 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
                              color: var(--ink-3); font: 13px/1.5 var(--font-sans); }
 .section-note a { color: var(--red); text-decoration: none; }
 .section-note a:hover { text-decoration: underline; }
-.section-summary { margin: 0 0 14px; padding: 9px 12px; border-left: 3px solid var(--red);
-                   background: var(--paper-warm); }
-.section-summary-text { margin: 0; color: var(--ink-2); font: 14.5px/1.55 var(--font-serif); }
-.section-summary-refs { margin-top: 6px; font: 500 12px/1.6 var(--font-sans); }
+.section-summary { margin: 0 0 18px; padding: 14px 16px 12px;
+                   border-left: 4px solid var(--section-color, var(--red));
+                   background: color-mix(in srgb, var(--section-color, var(--red)) 8%, var(--paper)); }
+.section-summary-text { margin: 0; color: var(--ink-2); font: 15.5px/1.6 var(--font-serif); }
+.section-summary-refs { margin-top: 8px; font: 600 12px/1.6 var(--font-sans); }
 .section-summary-coverage { margin-top: 6px; border-top: 1px dashed var(--rule); padding-top: 6px; }
 .coverage-label { display: block; margin-bottom: 2px; color: var(--ink-3);
                  font: 700 10.5px/1.4 var(--font-sans); letter-spacing: 0.08em;
@@ -556,6 +591,7 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.16);
   }
   .act:disabled { opacity: 0.55; cursor: default; transform: none; }
+  .story--typographic .act { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
   .act.done { background: var(--accent); border-color: var(--accent); color: #ffffff;
               font-weight: 600; }
   .act.done .icon { stroke: #ffffff; }
@@ -635,6 +671,12 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
                        background: none; }
     .section-summary-text { color: #111; font-size: 8.5pt; line-height: 1.4; }
     .section-summary-refs, .section-summary-coverage { display: none !important; }
+    .story--typographic { padding: 0; background: none !important; color: #111; }
+    .story--typographic::before { display: none; }
+    .story--typographic .story-title a, .story--typographic .why,
+    .story--typographic .summary, .story--typographic .meta,
+    .story--typographic .kicker { color: #111; }
+    .story--brief { border-left: 0; padding-left: 0; }
     .story { break-inside: avoid; }
     .story-title { color: #111; font-size: 13pt; }
     .story--lead .story-title, .story--secondary .story-title { font-size: 12pt; }
@@ -668,6 +710,7 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
     .section-more .more-head { break-after: avoid; }
     .section-more .more-list { display: block; column-count: 2; column-gap: 6mm; }
     .section-more .story--more { display: block; break-inside: avoid; }
+    .section-more .story--more { border-left: 0; }
     .story--brief { break-inside: avoid; border-top: 1px solid #ccc; padding: 2mm 0; }
     .story--brief:first-child { border-top: 0; padding-top: 0; }
     .empty-note, .section-note { border-top: 1px solid #999; color: #555; }

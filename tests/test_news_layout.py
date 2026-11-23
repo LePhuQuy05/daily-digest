@@ -186,16 +186,22 @@ def test_more_band_counts_at_boundaries(tmp_path):
     ten = _section(_render(tmp_path, _all_in_section("papers", 10, "arxiv")), "papers")
     nine = _section(_render(tmp_path, _all_in_section("papers", 9, "arxiv")), "papers")
 
-    assert thirty.count('class="story story--brief"') == 6
-    assert thirty.count('class="story story--more"') == 21
+    assert thirty.count('class="story story--feature ') == 1
+    assert thirty.count('class="story story--brief ') == 5
+    assert (
+        thirty.count('class="story story--feature ')
+        + thirty.count('class="story story--brief ')
+        == 6
+    )
+    assert thirty.count('class="story story--more ') == 21
     assert thirty.count('class="section-more') == 1
     assert "21 bài" in thirty
 
-    assert ten.count('class="story story--more"') == 1
+    assert ten.count('class="story story--more ') == 1
     assert ten.count('class="section-more') == 1
     assert "1 bài" in ten
 
-    assert nine.count('class="story story--more"') == 0
+    assert nine.count('class="story story--more ') == 0
     assert nine.count('class="section-more') == 0
 
 

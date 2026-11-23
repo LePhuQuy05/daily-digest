@@ -2,16 +2,17 @@
    `source_names` and the current digest context are available. #}
 
 {% macro story_head(item, variant, cover=false, credit="") %}
-  {% if variant == "hero" %}<div class="kicker">{{ t.story_kicker }}</div>{% endif %}
+  {% if variant == "hero" %}<div class="kicker">{{ t.story_kicker }}</div>{% elif variant == "feature" %}<div class="kicker">{{ t.story_feature }}</div>{% endif %}
   <h3 class="story-title"><a href="{{ item.item.url | safe_href }}" target="_blank" rel="noopener noreferrer">{{ item.item.title }}</a></h3>
   {% if variant != "more" and item.why %}<p class="why">{{ item.why }}</p>{% endif %}
   {% if cover and credit %}<p class="story-credit">{{ credit }}</p>{% endif %}
 {% endmacro %}
 
 {% macro story(item, variant="brief") %}
-{% set img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief") else none %}
+{% set img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief", "feature") else none %}
 {% set cover = (variant == "hero" and img is not none and img.kind == "og" and img.credit != "" and img.height > 0 and img.width >= img.height * 1.25) %}
-<article class="story story--{{ variant }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" tabindex="-1">
+{% set typographic = (not img and variant in ("hero", "feature", "lead")) %}
+<article class="story story--{{ variant }} story--sec-{{ item.section }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}{% if typographic %} story--typographic{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" data-section-label="{{ section_titles.get(item.section, item.section) }}" tabindex="-1">
   {% if variant == "hero" %}<div class="story-lede">{% endif %}
   {% if img %}
   <figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">

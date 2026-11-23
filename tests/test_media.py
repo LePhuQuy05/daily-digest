@@ -230,11 +230,10 @@ class TestCollectTargets:
             ),
         )
         assets = collect_images(_real_mix(), config, chat=None)
-        # hero p0 + papers lead p2 + first papers brief p3 + tech lead t0 +
-        # next papers briefs p4/p5; secondary p1 is still excluded.
-        assert set(assets) == {"p0", "p2", "p3", "t0", "p4", "p5"}
-        assert "p1" not in assets
-        assert set(seen) == {"p0", "p2", "p3", "t0", "p4", "p5"}
+        # hero p0 + secondary p1 + papers lead p2 + tech lead t0 +
+        # first papers brief p3 + next papers brief p4; max_images=6.
+        assert set(assets) == {"p0", "p1", "p2", "t0", "p3", "p4"}
+        assert set(seen) == {"p0", "p1", "p2", "t0", "p3", "p4"}
 
     def test_max_images_cap(self, tmp_path, monkeypatch):
         config = make_config(tmp_path)

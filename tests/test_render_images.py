@@ -60,21 +60,21 @@ def _asset(
     )
 
 
-def test_images_on_hero_leads_and_briefs(tmp_path):
+def test_images_on_hero_features_leads_and_briefs(tmp_path):
     html = _render(
         tmp_path,
         images={
             "p0": _asset("p0"),
-            "p1": _asset("p1"),  # secondary: must be ignored
-            "p2": _asset("p2", "arxiv_svg"),  # papers lead: shown
-            "p3": _asset("p3"),  # brief: shown as a thumbnail
+            "p1": _asset("p1"),  # secondary feature: shown
+            "p2": _asset("p2", "arxiv_svg"),  # tertiary feature: shown
+            "p3": _asset("p3"),  # papers lead: shown
         },
     )
-    assert html.count('class="story-media') == 3
-    assert html.count('src="data:image/jpeg;base64,AAAA"') == 3
-    assert "Alt p0" in html and "Alt p2" in html and "Alt p3" in html
-    assert "Alt p1" not in html
-    assert 'class="story story--brief story--has-media"' in html
+    assert html.count('class="story-media') == 4
+    assert html.count('src="data:image/jpeg;base64,AAAA"') == 4
+    assert all(f"Alt p{i}" in html for i in range(4))
+    assert 'class="story story--feature story--sec-papers story--has-media"' in html
+    assert 'class="story story--lead story--sec-papers story--has-media"' in html
 
 
 def test_portrait_figure_uses_tall_mat(tmp_path):

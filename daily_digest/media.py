@@ -490,6 +490,8 @@ def collect_images(
     targets = []
     if page.lead:
         targets.append(page.lead)
+    if page.secondary:
+        targets.append(page.secondary)
     for section in page.sections:
         if section.lead:
             targets.append(section.lead)
