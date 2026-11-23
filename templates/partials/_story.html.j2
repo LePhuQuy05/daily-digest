@@ -8,23 +8,25 @@
   {% if cover and credit %}<p class="story-credit">{{ credit }}</p>{% endif %}
 {% endmacro %}
 
+{% macro story_media(img, variant, cover) %}
+<figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">
+  <img src="{{ img.data_uri }}" alt="{{ img.alt }}" width="{{ img.width }}" height="{{ img.height }}"{% if cover %} loading="eager" fetchpriority="high" onerror="this.closest('.story').classList.remove('story--cover');this.closest('.story').classList.add('story--cover-failed')"{% elif variant == "hero" %} loading="eager"{% else %} loading="lazy"{% endif %}>
+  {% if img.credit and not cover %}<figcaption>{{ img.credit }}</figcaption>{% endif %}
+</figure>
+{% endmacro %}
+
 {% macro story(item, variant="brief") %}
-{% set raw_img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief", "feature") else none %}
-{% set img = raw_img if (variant != "hero" or (raw_img is not none and raw_img.kind == "og")) else none %}
+{% set img = images.get(item.item.id) if images and variant in ("hero", "lead", "brief", "feature") else none %}
 {% set cover = (variant == "hero" and img is not none and img.kind == "og" and img.credit != "" and img.height > 0 and img.width >= img.height * 1.25) %}
-{% set typographic = (not img and variant == "hero") %}
+{% set typographic = (not cover and variant == "hero") %}
 <article class="story story--{{ variant }} story--sec-{{ item.section }}{% if img %} story--has-media{% endif %}{% if cover %} story--cover{% endif %}{% if typographic %} story--typographic{% endif %}" id="story-{{ item.item.id }}" data-uid="{{ item.item.id }}" data-section-label="{{ section_titles.get(item.section, item.section) }}" tabindex="-1">
-  {% if variant == "hero" %}<div class="story-lede">{% endif %}
-  {% if img %}
-  <figure class="story-media story-media--{{ img.kind }}{% if img.height > img.width %} story-media--portrait{% endif %}">
-    <img src="{{ img.data_uri }}" alt="{{ img.alt }}" width="{{ img.width }}" height="{{ img.height }}"{% if cover %} loading="eager" fetchpriority="high" onerror="this.closest('.story').classList.remove('story--cover');this.closest('.story').classList.add('story--cover-failed')"{% elif variant == "hero" %} loading="eager"{% else %} loading="lazy"{% endif %}>
-    {% if img.credit and not cover %}<figcaption>{{ img.credit }}</figcaption>{% endif %}
-  </figure>
-  {% endif %}
   {% if variant == "hero" %}
+  <div class="story-lede">
+  {% if img and cover %}{{ story_media(img, variant, cover) }}{% endif %}
   <div class="story-head">{{ story_head(item, variant, cover, img.credit if img else "") }}</div>
   </div>
   {% else %}
+  {% if img %}{{ story_media(img, variant, cover) }}{% endif %}
   {{ story_head(item, variant) }}
   {% endif %}
   {% set summary_text = item.llm_summary or item.item.summary %}
@@ -41,6 +43,7 @@
     {% if item.item.citations %}<span>{{ t.story_citations.format(n=item.item.citations) }}</span>{% endif %}
     {% if item.item.source == 'arxiv' %}<span class="tag-new">{{ t.story_new }}</span>{% endif %}
   </div>
+  {% if variant == "hero" and img and not cover %}{{ story_media(img, variant, cover) }}{% endif %}
   <div class="actions bridge-only">
     <button class="act" data-feedback="{{ item.item.id }}|like" title="{{ t.story_like_title }}" aria-label="{{ t.story_like_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-thumb-up"/></svg></button>
     <button class="act" data-feedback="{{ item.item.id }}|dislike" title="{{ t.story_dislike_title }}" aria-label="{{ t.story_dislike_aria }}"><svg class="icon" aria-hidden="true"><use href="#i-thumb-down"/></svg></button>

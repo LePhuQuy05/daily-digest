@@ -124,7 +124,8 @@ def test_arxiv_portrait_square_and_missing_credit_do_not_get_cover(tmp_path):
     arxiv_hero = _hero(_render(tmp_path, images={"p0": _asset("p0", kind="arxiv_img")}))
     assert "story--cover" not in arxiv_hero
     assert "story--typographic" in arxiv_hero
-    assert "<figcaption>" not in arxiv_hero
+    assert 'class="story-media story-media--arxiv_img' in arxiv_hero
+    assert "<figcaption>" in arxiv_hero  # paper figures stay a labelled plate
 
     for images in (
         {"p0": _asset("p0", width=800, height=1000)},
