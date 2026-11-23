@@ -482,8 +482,11 @@ def test_typographic_cover_modules_without_images(tmp_path):
         section_briefs=heuristic_section_briefs(ranked, make_config(tmp_path)),
     )
     assert html.count('story--typographic"') == 1
-    assert html.count('class="story story--feature ') == 4
+    assert html.count('class="story story--feature ') == 3
     assert html.count('class="story story--lead ') == 1
+    papers = html[re.search(r'<section class="[^"]*sec-papers', html).start() :]
+    papers = papers[: papers.index("</section>")]
+    assert "story--feature" not in papers
     assert "cover-pair" in html
     assert '<section class="most-read">' in html
     assert 'id="briefing"' not in html
@@ -581,3 +584,24 @@ def test_complete_keeps_expanded_brief_above_legacy_cap(tmp_path):
 
     assert len(completed) == 1
     assert len(completed[0].text) >= 800
+
+
+def test_section_brief_caps_at_three_paragraphs(tmp_path):
+    config = make_config(tmp_path)
+    ranked = [_item(i, "papers") for i in range(21)]
+    filler = "Noi dung chi tiet va dan chung cu the. " * 8
+    refs = _refs_upto(21).split()
+    text = "\n\n".join(
+        f"{filler} {' '.join(refs[start : start + 6])}" for start in range(0, 21, 6)
+    )
+    briefs = write_section_briefs(
+        ranked,
+        FakeLlmClient(_section_payload("papers", text)).chat,
+        config,
+        locale="vi",
+    )
+
+    assert len(briefs) == 1
+    assert briefs[0].text.count("\n\n") == 2
+    ref_uids = {s.ref.uid for s in briefs[0].segments if s.ref is not None}
+    assert ref_uids == {r.item.id for r in ranked}

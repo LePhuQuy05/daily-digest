@@ -690,6 +690,15 @@ def write_overview(
     return overview
 
 
+def _cap_brief_paragraphs(text: str, limit: int = 3) -> str:
+    """Keep a brief to the two or three paragraphs the layout expects."""
+    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", text) if part.strip()]
+    if len(paragraphs) <= limit:
+        return "\n\n".join(paragraphs)
+    paragraphs[limit - 1] = " ".join(paragraphs[limit - 1 :])
+    return "\n\n".join(paragraphs[:limit])
+
+
 def _validate_section_briefs(
     payload: dict,
     ranked: list[RankedItem],
@@ -716,6 +725,7 @@ def _validate_section_briefs(
         if fails_kana_gate(text, loc):
             LOG.warning("ja section brief for %s dropped by kana gate", section)
             continue
+        text = _cap_brief_paragraphs(text)
         segments, used = parse_section_brief_segments(text, ranked, section, loc)
         missing = [
             (index, item)

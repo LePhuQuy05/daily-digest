@@ -6,7 +6,7 @@
 uv run pytest -o addopts=''
 ```
 
-- **571 tests**, offline by default.
+- **572 tests**, offline by default.
 - CI runs the same command on `windows-latest` for every push and pull request.
 - Dependencies are pinned in `uv.lock`; CI installs with `uv sync --locked`.
 

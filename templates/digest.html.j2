@@ -161,7 +161,7 @@
       </div>
       {% if section.briefs %}
       <div class="briefs">
-        {% for r in section.briefs[:6] %}{% if first_section and loop.first %}{{ story(r, "feature") }}{% else %}{{ story(r, "brief") }}{% endif %}{% endfor %}
+        {% for r in section.briefs[:6] %}{% if first_section and loop.first and not section_briefs %}{{ story(r, "feature") }}{% else %}{{ story(r, "brief") }}{% endif %}{% endfor %}
       </div>
       {% endif %}
     </div>
