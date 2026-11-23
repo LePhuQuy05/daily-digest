@@ -13,6 +13,7 @@ import dataclasses
 import json
 import re
 import time
+from collections import Counter
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Protocol
@@ -30,11 +31,9 @@ from daily_digest.i18n import (
 )
 from daily_digest.model import Item, RankedItem, SECTIONS
 from daily_digest.overview import (
-    SECTION_BRIEF_REFS,
-    OverviewRef,
     SectionBrief,
-    section_brief_cap,
-    short_label,
+    parse_section_brief_segments,
+    section_brief_target_cap,
     truncate_section_brief,
 )
 from daily_digest.ranking.heuristic import default_section
@@ -697,6 +696,7 @@ def _validate_section_briefs(
     entries = payload.get("sections")
     if not isinstance(entries, list):
         raise ValueError("'sections' is not a list")
+    counts = Counter(item.section for item in ranked)
     briefs: list[SectionBrief] = []
     seen_sections: set[str] = set()
     for entry in entries:
@@ -705,45 +705,33 @@ def _validate_section_briefs(
         section = entry.get("section")
         if section not in SECTIONS or section in seen_sections:
             continue
+        section_items = [item for item in ranked if item.section == section]
+        if not section_items:
+            continue
         text = " ".join(str(entry.get("text", "")).split())
         if not text:
             continue
         if fails_kana_gate(text, loc):
             LOG.warning("ja section brief for %s dropped by kana gate", section)
             continue
-        text = truncate_section_brief(text, loc)
-        refs: list[OverviewRef] = []
-        seen_refs: set[int] = set()
-        raw_refs = entry.get("refs", [])
-        if not isinstance(raw_refs, list):
-            raw_refs = []
-        for raw in raw_refs:
-            try:
-                index = int(raw)
-            except (TypeError, ValueError):
-                continue
-            if (
-                index in seen_refs
-                or not 0 <= index < len(ranked)
-                or ranked[index].section != section
-            ):
-                continue
-            seen_refs.add(index)
-            item = ranked[index]
-            refs.append(
-                OverviewRef(
-                    uid=item.item.id,
-                    label=short_label(item.item.title, index + 1, loc),
-                    title=item.item.title,
-                )
+        text = truncate_section_brief(text, loc, counts[section])
+        segments, used = parse_section_brief_segments(text, ranked, section, loc)
+        missing = [item.item.id for item in section_items if item.item.id not in used]
+        if missing:
+            LOG.warning(
+                "section brief for %s missed %d/%d items; using fallback",
+                section,
+                len(missing),
+                len(section_items),
             )
-            if len(refs) >= SECTION_BRIEF_REFS:
-                break
+            continue
+        refs = tuple(segment.ref for segment in segments if segment.ref is not None)
         briefs.append(
             SectionBrief(
                 section=section,
                 text=text,
-                refs=tuple(refs),
+                refs=refs,
+                segments=segments,
             )
         )
         seen_sections.add(section)
@@ -772,6 +760,13 @@ def write_section_briefs(
         lines.append(
             f"[{index}] ({item.section}) {item.item.title}\n    summary: {summary}"
         )
+    counts = Counter(item.section for item in ranked)
+    section_sizes = "\n".join(
+        f"- {section}: {counts[section]} items, target up to "
+        f"{section_brief_target_cap(loc, counts[section])} characters"
+        for section in SECTIONS
+        if counts[section]
+    )
     messages: list[dict] = [
         {
             "role": "system",
@@ -779,7 +774,8 @@ def write_section_briefs(
                 loc,
                 topics=", ".join(config.interests.topics),
                 reader_context=reader_context,
-                cap=section_brief_cap(loc),
+                cap=section_brief_target_cap(loc, max(counts.values(), default=0)),
+                section_sizes=section_sizes,
             ),
         },
         {"role": "user", "content": "\n".join(lines)},

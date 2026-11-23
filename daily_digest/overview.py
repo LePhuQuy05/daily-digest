@@ -217,6 +217,44 @@ def _ref_for(
     )
 
 
+def parse_section_brief_segments(
+    text: str,
+    ranked: Sequence[RankedItem],
+    section: Section,
+    locale: str = "vi",
+) -> tuple[tuple[OverviewSegment, ...], set[str]]:
+    """Turn `[[n]]` markers into inline section segments.
+
+    Markers outside the section, duplicate markers, and malformed markers are
+    dropped. The returned uid set is used to verify full section coverage.
+    """
+    loc = normalize_locale(locale) or "vi"
+    segments: list[OverviewSegment] = []
+    used: set[str] = set()
+    position = 0
+    for match in _MARKER_RE.finditer(text):
+        before = _normalize_text(text[position : match.start()])
+        if before:
+            segments.append(OverviewSegment(text=before))
+        try:
+            index = int(match.group(1))
+        except ValueError:
+            index = -1
+        if (
+            0 <= index < len(ranked)
+            and ranked[index].section == section
+            and ranked[index].item.id not in used
+        ):
+            item = ranked[index]
+            segments.append(OverviewSegment(ref=_ref_for(ranked, index, loc)))
+            used.add(item.item.id)
+        position = match.end()
+    tail = _normalize_text(text[position:])
+    if tail:
+        segments.append(OverviewSegment(text=tail))
+    return tuple(segments), used
+
+
 def ensure_coverage(
     points: Sequence[OverviewPoint], ranked: Sequence[RankedItem], locale: str = "vi"
 ) -> tuple[OverviewPoint, ...]:
@@ -294,9 +332,31 @@ def section_brief_cap(locale: str = "vi") -> int:
     )
 
 
-def truncate_section_brief(text: str, locale: str = "vi") -> str:
+def section_brief_target_cap(locale: str = "vi", item_count: int = 0) -> int:
+    """Length budget scaled to the number of items in the section."""
+    loc = normalize_locale(locale) or "vi"
+    if loc == "ja":
+        if item_count >= 10:
+            return 800
+        if item_count >= 5:
+            return 600
+        return 400
+    if item_count >= 10:
+        return 1200
+    if item_count >= 5:
+        return 800
+    return 500
+
+
+def truncate_section_brief(
+    text: str, locale: str = "vi", item_count: int | None = None
+) -> str:
     """Cap a section brief at a sentence or word boundary."""
-    cap = section_brief_cap(locale)
+    cap = (
+        section_brief_target_cap(locale, item_count)
+        if item_count is not None
+        else section_brief_cap(locale)
+    )
     cleaned = " ".join(text.split())
     if len(cleaned) <= cap:
         return cleaned

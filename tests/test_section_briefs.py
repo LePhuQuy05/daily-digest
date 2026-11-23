@@ -118,10 +118,14 @@ def test_section_brief_validation_drops_wrong_section_and_extra_refs(tmp_path):
         "sections": [
             {
                 "section": "papers",
-                "text": "A" * 500,
+                "text": "Papers [[0]], [[3]], [[6]], [[9]]. " + "A" * 250,
                 "refs": [0, 1, 3, 6, 9],
             },
-            {"section": "tech_news", "text": "news", "refs": [1, 4, 7, 10]},
+            {
+                "section": "tech_news",
+                "text": "Tech [[1]], [[4]], [[7]], [[10]].",
+                "refs": [1, 4, 7, 10],
+            },
             {"section": "unknown", "text": "ignored", "refs": [0]},
         ]
     }
@@ -131,17 +135,20 @@ def test_section_brief_validation_drops_wrong_section_and_extra_refs(tmp_path):
 
     assert len(briefs) == 2
     papers = next(brief for brief in briefs if brief.section == "papers")
-    assert len(papers.text) <= 600
+    assert len(papers.text) <= 500
     assert [ref.uid for ref in papers.refs] == [
         ranked[0].item.id,
         ranked[3].item.id,
         ranked[6].item.id,
+        ranked[9].item.id,
     ]
+    assert papers.segments and papers.segments[1].ref is not None
     news = next(brief for brief in briefs if brief.section == "tech_news")
     assert [ref.uid for ref in news.refs] == [
         ranked[1].item.id,
         ranked[4].item.id,
         ranked[7].item.id,
+        ranked[10].item.id,
     ]
 
 
@@ -293,7 +300,15 @@ def test_section_briefs_keep_backfilled_flag_through_localize(tmp_path):
         }
     )
     brief_payload = json.dumps(
-        {"sections": [{"section": "papers", "text": "localized brief", "refs": [0, 1]}]}
+        {
+            "sections": [
+                {
+                    "section": "papers",
+                    "text": "localized brief [[0]] [[1]] [[2]] [[3]]",
+                    "refs": [0, 1],
+                }
+            ]
+        }
     )
     why_payload = json.dumps(
         {"items": [{"id": i, "why": f"localized why {i}"} for i in range(4)]}
@@ -312,7 +327,9 @@ def test_section_briefs_keep_backfilled_flag_through_localize(tmp_path):
     assert saved is not None
     assert saved.ranked[0].backfilled is True
     assert saved.requested_count == 30 and saved.backfilled_count == 1
-    assert saved.section_briefs and saved.section_briefs[0].text == "localized brief"
+    assert saved.section_briefs
+    assert saved.section_briefs[0].text.startswith("localized brief")
+    assert saved.section_briefs[0].segments
     assert [item.item.id for item in saved.ranked] == [item.item.id for item in ranked]
 
 
@@ -384,7 +401,7 @@ def test_section_briefs_ja_accepts_native_and_rejects_english(tmp_path):
             "sections": [
                 {
                     "section": "papers",
-                    "text": native_text,
+                    "text": native_text + " [[0]] [[3]] [[6]] [[9]]",
                     "refs": [0, 3, 6],
                 }
             ]

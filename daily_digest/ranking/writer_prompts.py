@@ -150,23 +150,30 @@ def overview_system_prompt(
 
 
 def section_briefs_system_prompt(
-    locale: str, *, topics: str, reader_context: str, cap: int
+    locale: str,
+    *,
+    topics: str,
+    reader_context: str,
+    cap: int,
+    section_sizes: str = "",
 ) -> str:
     loc = _loc(locale)
     context = f"\nReader context: {reader_context}" if reader_context else ""
     return (
-        f"You write short section briefings for a daily AI/tech digest. "
+        f"You write section briefings for a daily AI/tech digest. "
         f"Reader interests: {topics}.{context}\n"
         f"{STYLE_CARDS[loc]}\n"
         "Write one briefing for EACH section that has items: papers, tech_news, "
-        "tools_releases. Three to five sentences, at most "
-        f"{cap} characters. Cover the strongest concrete results or releases "
-        "across the section, not only the first item, and say what connects "
-        "the rest. Do not repeat item titles verbatim. Cite at most three items "
-        "per section using their absolute item numbers in refs.\n"
+        "tools_releases. Two or three paragraphs. "
+        f"{section_sizes}\n"
+        f"Hard cap {cap} characters for a large section; shorter sections should "
+        "use the lower target. Mention EVERY numbered item in its section at "
+        "least once, using [[n]] inline at the point of mention. Do not put "
+        "refs in a separate list. Group related items in one sentence when that "
+        "reads better, but never omit an item. Do not repeat item titles "
+        "verbatim. Say what connects the items, not just one item at a time.\n"
         f"Write every briefing in {PROMPT_LANGUAGE[loc]}.\n"
         + "\n".join(ANTI_PATTERNS[loc])
         + "\nRespond with ONLY a JSON object:\n"
-        '{"sections": [{"section": "papers", "text": "<briefing>", '
-        '"refs": [<absolute item numbers>]}]}'
+        '{"sections": [{"section": "papers", "text": "<briefing with [[n]]>"}]}'
     )
