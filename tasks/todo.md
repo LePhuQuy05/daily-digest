@@ -213,7 +213,8 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 6, 7, 8, 9  
 **Files likely touched:** `templates/newsroom.css.j2`, `tests/test_ui_tokens.py`  
-**Estimated scope:** Small
+**Estimated scope:** Small  
+**Completed:** `0c7917f` — Playwright 320/768/1024/1440 no overflow
 
 ## Task 11: Dark + print + contrast
 
@@ -231,13 +232,14 @@ Spec: `docs/spec/SPEC-magazine-ui.md`
 
 **Dependencies:** Task 10  
 **Files likely touched:** `templates/newsroom.css.j2`, `tests/test_ui_tokens.py`  
-**Estimated scope:** Small/Medium
+**Estimated scope:** Small/Medium  
+**Completed:** `0c7917f` — demo PDF 3 pages, dark contrast checked
 
 ## Checkpoint: UI complete
 
-- [ ] 320/768/1024/1440 no overflow.
-- [ ] Print ≤6 A4.
-- [ ] Contrast pass.
+- [x] 320/768/1024/1440 no overflow.
+- [x] Print ≤6 A4.
+- [x] Contrast pass.
 - [ ] Human review.
 
 ## Task 12: Full QA + docs + CI

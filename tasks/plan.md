@@ -66,13 +66,13 @@ Chuyển digest từ image-led + khối màu + module lặp sang **editorial rev
 ### Phase 4: Images, responsive, print
 
 - [x] Task 9: OG/photo 16:9 + figure 4:3 + typographic fallback (`419f97d`)
-- [ ] Task 10: Responsive 320/768/1024/1440
-- [ ] Task 11: Dark + print/A4 + contrast
+- [x] Task 10: Responsive 320/768/1024/1440 (`0c7917f`)
+- [x] Task 11: Dark + print/A4 + contrast (`0c7917f`)
 
 ### Checkpoint: UI complete
-- [ ] 320/768/1024/1440 no overflow
-- [ ] Print ≤6 A4 pages
-- [ ] Contrast pass
+- [x] 320/768/1024/1440 no overflow
+- [x] Print ≤6 A4 pages
+- [x] Contrast pass
 
 ### Phase 5: QA
 
