@@ -29,12 +29,15 @@ from daily_digest.i18n import (
     takeaway_marker,
     truncate_overview,
 )
-from daily_digest.model import Item, RankedItem, SECTIONS
+from daily_digest.model import SECTIONS, Item, RankedItem
 from daily_digest.overview import (
+    OverviewRef,
+    OverviewSegment,
     SectionBrief,
     parse_section_brief_segments,
     section_brief_target_cap,
-    truncate_section_brief,
+    section_brief_target_min,
+    short_label,
 )
 from daily_digest.ranking.heuristic import default_section
 from daily_digest.ranking.writer_prompts import (
@@ -696,7 +699,6 @@ def _validate_section_briefs(
     entries = payload.get("sections")
     if not isinstance(entries, list):
         raise ValueError("'sections' is not a list")
-    counts = Counter(item.section for item in ranked)
     briefs: list[SectionBrief] = []
     seen_sections: set[str] = set()
     for entry in entries:
@@ -704,9 +706,6 @@ def _validate_section_briefs(
             continue
         section = entry.get("section")
         if section not in SECTIONS or section in seen_sections:
-            continue
-        section_items = [item for item in ranked if item.section == section]
-        if not section_items:
             continue
         raw_text = str(entry.get("text", "")).replace("\r\n", "\n").replace("\r", "\n")
         text = re.sub(r"[ \t]+", " ", raw_text)
@@ -717,24 +716,43 @@ def _validate_section_briefs(
         if fails_kana_gate(text, loc):
             LOG.warning("ja section brief for %s dropped by kana gate", section)
             continue
-        text = truncate_section_brief(text, loc, counts[section])
         segments, used = parse_section_brief_segments(text, ranked, section, loc)
-        missing = [item.item.id for item in section_items if item.item.id not in used]
+        missing = [
+            (index, item)
+            for index, item in enumerate(ranked)
+            if item.section == section and item.item.id not in used
+        ]
         if missing:
-            LOG.warning(
-                "section brief for %s missed %d/%d items; using fallback",
+            LOG.info(
+                "section brief for %s appended %d missing refs",
                 section,
                 len(missing),
-                len(section_items),
             )
-            continue
+            tail = t(loc, "section_brief_coverage_tail")
+            segments = list(segments)
+            segments.append(OverviewSegment(text=("\n\n" if text else "") + tail))
+            text = f"{text}\n\n{tail}".strip()
+            for offset, (index, item) in enumerate(missing):
+                if offset:
+                    segments.append(OverviewSegment(text=" \u00b7 "))
+                    text += " \u00b7 "
+                segments.append(
+                    OverviewSegment(
+                        ref=OverviewRef(
+                            uid=item.item.id,
+                            label=short_label(item.item.title, index + 1, loc),
+                            title=item.item.title,
+                        )
+                    )
+                )
+                text += item.item.title
         refs = tuple(segment.ref for segment in segments if segment.ref is not None)
         briefs.append(
             SectionBrief(
                 section=section,
                 text=text,
                 refs=refs,
-                segments=segments,
+                segments=tuple(segments),
             )
         )
         seen_sections.add(section)
@@ -765,8 +783,9 @@ def write_section_briefs(
         )
     counts = Counter(item.section for item in ranked)
     section_sizes = "\n".join(
-        f"- {section}: {counts[section]} items, target up to "
-        f"{section_brief_target_cap(loc, counts[section])} characters"
+        f"- {section}: {counts[section]} items, target "
+        f"{section_brief_target_min(loc, counts[section])}"
+        f"-{section_brief_target_cap(loc, counts[section])} characters"
         for section in SECTIONS
         if counts[section]
     )

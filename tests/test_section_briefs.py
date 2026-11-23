@@ -499,7 +499,7 @@ def test_heuristic_brief_segments_cover_every_uid(tmp_path):
         assert brief.segments[0].text
 
 
-def test_section_brief_preserves_paragraphs_and_rejects_partial(tmp_path):
+def test_section_brief_preserves_paragraphs_and_appends_missing_refs(tmp_path):
     config = make_config(tmp_path)
     ranked = _mixed(12)
     payload = {
@@ -518,13 +518,11 @@ def test_section_brief_preserves_paragraphs_and_rejects_partial(tmp_path):
     assert len(briefs[0].segments) >= 4
 
     partial = {"sections": [{"section": "papers", "text": "Chi mot bai [[0]]."}]}
-    rejected = write_section_briefs(
+    kept = write_section_briefs(
         ranked, FakeLlmClient(json.dumps(partial)).chat, config, locale="vi"
     )
-    assert rejected == ()
-    fallback = complete_section_briefs(rejected, ranked, config, "vi")
-    assert len(fallback) == 3
-    for brief in fallback:
-        item_uids = {r.item.id for r in ranked if r.section == brief.section}
-        ref_uids = {s.ref.uid for s in brief.segments if s.ref is not None}
-        assert ref_uids == item_uids
+    assert len(kept) == 1
+    item_uids = {r.item.id for r in ranked if r.section == "papers"}
+    ref_uids = {s.ref.uid for s in kept[0].segments if s.ref is not None}
+    assert ref_uids == item_uids
+    assert "Còn lại" in kept[0].text or "Also" in kept[0].text

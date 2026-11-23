@@ -333,7 +333,7 @@ def section_brief_cap(locale: str = "vi") -> int:
 
 
 def section_brief_target_cap(locale: str = "vi", item_count: int = 0) -> int:
-    """Length budget scaled to the number of items in the section."""
+    """Upper length budget scaled to the number of items in the section."""
     loc = normalize_locale(locale) or "vi"
     if loc == "ja":
         if item_count >= 10:
@@ -346,6 +346,22 @@ def section_brief_target_cap(locale: str = "vi", item_count: int = 0) -> int:
     if item_count >= 5:
         return 800
     return 500
+
+
+def section_brief_target_min(locale: str = "vi", item_count: int = 0) -> int:
+    """Lower length budget for a useful brief, by section size."""
+    loc = normalize_locale(locale) or "vi"
+    if loc == "ja":
+        if item_count >= 10:
+            return 500
+        if item_count >= 5:
+            return 350
+        return 250
+    if item_count >= 10:
+        return 800
+    if item_count >= 5:
+        return 500
+    return 300
 
 
 def truncate_section_brief(
