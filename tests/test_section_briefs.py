@@ -526,3 +526,42 @@ def test_section_brief_preserves_paragraphs_and_appends_missing_refs(tmp_path):
     ref_uids = {s.ref.uid for s in kept[0].segments if s.ref is not None}
     assert ref_uids == item_uids
     assert "Còn lại" in kept[0].text or "Also" in kept[0].text
+
+
+def _section_payload(section, text):
+    return json.dumps({"sections": [{"section": section, "text": text}]})
+
+
+def _refs_upto(count):
+    return " ".join(f"[[{i}]]" for i in range(count))
+
+
+def test_short_section_brief_is_expanded(tmp_path):
+    config = make_config(tmp_path)
+    ranked = [_item(i, "papers") for i in range(21)]
+    refs = _refs_upto(21)
+    short = _section_payload("papers", "Tom tat ngan. " + refs)
+    long = _section_payload(
+        "papers",
+        ("Noi dung mo rong co dan chung cu the. " * 26).strip() + "\n\n" + refs,
+    )
+    chat = FakeLlmClient([short, long]).chat
+    briefs = write_section_briefs(ranked, chat, config, locale="vi")
+
+    assert len(briefs) == 1
+    assert len(briefs[0].text) >= 800
+    assert "Noi dung mo rong" in briefs[0].text
+    assert len(chat.calls) == 2
+    assert "800" in chat.calls[1][-1]["content"]
+
+
+def test_short_section_brief_survives_failed_expansion(tmp_path):
+    config = make_config(tmp_path)
+    ranked = [_item(i, "papers") for i in range(21)]
+    short = _section_payload("papers", "Tom tat ngan. " + _refs_upto(21))
+    chat = FakeLlmClient([short, "not json"]).chat
+    briefs = write_section_briefs(ranked, chat, config, locale="vi")
+
+    assert len(briefs) == 1
+    assert len(briefs[0].text) < 800
+    assert len(chat.calls) == 2

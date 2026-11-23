@@ -837,7 +837,78 @@ def write_section_briefs(
             return ()
     if not briefs:
         LOG.warning("section briefs returned no usable sections")
-    return briefs
+    return _expand_short_section_briefs(briefs, ranked, chat, messages, loc, deadline)
+
+
+def _expand_short_section_briefs(
+    briefs: tuple[SectionBrief, ...],
+    ranked: list[RankedItem],
+    chat: ChatFn,
+    messages: list[dict],
+    locale: str,
+    deadline: float | None,
+) -> tuple[SectionBrief, ...]:
+    """One extra call when a large section is below its minimum length."""
+    counts = Counter(item.section for item in ranked)
+    by_section = {brief.section: brief for brief in briefs}
+    gaps: list[tuple[str, int, int, int]] = []
+    for section in SECTIONS:
+        brief = by_section.get(section)
+        if brief is None or not counts[section]:
+            continue
+        minimum = section_brief_target_min(locale, counts[section])
+        if len(brief.text) < minimum:
+            gaps.append(
+                (
+                    section,
+                    len(brief.text),
+                    minimum,
+                    section_brief_target_cap(locale, counts[section]),
+                )
+            )
+    if not gaps:
+        return briefs
+    if deadline is not None and time.monotonic() >= deadline:
+        LOG.warning("writer deadline exceeded before section brief expansion")
+        return briefs
+    draft = "\n\n".join(
+        f"[{section}] current {current} chars; rewrite at {minimum}-{cap} chars:\n"
+        f"{by_section[section].text}"
+        for section, current, minimum, cap in gaps
+    )
+    request = (
+        "These section briefs are below the required length. Rewrite ONLY these "
+        "sections as two or three substantive paragraphs with specific evidence "
+        "from the item summaries. Keep every [[n]] marker inline, mention every "
+        "item in the section, and do not add a separate refs list. Return the "
+        "same JSON object shape with only the rewritten sections.\n\n" + draft
+    )
+    try:
+        repaired = _validate_section_briefs(
+            _extract_json(chat([*messages, {"role": "user", "content": request}])),
+            ranked,
+            locale,
+        )
+    except (LlmError, ValueError, json.JSONDecodeError) as exc:
+        LOG.warning("section brief expansion failed: %s", exc)
+        return briefs
+    merged = dict(by_section)
+    short = {section for section, _, _, _ in gaps}
+    for brief in repaired:
+        if brief.section not in short:
+            continue
+        current = merged.get(brief.section)
+        if current is None or len(brief.text) > len(current.text):
+            merged[brief.section] = brief
+    for section, _, minimum, _ in gaps:
+        if len(merged[section].text) < minimum:
+            LOG.warning(
+                "section brief for %s still short after expansion (%d/%d chars)",
+                section,
+                len(merged[section].text),
+                minimum,
+            )
+    return tuple(merged[section] for section in SECTIONS if section in merged)
 
 
 def _summarize_v2(
