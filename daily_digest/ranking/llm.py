@@ -699,6 +699,34 @@ def _cap_brief_paragraphs(text: str, limit: int = 3) -> str:
     return "\n\n".join(paragraphs[:limit])
 
 
+def _append_missing_refs(
+    text: str,
+    segments: tuple[OverviewSegment, ...],
+    missing: list[tuple[int, RankedItem]],
+    locale: str,
+) -> tuple[str, tuple[OverviewSegment, ...]]:
+    """Add a compact 'also' tail for items the model did not mention."""
+    tail = t(locale, "section_brief_coverage_tail")
+    separator = "" if not text else ("\n\n" if text.count("\n\n") < 2 else " ")
+    text_parts = [text, separator, tail]
+    extra: list[OverviewSegment] = [OverviewSegment(text=separator + tail)]
+    for offset, (index, item) in enumerate(missing):
+        if offset:
+            extra.append(OverviewSegment(text=" \u00b7 "))
+            text_parts.append(" \u00b7 ")
+        extra.append(
+            OverviewSegment(
+                ref=OverviewRef(
+                    uid=item.item.id,
+                    label=short_label(item.item.title, index + 1, locale),
+                    title=item.item.title,
+                )
+            )
+        )
+        text_parts.append(item.item.title)
+    return "".join(text_parts).strip(), (*segments, *extra)
+
+
 def _validate_section_briefs(
     payload: dict,
     ranked: list[RankedItem],
@@ -738,25 +766,7 @@ def _validate_section_briefs(
                 section,
                 len(missing),
             )
-            tail = t(loc, "section_brief_coverage_tail")
-            separator = "" if not text else ("\n\n" if text.count("\n\n") < 2 else " ")
-            segments = list(segments)
-            segments.append(OverviewSegment(text=separator + tail))
-            text = f"{text}{separator}{tail}".strip()
-            for offset, (index, item) in enumerate(missing):
-                if offset:
-                    segments.append(OverviewSegment(text=" \u00b7 "))
-                    text += " \u00b7 "
-                segments.append(
-                    OverviewSegment(
-                        ref=OverviewRef(
-                            uid=item.item.id,
-                            label=short_label(item.item.title, index + 1, loc),
-                            title=item.item.title,
-                        )
-                    )
-                )
-                text += item.item.title
+            text, segments = _append_missing_refs(text, segments, missing, loc)
         refs = tuple(segment.ref for segment in segments if segment.ref is not None)
         briefs.append(
             SectionBrief(
