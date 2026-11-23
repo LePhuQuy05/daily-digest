@@ -215,6 +215,18 @@ h1 { margin: 0; font-family: var(--font-serif); font-weight: 700; }
 .cover-aside { min-width: 0; }
 .cover-aside .most-read { margin-top: 0; }
 .cover-secondary { margin: 4px 0 30px; }
+.cover-secondary .story--feature.story--has-media {
+  display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  column-gap: 32px; align-items: start; padding-top: 18px;
+  border-top: 1px solid var(--rule-strong);
+}
+.cover-secondary .story--feature.story--has-media > * { grid-column: 1; }
+.cover-secondary .story--feature.story--has-media > .story-media {
+  grid-column: 2; grid-row: 1 / span 8; margin: 0;
+}
+.cover-secondary .story--feature.story--has-media .story-media img {
+  max-height: 420px; width: 100%;
+}
 .top-fold--wide { grid-template-columns: 1fr; }
 .top-fold--wide + .source-line { margin: -16px 0 28px; padding-top: 8px;
                                 border-top: 1px solid var(--rule); }
@@ -551,6 +563,10 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
   .story-title { font-size: 32px; }
   .story--lead .story-title { font-size: 23px; }
   .cover-pair { grid-template-columns: minmax(0, 1fr); }
+  .cover-secondary .story--feature.story--has-media { display: block; }
+  .cover-secondary .story--feature.story--has-media > .story-media {
+    margin: 0 0 14px;
+  }
   .tech-features, .tech-list { grid-template-columns: 1fr; }
   .tools-index { grid-template-columns: 1fr; }
   .section-front.sec-papers .briefs { grid-template-columns: 1fr; }
@@ -727,6 +743,8 @@ body:not(.bridged) .section-more .story--more { grid-template-columns: minmax(0,
     .wordmark { font-size: 24pt; }
     .dateline { border-bottom: 1px solid #999; font-size: 7pt; }
     .top-fold { display: block; margin: 4mm 0 0; }
+    .cover-secondary .story--feature.story--has-media { display: block; border-top: 0;
+                                                        padding-top: 0; }
     .section-body, .section-body--tech, .section-body--tools { display: block; }
     .tech-features, .tech-list, .tools-index { display: block; }
     .tech-features .story--feature, .tech-list .story--brief,

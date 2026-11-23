@@ -165,6 +165,16 @@ class TestNewsroomSectionFronts:
         assert "border-radius" not in story_rule
         assert "background" not in story_rule
 
+    def test_cover_secondary_image_sits_beside_the_text(self):
+        css = _css()
+        rule = re.search(
+            r"\.cover-secondary \.story--feature\.story--has-media \{[^}]*\}",
+            css,
+        ).group(0)
+        assert "grid-template-columns" in rule
+        assert ".cover-secondary .story--feature.story--has-media > .story-media" in css
+        assert "max-height: 420px" in css
+
     def test_no_shimmer_or_stagger(self, tmp_path):
         html = _html(tmp_path)
         assert "shimmer" not in html
