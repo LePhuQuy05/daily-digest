@@ -474,16 +474,16 @@ def test_run_day_deadline_expiry_still_saves(tmp_path, monkeypatch):
     assert len(edition.section_briefs) == 3
 
 
-def test_six_typographic_cover_modules_without_images(tmp_path):
+def test_typographic_cover_modules_without_images(tmp_path):
     ranked = _mixed(30)
     html = _render(
         tmp_path,
         ranked,
         section_briefs=heuristic_section_briefs(ranked, make_config(tmp_path)),
     )
-    assert html.count('story--typographic"') == 6
-    assert html.count('class="story story--feature ') == 2
-    assert html.count('class="story story--lead ') == 3
+    assert html.count('story--typographic"') == 7
+    assert html.count('class="story story--feature ') == 4
+    assert html.count('class="story story--lead ') == 2
     assert "cover-pair" in html
     assert '<section class="most-read">' in html
     assert 'id="briefing"' not in html

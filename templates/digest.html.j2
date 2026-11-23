@@ -135,6 +135,19 @@
     {% elif section.lead is none %}
     <p class="section-note">{{ t.section_lead_above }}</p>
     {% else %}
+    {% if section_key == "tech_news" %}
+    <div class="section-body section-body--tech">
+      <div class="tech-features">
+        {{ story(section.lead, "feature") }}
+        {% if section.briefs %}{{ story(section.briefs[0], "feature") }}{% endif %}
+      </div>
+      {% if section.briefs | length > 1 %}
+      <div class="tech-list">
+        {% for r in section.briefs[1:6] %}{{ story(r, "brief") }}{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
     <div class="section-body">
       <div class="lead-col">
         {{ story(section.lead, "lead") }}
@@ -145,6 +158,7 @@
       </div>
       {% endif %}
     </div>
+    {% endif %}
     {% if more_items %}
     <div class="section-more{% if more_items|length == 1 %} section-more--single{% endif %}"
          role="group" aria-labelledby="more-{{ section_key | replace('_','-') }}">
